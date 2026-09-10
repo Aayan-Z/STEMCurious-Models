@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Moon Phases Explorer</title>
+<style>
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; width:100%; height:100%;
+    background:#000000;
+    color:#ffffff;
+    font-family:'Times New Roman', Times, serif;
+    overflow:hidden;
+  }
+  #canvas-wrap{ position:fixed; inset:0; background:#000000; }
+  canvas{ display:block; }
+
+  #panel{
+    position:fixed; top:16px; left:16px; bottom:16px;
+    width:270px;
+    background:rgba(20,20,26,0.46);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+    backdrop-filter: blur(28px) saturate(160%);
+    border:1px solid rgba(255,255,255,0.16);
+    border-radius:24px;
+    padding:22px 0;
+    overflow-y:auto;
+    z-index:6;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.16);
+  }
+  #panel::-webkit-scrollbar{ width:5px; }
+  #panel::-webkit-scrollbar-thumb{ background:rgba(255,255,255,0.18); border-radius:3px; }
+
+  .shell-block{ padding:0 22px 20px 22px; }
+  .shell-block:last-child{ padding-bottom:4px; }
+  .shell-label{
+    font-size:13px; color:rgba(255,255,255,0.52);
+    margin-bottom:10px;
+    font-style:italic;
+  }
+
+  .orb-list{ display:flex; flex-direction:column; gap:4px; margin:0 -10px; }
+  .orb-btn{
+    background:transparent;
+    border:none;
+    color:#ffffff;
+    text-align:left;
+    font-family:'Times New Roman', Times, serif;
+    font-size:15.5px;
+    padding:10px 14px;
+    border-radius:12px;
+    cursor:pointer;
+    transition: background .15s ease;
+  }
+  .orb-btn:hover{ background:rgba(255,255,255,0.09); }
+  .orb-btn.active{
+    background:rgba(255,255,255,0.17);
+    font-weight:700;
+  }
+
+  .panel-divider{
+    height:1px; margin:4px 0 18px 0;
+    background:linear-gradient(90deg, rgba(255,255,255,0.0), rgba(255,255,255,0.18), rgba(255,255,255,0.0));
+  }
+
+  #dateInput{
+    width:100%;
+    background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.18);
+    border-radius:12px;
+    color:#ffffff;
+    font-family:'Times New Roman', Times, serif;
+    font-size:14px;
+    padding:9px 10px;
+    colorScheme: dark;
+  }
+  #dateInput:focus{ outline:none; border-color:rgba(255,255,255,0.4); }
+
+  .now-btn{
+    margin-top:10px;
+    width:100%;
+    background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.16);
+    color:#ffffff;
+    font-family:'Times New Roman', Times, serif;
+    font-size:14px;
+    padding:8px 0;
+    border-radius:12px;
+    cursor:pointer;
+    transition: background .15s ease;
+  }
+  .now-btn:hover{ background:rgba(255,255,255,0.16); }
+
+  #hint{
+    position:fixed; top:24px; right:28px;
+    font-size:14px; color:#ffffff;
+    text-align:right; line-height:1.9; z-index:6; pointer-events:none;
+    font-family:'Times New Roman', Times, serif;
+  }
+
+  #info{
+    position:fixed; left:306px; bottom:26px;
+    max-width:420px;
+    z-index:6; pointer-events:none;
+    color:rgba(255,255,255,0.62);
+    font-family:'Times New Roman', Times, serif;
+  }
+  #info .name{
+    font-size:26px; margin:0 0 6px 0; color:rgba(255,255,255,0.82);
+  }
+  #info .qn{
+    font-size:14px; margin-bottom:8px; color:rgba(255,255,255,0.5);
+  }
+  #info .desc{
+    font-size:14px; line-height:1.55; color:rgba(255,255,255,0.56); max-width:400px;
+  }
+
+  @media (max-width: 780px){
+    #panel{ width:220px; }
+    #hint{ display:none; }
+    #info{ left:236px; max-width:220px; }
+    #info .name{ font-size:20px; }
+    .orb-btn{ font-size:14px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="canvas-wrap"></div>
+
+<div id="panel">
+  <div class="shell-block">
+    <div class="shell-label">Named Phases</div>
+    <div class="orb-list" id="phaseList"></div>
+  </div>
+  <div class="shell-block">
+    <div class="panel-divider"></div>
+    <div class="shell-label">Specific Date &amp; Time</div>
+    <input type="datetime-local" id="dateInput">
+    <button class="now-btn" id="nowBtn">Use Current Moment</button>
+  </div>
+</div>
+
+<div id="hint">
+  Drag to rotate<br>
+  Scroll to zoom<br>
+  Right-click to pan
+</div>
+
+<div id="info">
+  <div class="name" id="infoName">New Moon</div>
+  <div class="qn" id="infoQn"></div>
+  <div class="desc" id="infoDesc">Moon phases are not caused by Earth's shadow &mdash; that's a lunar eclipse, a separate and much rarer event. Phases simply come from the changing angle at which we view the half of the Moon that is always lit by the Sun as it orbits Earth.</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   LUNAR PHASE ASTRONOMY
+
+   The Moon phase is parametrized by an angle theta (0-360 deg):
+   0 = New, 90 = First Quarter, 180 = Full, 270 = Last Quarter.
+   For a date/time, theta is derived from the mean synodic month
+   (29.530588853 days) measured from a known reference New Moon
+   (6 Jan 2000, 18:14 UTC) -- the standard simplified lunar-phase
+   algorithm used by most calendrical moon-phase calculators.
+   This mean-cycle approximation is accurate to within roughly
+   half a day of the true phase, since it does not correct for
+   the Moon's elliptical orbit.
+
+   Illuminated fraction: k = (1 - cos(theta)) / 2.
+
+   For rendering, the Sun's light direction is fixed in world
+   space (the Sun is effectively infinitely far away), and the
+   camera's default viewing angle around the Moon is set to
+   theta + 180 degrees, which reproduces the correct Earth-seen
+   illumination geometry (derived and verified against the real
+   New/Full/Quarter geometry).
+   ============================================================ */
+
+var REF_NEW_MOON = Date.UTC(2000,0,6,18,14,0);
+var SYNODIC_MS = 29.530588853 * 86400000;
+
+function thetaForDate(date){
+  var diff = date.getTime() - REF_NEW_MOON;
+  var cycles = diff / SYNODIC_MS;
+  var frac = cycles - Math.floor(cycles);
+  return frac*360;
+}
+
+var PHASES = [
+  { name:"New Moon", theta:0,
+    desc:"The Moon sits between Earth and the Sun, so the hemisphere facing us is unlit. It is essentially invisible, rising and setting with the Sun." },
+  { name:"Waxing Crescent", theta:45,
+    desc:"A thin sliver of the sunlit hemisphere becomes visible as the Moon moves along its orbit away from the Sun, growing a little more each night." },
+  { name:"First Quarter", theta:90,
+    desc:"Exactly half of the visible face is illuminated. Despite the name, this marks one quarter of the way through the full lunar cycle, not a quarter of the disk." },
+  { name:"Waxing Gibbous", theta:135,
+    desc:"More than half the visible face is lit and still growing \u2014 \u201cgibbous\u201d comes from the Latin for \u2018hump-backed\u2019 \u2014 as the Moon approaches the far side of its orbit." },
+  { name:"Full Moon", theta:180,
+    desc:"The Moon is on the opposite side of Earth from the Sun, so the entire face turned toward us is fully lit." },
+  { name:"Waning Gibbous", theta:225,
+    desc:"Illumination begins shrinking back from full, with still more than half the disk lit." },
+  { name:"Last Quarter", theta:270,
+    desc:"Again exactly half-lit, but the opposite half from First Quarter. Also called Third Quarter." },
+  { name:"Waning Crescent", theta:315,
+    desc:"Only a thin sliver remains lit just before the cycle returns to New Moon, typically visible in the pre-dawn sky." }
+];
+
+function illuminatedFraction(thetaDeg){
+  var r = thetaDeg*Math.PI/180;
+  return (1-Math.cos(r))/2;
+}
+
+function nearestNamedPhase(thetaDeg){
+  var best=0, bestDiff=999;
+  for(var i=0;i<PHASES.length;i++){
+    var d = Math.abs(((thetaDeg-PHASES[i].theta+540)%360)-180);
+    if(d<bestDiff){ bestDiff=d; best=i; }
+  }
+  return best;
+}
+
+/* ============================================================
+   PROCEDURAL MOON TEXTURES (color map with maria, bump map with craters)
+   ============================================================ */
+
+function makeColorTexture(){
+  var w=1024, h=512;
+  var c = document.createElement('canvas'); c.width=w; c.height=h;
+  var ctx = c.getContext('2d');
+  ctx.fillStyle = '#b7ae9e';
+  ctx.fillRect(0,0,w,h);
+
+  function blotch(cx,cy,r,alpha){
+    var g = ctx.createRadialGradient(cx,cy,0,cx,cy,r);
+    g.addColorStop(0, 'rgba(70,66,58,'+alpha+')');
+    g.addColorStop(1, 'rgba(70,66,58,0)');
+    ctx.fillStyle=g;
+    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
+  }
+
+  var seed = 1234567;
+  function rand(){ seed=(seed*1103515245+12345)&0x7fffffff; return (seed%10000)/10000; }
+
+  var maria = [[330,230,95],[420,200,60],[300,290,55],[470,260,45],[250,180,40],[620,300,70],[560,210,35]];
+  maria.forEach(function(m){
+    for(var i=0;i<9;i++){
+      var ox=(rand()-0.5)*m[2]*1.1, oy=(rand()-0.5)*m[2]*0.7;
+      blotch(m[0]+ox, m[1]+oy, m[2]*(0.5+rand()*0.6), 0.22);
+    }
+  });
+
+  for(var i=0;i<260;i++){
+    var x=rand()*w, y=rand()*h, r=2+rand()*rand()*22;
+    blotch(x,y,r,0.10+rand()*0.12);
+  }
+
+  return new THREE.CanvasTexture(c);
+}
+
+function makeBumpTexture(){
+  var w=1024, h=512;
+  var c = document.createElement('canvas'); c.width=w; c.height=h;
+  var ctx = c.getContext('2d');
+  ctx.fillStyle = '#808080';
+  ctx.fillRect(0,0,w,h);
+
+  var seed = 987654;
+  function rand(){ seed=(seed*1103515245+12345)&0x7fffffff; return (seed%10000)/10000; }
+
+  for(var i=0;i<420;i++){
+    var x=rand()*w, y=rand()*h, r=2+rand()*rand()*20;
+    var g = ctx.createRadialGradient(x,y,0,x,y,r);
+    g.addColorStop(0,'rgba(40,40,40,0.85)');
+    g.addColorStop(0.75,'rgba(40,40,40,0.35)');
+    g.addColorStop(0.85,'rgba(230,230,230,0.35)');
+    g.addColorStop(1,'rgba(128,128,128,0)');
+    ctx.fillStyle=g;
+    ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+  }
+  return new THREE.CanvasTexture(c);
+}
+
+/* ============================================================
+   SCENE SETUP
+   ============================================================ */
+
+var wrap = document.getElementById('canvas-wrap');
+var scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000000);
+
+var camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 200);
+
+var renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+wrap.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 3.2;
+controls.maxDistance = 20;
+controls.rotateSpeed = 0.55;
+controls.zoomSpeed = 0.8;
+controls.target.set(0,0,0);
+
+window.addEventListener('resize', function(){
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// A touch of ambient light only so the unlit hemisphere isn't pure black
+// (approximating faint Earthshine) -- the Sun remains the single true
+// light source shaping the phase.
+scene.add(new THREE.AmbientLight(0x8899bb, 0.055));
+
+var sunLight = new THREE.DirectionalLight(0xfff6e8, 1.35);
+sunLight.position.set(30, 4, 0);
+sunLight.target.position.set(0,0,0);
+scene.add(sunLight);
+scene.add(sunLight.target);
+
+var moonGeo = new THREE.SphereGeometry(2, 96, 72);
+var moonMat = new THREE.MeshStandardMaterial({
+  map: makeColorTexture(),
+  bumpMap: makeBumpTexture(),
+  bumpScale: 0.045,
+  metalness: 0.0,
+  roughness: 0.97
+});
+var moon = new THREE.Mesh(moonGeo, moonMat);
+scene.add(moon);
+
+/* ============================================================
+   PHASE APPLICATION
+   ============================================================ */
+
+var CAM_DIST = 7.2;
+
+function applyTheta(thetaDeg){
+  var camAngle = (thetaDeg+180) * Math.PI/180;
+  var pos = new THREE.Vector3(Math.cos(camAngle)*CAM_DIST, CAM_DIST*0.12, Math.sin(camAngle)*CAM_DIST);
+  camera.position.copy(pos);
+  controls.target.set(0,0,0);
+  controls.update();
+
+  var idx = nearestNamedPhase(thetaDeg);
+  var k = illuminatedFraction(thetaDeg);
+  document.getElementById('infoName').textContent = PHASES[idx].name;
+  document.getElementById('infoQn').textContent =
+    'Phase angle: ' + thetaDeg.toFixed(1) + '\u00B0   \u00B7   Illuminated: ' + Math.round(k*100) + '%';
+  document.getElementById('infoDesc').textContent = PHASES[idx].desc;
+
+  setActiveButton(idx);
+}
+
+var buttons = [];
+function setActiveButton(idx){
+  buttons.forEach(function(b,i){ b.classList.toggle('active', i===idx); });
+}
+
+function buildButtons(){
+  var container = document.getElementById('phaseList');
+  PHASES.forEach(function(p, i){
+    var btn = document.createElement('button');
+    btn.className = 'orb-btn';
+    btn.textContent = p.name;
+    btn.addEventListener('click', function(){ applyTheta(p.theta); });
+    container.appendChild(btn);
+    buttons.push(btn);
+  });
+}
+
+/* ---------- date/time input ---------- */
+
+var dateInput = document.getElementById('dateInput');
+function setDateInputFromDate(d){
+  var pad=function(n){return String(n).padStart(2,'0');};
+  var local = d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
+  dateInput.value = local;
+}
+
+dateInput.addEventListener('input', function(){
+  if(!dateInput.value) return;
+  var d = new Date(dateInput.value);
+  if(isNaN(d.getTime())) return;
+  applyTheta(thetaForDate(d));
+});
+
+document.getElementById('nowBtn').addEventListener('click', function(){
+  var now = new Date();
+  setDateInputFromDate(now);
+  applyTheta(thetaForDate(now));
+});
+
+/* ============================================================
+   RENDER LOOP
+   ============================================================ */
+
+function animate(){
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+buildButtons();
+var nowStart = new Date();
+setDateInputFromDate(nowStart);
+applyTheta(thetaForDate(nowStart));
+animate();
+
+})();
+</script>
+</body>
+</html>
