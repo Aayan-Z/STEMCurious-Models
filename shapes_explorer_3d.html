@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Shapes Explorer</title>
+<style>
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; width:100%; height:100%;
+    background:#000000;
+    color:#ffffff;
+    font-family:'Times New Roman', Times, serif;
+    overflow:hidden;
+  }
+  #canvas-wrap{ position:fixed; inset:0; background:#000000; }
+  canvas{ display:block; }
+
+  /* ---------- Side panel (floating, iOS liquid-glass card) ---------- */
+  #panel{
+    position:fixed; top:16px; left:16px; bottom:16px;
+    width:270px;
+    background:rgba(20,20,26,0.46);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+    backdrop-filter: blur(28px) saturate(160%);
+    border:1px solid rgba(255,255,255,0.16);
+    border-radius:24px;
+    padding:20px 0;
+    overflow-y:auto;
+    z-index:6;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.16);
+  }
+  #panel::-webkit-scrollbar{ width:5px; }
+  #panel::-webkit-scrollbar-thumb{ background:rgba(255,255,255,0.18); border-radius:3px; }
+
+  .shell-block{ padding:0 0 20px 0; }
+  .shell-block:last-child{ padding-bottom:4px; }
+  .shell-label{
+    font-size:13px; color:rgba(255,255,255,0.52);
+    margin:0 22px 8px 22px;
+    font-style:italic;
+  }
+  .orb-list{ display:flex; flex-direction:column; padding:0 12px; gap:4px; }
+  .orb-btn{
+    background:transparent;
+    border:none;
+    color:#ffffff;
+    text-align:left;
+    font-family:'Times New Roman', Times, serif;
+    font-size:16px;
+    padding:10px 14px;
+    border-radius:12px;
+    cursor:pointer;
+    transition: background .15s ease;
+  }
+  .orb-btn:hover{ background:rgba(255,255,255,0.09); }
+  .orb-btn.active{
+    background:rgba(255,255,255,0.17);
+    font-weight:700;
+  }
+
+  /* ---------- Controls hint ---------- */
+  #hint{
+    position:fixed; top:24px; right:28px;
+    font-size:14px; color:#ffffff;
+    text-align:right; line-height:1.9; z-index:6; pointer-events:none;
+    font-family:'Times New Roman', Times, serif;
+  }
+
+  /* ---------- Shape info (bottom-left, translucent) ---------- */
+  #info{
+    position:fixed; left:306px; bottom:26px;
+    max-width:400px;
+    z-index:6; pointer-events:none;
+    color:rgba(255,255,255,0.62);
+    font-family:'Times New Roman', Times, serif;
+  }
+  #info .cat{
+    font-size:12.5px; color:rgba(255,255,255,0.42); font-style:italic; margin-bottom:2px;
+  }
+  #info .name{
+    font-size:26px; margin:0 0 6px 0; color:rgba(255,255,255,0.82);
+  }
+  #info .vef{
+    font-size:14px; margin-bottom:8px; color:rgba(255,255,255,0.5);
+  }
+  #info .desc{
+    font-size:14px; line-height:1.5; color:rgba(255,255,255,0.56); max-width:380px;
+  }
+
+  @media (max-width: 780px){
+    #panel{ width:215px; }
+    #hint{ display:none; }
+    #info{ left:231px; max-width:210px; }
+    #info .name{ font-size:20px; }
+    .orb-btn{ font-size:14.5px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="canvas-wrap"></div>
+
+<div id="panel">
+  <div class="shell-block">
+    <div class="shell-label">Platonic Solids</div>
+    <div class="orb-list" id="catPlatonic"></div>
+  </div>
+  <div class="shell-block">
+    <div class="shell-label">Curved Surfaces</div>
+    <div class="orb-list" id="catCurved"></div>
+  </div>
+  <div class="shell-block">
+    <div class="shell-label">Prisms &amp; Pyramids</div>
+    <div class="orb-list" id="catPrisms"></div>
+  </div>
+  <div class="shell-block">
+    <div class="shell-label">Knots &amp; Exotic Surfaces</div>
+    <div class="orb-list" id="catExotic"></div>
+  </div>
+  <div class="shell-block">
+    <div class="shell-label">Stellated Solids</div>
+    <div class="orb-list" id="catStellated"></div>
+  </div>
+</div>
+
+<div id="hint">
+  Drag to rotate<br>
+  Scroll to zoom<br>
+  Right-click to pan
+</div>
+
+<div id="info">
+  <div class="cat" id="infoCat">Platonic Solid</div>
+  <div class="name" id="infoName">Icosahedron</div>
+  <div class="vef" id="infoVef"></div>
+  <div class="desc" id="infoDesc"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   GENERIC PARAMETRIC SURFACE BUILDER
+   Used for the Mobius strip, Klein bottle, and helicoid. Each
+   surface is defined by fn(u,v) -> [x,y,z]; closedU/closedV
+   control whether the grid wraps around and connects back on
+   itself in that parameter direction.
+   ============================================================ */
+
+function buildParametric(fn, uSeg, vSeg, u0,u1, v0,v1, closedU, closedV){
+  var nu = uSeg+1, nv = vSeg+1;
+  var positions = [];
+  for(var i=0;i<nu;i++){
+    var u = u0 + (u1-u0)*(i/uSeg);
+    for(var j=0;j<nv;j++){
+      var v = v0 + (v1-v0)*(j/vSeg);
+      var p = fn(u,v);
+      positions.push(p[0],p[1],p[2]);
+    }
+  }
+  var indices = [];
+  var iQuads = closedU ? nu : (nu-1);
+  var jQuads = closedV ? nv : (nv-1);
+  for(var i=0;i<iQuads;i++){
+    var i0=i, i1=(i+1)%nu;
+    for(var j=0;j<jQuads;j++){
+      var j0=j, j1=(j+1)%nv;
+      var a=i0*nv+j0, b=i1*nv+j0, c=i1*nv+j1, d=i0*nv+j1;
+      indices.push(a,b,c, a,c,d);
+    }
+  }
+  var geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions,3));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/* ---------- Stellation: erect a pyramid on every triangular face ---------- */
+
+function stellate(sourceGeo, spikeHeight){
+  var pos = sourceGeo.getAttribute('position');
+  var index = sourceGeo.index ? sourceGeo.index.array : null;
+  var triCount = index ? index.length/3 : pos.count/3;
+
+  var positions = [];
+  var indices = [];
+
+  function getVert(i){
+    var idx = index ? index[i] : i;
+    return [ pos.getX(idx), pos.getY(idx), pos.getZ(idx) ];
+  }
+
+  for(var t=0; t<triCount; t++){
+    var a = getVert(t*3), b = getVert(t*3+1), c = getVert(t*3+2);
+    var cx=(a[0]+b[0]+c[0])/3, cy=(a[1]+b[1]+c[1])/3, cz=(a[2]+b[2]+c[2])/3;
+    var clen = Math.sqrt(cx*cx+cy*cy+cz*cz) || 1;
+    var nx=cx/clen, ny=cy/clen, nz=cz/clen;
+    var apex = [cx+nx*spikeHeight, cy+ny*spikeHeight, cz+nz*spikeHeight];
+
+    var base = positions.length/3;
+    positions.push(a[0],a[1],a[2], b[0],b[1],b[2], c[0],c[1],c[2], apex[0],apex[1],apex[2]);
+    // three side faces of the pyramid erected on triangle abc
+    indices.push(base+0, base+1, base+3);
+    indices.push(base+1, base+2, base+3);
+    indices.push(base+2, base+0, base+3);
+  }
+
+  var geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions,3));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/* ============================================================
+   SHAPE LIBRARY
+   ============================================================ */
+
+var SHAPES = {
+
+  /* ---------------- Platonic solids ---------------- */
+  "tetrahedron": {
+    name:"Tetrahedron", category:"Platonic Solid",
+    build:function(){ return new THREE.TetrahedronGeometry(1.5, 0); },
+    vef:{v:4,e:6,f:4},
+    info:"The simplest possible polyhedron, and the only Platonic solid that is self-dual \u2014 its dual is another tetrahedron."
+  },
+  "cube": {
+    name:"Cube", category:"Platonic Solid",
+    build:function(){ return new THREE.BoxGeometry(2.1,2.1,2.1); },
+    vef:{v:8,e:12,f:6},
+    info:"Also called a hexahedron. Exactly three squares meet at each vertex, and it is the dual of the octahedron."
+  },
+  "octahedron": {
+    name:"Octahedron", category:"Platonic Solid",
+    build:function(){ return new THREE.OctahedronGeometry(1.7, 0); },
+    vef:{v:6,e:12,f:8},
+    info:"Dual of the cube. Four equilateral triangles meet at each of its six vertices."
+  },
+  "dodecahedron": {
+    name:"Dodecahedron", category:"Platonic Solid",
+    build:function(){ return new THREE.DodecahedronGeometry(1.5, 0); },
+    vef:{v:20,e:30,f:12},
+    info:"Built from twelve regular pentagons. It is the dual of the icosahedron and appears in some natural crystal forms."
+  },
+  "icosahedron": {
+    name:"Icosahedron", category:"Platonic Solid",
+    build:function(){ return new THREE.IcosahedronGeometry(1.7, 0); },
+    vef:{v:12,e:30,f:20},
+    info:"The Platonic solid with the most faces \u2014 twenty equilateral triangles, five meeting at each of its twelve vertices."
+  },
+
+  /* ---------------- Curved surfaces ---------------- */
+  "sphere": {
+    name:"Sphere", category:"Curved Surface",
+    build:function(){ return new THREE.SphereGeometry(1.7, 56, 40); },
+    vef:null, vefNote:"No flat faces, straight edges, or vertices",
+    info:"Every point on the surface is equidistant from the center. It has no edges or corners, yet its Euler characteristic is still exactly 2."
+  },
+  "cylinder": {
+    name:"Cylinder", category:"Curved Surface",
+    build:function(){ return new THREE.CylinderGeometry(1.3,1.3,2.6, 56); },
+    vef:{v:0,e:2,f:3},
+    info:"Two flat circular faces joined by one curved lateral surface. Unrolled, that lateral surface is simply a flat rectangle."
+  },
+  "cone": {
+    name:"Cone", category:"Curved Surface",
+    build:function(){ return new THREE.ConeGeometry(1.5,2.6, 56); },
+    vef:{v:1,e:1,f:2},
+    info:"A single apex connects to a circular base through a curved surface. Slicing a cone at different angles produces every conic section \u2014 circle, ellipse, parabola, and hyperbola."
+  },
+  "torus": {
+    name:"Torus", category:"Curved Surface",
+    build:function(){ return new THREE.TorusGeometry(1.4, 0.55, 32, 72); },
+    vef:{v:0,e:0,f:1},
+    info:"A donut-shaped surface with one hole through the middle. Its Euler characteristic is 0 and it has genus 1, unlike the sphere's genus 0."
+  },
+
+  /* ---------------- Prisms & pyramids ---------------- */
+  "triprism": {
+    name:"Triangular Prism", category:"Prism",
+    build:function(){ return new THREE.CylinderGeometry(1.5,1.5,2.2, 3, 1, false); },
+    vef:{v:6,e:9,f:5},
+    info:"Two triangular faces connected by three rectangular sides. The cross-section stays an identical triangle along the whole length."
+  },
+  "pentprism": {
+    name:"Pentagonal Prism", category:"Prism",
+    build:function(){ return new THREE.CylinderGeometry(1.4,1.4,2.2, 5, 1, false); },
+    vef:{v:10,e:15,f:7},
+    info:"Two pentagonal faces connected by five rectangular sides."
+  },
+  "hexprism": {
+    name:"Hexagonal Prism", category:"Prism",
+    build:function(){ return new THREE.CylinderGeometry(1.4,1.4,2.2, 6, 1, false); },
+    vef:{v:12,e:18,f:8},
+    info:"Two hexagonal faces connected by six rectangular sides \u2014 the everyday shape of a pencil or a hex nut."
+  },
+  "sqpyramid": {
+    name:"Square Pyramid", category:"Pyramid",
+    build:function(){ return new THREE.ConeGeometry(1.7,2.3, 4, 1, false); },
+    vef:{v:5,e:8,f:5},
+    info:"A square base topped by four triangular faces meeting at a single apex \u2014 the shape of the Great Pyramid of Giza."
+  },
+  "pentpyramid": {
+    name:"Pentagonal Pyramid", category:"Pyramid",
+    build:function(){ return new THREE.ConeGeometry(1.7,2.3, 5, 1, false); },
+    vef:{v:6,e:10,f:6},
+    info:"A pentagonal base topped by five triangular faces meeting at a single apex."
+  },
+
+  /* ---------------- Knots & exotic surfaces ---------------- */
+  "mobius": {
+    name:"M\u00F6bius Strip", category:"Non-orientable Surface",
+    build:function(){
+      var R=1.5, w=0.55;
+      return buildParametric(function(u,v){
+        var x=(R+v*Math.cos(u/2))*Math.cos(u);
+        var y=(R+v*Math.cos(u/2))*Math.sin(u);
+        var z=v*Math.sin(u/2);
+        return [x,z,y];
+      }, 90, 1, 0, Math.PI*2, -w, w, false, false);
+    },
+    vef:null, vefNote:"Not applicable \u2014 smooth non-orientable surface",
+    info:"A strip given a half-twist before its ends are joined. The result has only one side and one boundary edge \u2014 trace a finger along the surface and you return to the start having covered both \u201csides.\u201d"
+  },
+  "trefoil": {
+    name:"Trefoil Knot", category:"Torus Knot",
+    build:function(){ return new THREE.TorusKnotGeometry(1.15, 0.32, 160, 20, 2, 3); },
+    vef:null, vefNote:"Not applicable \u2014 tessellated tube along a curve",
+    info:"The simplest possible knot, needing at least three crossings. It winds twice around one direction of a torus and three times around the other, and it is chiral \u2014 its mirror image cannot be rotated to match itself."
+  },
+  "torusknot38": {
+    name:"Complex Torus Knot (3,8)", category:"Torus Knot",
+    build:function(){ return new THREE.TorusKnotGeometry(1.05, 0.26, 220, 20, 3, 8); },
+    vef:null, vefNote:"Not applicable \u2014 tessellated tube along a curve",
+    info:"Winds 3 times around one direction of a torus and 8 times around the other, producing a far more intricate braid than the trefoil."
+  },
+  "klein": {
+    name:"Klein Bottle", category:"Non-orientable Surface",
+    build:function(){
+      var a=0.55;
+      return buildParametric(function(u,v){
+        var cu2=Math.cos(u/2), su2=Math.sin(u/2);
+        var r=(a*2 + cu2*Math.sin(v) - su2*Math.sin(2*v));
+        var x=r*Math.cos(u);
+        var z=r*Math.sin(u);
+        var y=su2*Math.sin(v) + cu2*Math.sin(2*v);
+        return [x*0.6, y*0.6, z*0.6];
+      }, 100, 40, 0, Math.PI*2, 0, Math.PI*2, true, true);
+    },
+    vef:null, vefNote:"Not applicable \u2014 smooth non-orientable surface",
+    info:"A fully non-orientable closed surface with no distinct inside or outside. A true Klein bottle cannot exist without self-intersection in three dimensions \u2014 it only closes properly in four."
+  },
+  "helicoid": {
+    name:"Helicoid", category:"Minimal Surface",
+    build:function(){
+      return buildParametric(function(u,v){
+        var x=u*Math.cos(v);
+        var z=u*Math.sin(v);
+        var y=v*0.45 - Math.PI*0.9;
+        return [x,y,z];
+      }, 24, 90, -1.6, 1.6, 0, Math.PI*4, false, false);
+    },
+    vef:null, vefNote:"Not applicable \u2014 smooth ruled surface",
+    info:"An infinite spiral ramp, and one of the few known minimal surfaces \u2014 like a soap film, it locally minimizes surface area everywhere on it."
+  },
+
+  /* ---------------- Stellated solids ---------------- */
+  "spikeocta": {
+    name:"Spiked Octahedron", category:"Stellated Solid",
+    build:function(){ return stellate(new THREE.OctahedronGeometry(1.4,0), 1.05); },
+    vef:{v:14,e:36,f:24},
+    info:"Formed by erecting a triangular pyramid on each of the octahedron's 8 faces \u2014 a construction called stellation \u2014 replacing them with 24 new triangles and adding 8 spike vertices."
+  },
+  "spikeicosa": {
+    name:"Spiked Icosahedron", category:"Stellated Solid",
+    build:function(){ return stellate(new THREE.IcosahedronGeometry(1.4,0), 0.65); },
+    vef:{v:32,e:90,f:60},
+    info:"Formed by erecting a triangular pyramid on each of the icosahedron's 20 faces, replacing them with 60 new triangles and adding 20 spike vertices."
+  }
+};
+
+var CATEGORY_ORDER = {
+  catPlatonic:  ["tetrahedron","cube","octahedron","dodecahedron","icosahedron"],
+  catCurved:    ["sphere","cylinder","cone","torus"],
+  catPrisms:    ["triprism","pentprism","hexprism","sqpyramid","pentpyramid"],
+  catExotic:    ["mobius","trefoil","torusknot38","klein","helicoid"],
+  catStellated: ["spikeocta","spikeicosa"]
+};
+
+/* ============================================================
+   SCENE SETUP
+   ============================================================ */
+
+var wrap = document.getElementById('canvas-wrap');
+var scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000000);
+
+var camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.05, 500);
+camera.position.set(5.4, 3.8, 6.4);
+
+var renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+wrap.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 1.5;
+controls.maxDistance = 40;
+controls.rotateSpeed = 0.6;
+controls.zoomSpeed = 0.8;
+controls.target.set(0,0,0);
+
+window.addEventListener('resize', function(){
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.48));
+var keyLight = new THREE.DirectionalLight(0xffffff, 1.05);
+keyLight.position.set(6, 9, 7);
+scene.add(keyLight);
+var fillLight = new THREE.DirectionalLight(0xaeccff, 0.4);
+fillLight.position.set(-7, -3, -5);
+scene.add(fillLight);
+var rimLight = new THREE.DirectionalLight(0xffffff, 0.35);
+rimLight.position.set(-4, 5, -8);
+scene.add(rimLight);
+
+var metalMat = new THREE.MeshStandardMaterial({
+  color:0xd7dbe2, metalness:0.82, roughness:0.24, side:THREE.DoubleSide
+});
+var edgeMat = new THREE.LineBasicMaterial({ color:0xbfe0ff, transparent:true, opacity:0.5 });
+
+var currentMesh = null, currentEdges = null;
+
+function clearCurrent(){
+  if(currentMesh){ scene.remove(currentMesh); currentMesh.geometry.dispose(); currentMesh=null; }
+  if(currentEdges){ scene.remove(currentEdges); currentEdges.geometry.dispose(); currentEdges=null; }
+}
+
+function formatVef(shape){
+  if(!shape.vef) return shape.vefNote;
+  return 'Vertices: ' + shape.vef.v + '   \u00B7   Edges: ' + shape.vef.e + '   \u00B7   Faces: ' + shape.vef.f;
+}
+
+function updateInfo(key, shape){
+  document.getElementById('infoCat').textContent = shape.category;
+  document.getElementById('infoName').textContent = shape.name;
+  document.getElementById('infoVef').textContent = formatVef(shape);
+  document.getElementById('infoDesc').textContent = shape.info;
+}
+
+var buttons = {};
+function setActiveButton(key){
+  Object.keys(buttons).forEach(function(k){
+    buttons[k].classList.toggle('active', k===key);
+  });
+}
+
+function showShape(key){
+  var shape = SHAPES[key];
+  if(!shape) return;
+
+  clearCurrent();
+  var geo = shape.build();
+
+  currentMesh = new THREE.Mesh(geo, metalMat);
+  scene.add(currentMesh);
+
+  var edgesGeo = new THREE.EdgesGeometry(geo, 25);
+  currentEdges = new THREE.LineSegments(edgesGeo, edgeMat);
+  scene.add(currentEdges);
+
+  geo.computeBoundingSphere();
+  var radius = (geo.boundingSphere && geo.boundingSphere.radius) ? geo.boundingSphere.radius : 2;
+  var dist = Math.max(3.2, radius*2.5);
+  var dirVec = camera.position.clone().sub(controls.target);
+  if(dirVec.length() < 0.001) dirVec.set(1,0.7,1);
+  dirVec.normalize().multiplyScalar(dist);
+  camera.position.copy(dirVec);
+  controls.target.set(0,0,0);
+  camera.near = Math.max(0.02, dist*0.01);
+  camera.far = dist*60;
+  camera.updateProjectionMatrix();
+  controls.update();
+
+  updateInfo(key, shape);
+  setActiveButton(key);
+}
+
+function buildButtons(){
+  Object.keys(CATEGORY_ORDER).forEach(function(containerId){
+    var container = document.getElementById(containerId);
+    CATEGORY_ORDER[containerId].forEach(function(key){
+      var btn = document.createElement('button');
+      btn.className = 'orb-btn';
+      btn.textContent = SHAPES[key].name;
+      btn.addEventListener('click', function(){ showShape(key); });
+      container.appendChild(btn);
+      buttons[key] = btn;
+    });
+  });
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+buildButtons();
+showShape('icosahedron');
+animate();
+
+})();
+</script>
+</body>
+</html>

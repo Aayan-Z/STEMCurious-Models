@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atomic Orbital Explorer — 3D Electron Density Viewer</title>
+<style>
+  :root{
+    --bg-deep:#070a14;
+    --bg-panel:#0d1220;
+    --bg-panel-2:#111830;
+    --line:#232c47;
+    --text-main:#e7ebf7;
+    --text-dim:#8894b8;
+    --accent-plus:#ff9a3c;
+    --accent-minus:#3ce6d8;
+    --accent-s:#7fb2ff;
+    --accent-gold:#e8c468;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; width:100%; height:100%;
+    background:var(--bg-deep);
+    color:var(--text-main);
+    font-family: 'IBM Plex Sans', 'Segoe UI', Arial, sans-serif;
+    overflow:hidden;
+  }
+  #canvas-wrap{ position:fixed; inset:0; }
+  canvas{ display:block; }
+
+  /* ---------- Header ---------- */
+  #header{
+    position:fixed; top:0; left:0; right:0;
+    padding:18px 28px 14px 28px;
+    display:flex; align-items:baseline; gap:14px;
+    pointer-events:none;
+    background:linear-gradient(180deg, rgba(7,10,20,0.92) 0%, rgba(7,10,20,0.0) 100%);
+    z-index:5;
+  }
+  #header h1{
+    font-family: 'Source Serif Pro','Georgia',serif;
+    font-weight:600; font-size:22px; letter-spacing:0.2px; margin:0;
+    color:var(--text-main);
+  }
+  #header .sub{
+    font-size:12.5px; color:var(--text-dim); font-family:'IBM Plex Mono',monospace;
+  }
+
+  /* ---------- Side panel ---------- */
+  #panel{
+    position:fixed; top:0; left:0; bottom:0;
+    width:270px;
+    background:var(--bg-panel);
+    border-right:1px solid var(--line);
+    padding:74px 0 0 0;
+    overflow-y:auto;
+    z-index:6;
+  }
+  #panel::-webkit-scrollbar{ width:8px; }
+  #panel::-webkit-scrollbar-thumb{ background:#1c2545; border-radius:4px; }
+
+  .shell-block{ border-bottom:1px solid var(--line); padding:14px 18px 16px 18px; }
+  .shell-label{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:1px;
+    color:var(--text-dim); margin-bottom:10px;
+  }
+  .orb-grid{ display:flex; flex-wrap:wrap; gap:6px; }
+  .orb-btn{
+    background:var(--bg-panel-2);
+    border:1px solid var(--line);
+    color:var(--text-main);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    padding:7px 10px;
+    border-radius:3px;
+    cursor:pointer;
+    transition: border-color .15s, background .15s, color .15s;
+  }
+  .orb-btn:hover{ border-color:var(--accent-gold); color:var(--accent-gold); }
+  .orb-btn.active{
+    background:var(--accent-gold);
+    border-color:var(--accent-gold);
+    color:#0d1220;
+    font-weight:600;
+  }
+
+  /* ---------- Info panel (bottom-left) ---------- */
+  #info{
+    position:fixed; left:288px; bottom:20px;
+    max-width:360px;
+    z-index:6;
+  }
+  #info .name{
+    font-family:'Source Serif Pro',Georgia,serif;
+    font-size:26px; font-weight:600; margin:0 0 4px 0;
+  }
+  #info .qn{
+    font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--accent-gold);
+    margin-bottom:8px;
+  }
+  #info .desc{
+    font-size:13px; line-height:1.5; color:var(--text-dim); max-width:340px;
+  }
+
+  /* ---------- Legend (bottom-right) ---------- */
+  #legend{
+    position:fixed; right:20px; bottom:20px;
+    font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--text-dim);
+    text-align:right; line-height:1.9;
+    z-index:6;
+  }
+  .swatch{ display:inline-block; width:9px; height:9px; border-radius:50%; margin-left:7px; }
+
+  /* ---------- Controls hint (top-right) ---------- */
+  #hint{
+    position:fixed; top:22px; right:24px;
+    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-dim);
+    text-align:right; line-height:1.7; z-index:6; pointer-events:none;
+  }
+
+  /* ---------- Loading overlay ---------- */
+  #loading{
+    position:fixed; inset:0; z-index:20;
+    display:flex; align-items:center; justify-content:center; flex-direction:column;
+    background:rgba(7,10,20,0.72);
+    backdrop-filter: blur(2px);
+    transition:opacity .25s ease;
+  }
+  #loading .spinner{
+    width:34px; height:34px; border-radius:50%;
+    border:2px solid #1c2545; border-top-color:var(--accent-gold);
+    animation:spin 0.8s linear infinite; margin-bottom:14px;
+  }
+  #loading .txt{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--text-dim); }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .hidden{ opacity:0; pointer-events:none; }
+
+  @media (max-width: 760px){
+    #panel{ width:210px; }
+    #info{ left:224px; max-width:210px; }
+    #header h1{ font-size:17px; }
+    #hint{ display:none; }
+  }
+</style>
+</head>
+<body>
+
+<div id="canvas-wrap"></div>
+
+<div id="header">
+  <h1>Atomic Orbital Explorer</h1>
+  <div class="sub">hydrogen-like wavefunctions · electron probability density</div>
+</div>
+
+<div id="panel">
+  <div class="shell-block">
+    <div class="shell-label">n = 1 — K SHELL</div>
+    <div class="orb-grid" id="shell1"></div>
+  </div>
+  <div class="shell-block">
+    <div class="shell-label">n = 2 — L SHELL</div>
+    <div class="orb-grid" id="shell2"></div>
+  </div>
+  <div class="shell-block">
+    <div class="shell-label">n = 3 — M SHELL</div>
+    <div class="orb-grid" id="shell3"></div>
+  </div>
+</div>
+
+<div id="info">
+  <div class="name" id="infoName">1s</div>
+  <div class="qn" id="infoQn">n=1  l=0  m=0</div>
+  <div class="desc" id="infoDesc"></div>
+</div>
+
+<div id="legend">
+  lobe, positive phase <span class="swatch" style="background:#ff9a3c;"></span><br>
+  lobe, negative phase <span class="swatch" style="background:#3ce6d8;"></span><br>
+  s&nbsp;orbital&nbsp;(no&nbsp;phase&nbsp;node) <span class="swatch" style="background:#7fb2ff;"></span>
+</div>
+
+<div id="hint">
+  drag — rotate<br>
+  scroll — zoom<br>
+  right-drag — pan
+</div>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <div class="txt" id="loadingTxt">building electron cloud…</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+
+"use strict";
+
+/* ============================================================
+   1. ORBITAL DEFINITIONS
+   Radial parts R_nl(r) are real hydrogen-like radial wavefunctions
+   (Bohr radius a0 = 1). Angular parts are real (tesseral) spherical
+   harmonics, unnormalized, with sign(angular) used for phase color.
+   ============================================================ */
+
+function fact(n){ return n<=1?1:n*fact(n-1); }
+
+var ORBITALS = {
+
+  "1s": {
+    label:"1s", n:1, l:0, m:0, group:1,
+    boxHalf: 7, samplePoints: 16000,
+    desc:"Spherically symmetric ground state. No angular or radial nodes — probability density falls off smoothly from the nucleus.",
+    radial: function(r){ return 2*Math.exp(-r); },
+    angular: function(x,y,z,r){ return 1; },
+    hasPhase:false
+  },
+
+  "2s": {
+    label:"2s", n:2, l:0, m:0, group:2,
+    boxHalf: 16, samplePoints: 16000,
+    desc:"Spherical with one radial node (a thin spherical shell of zero density) separating an inner and outer lobe.",
+    radial: function(r){ return (1/(2*Math.sqrt(2)))*(2-r)*Math.exp(-r/2); },
+    angular: function(x,y,z,r){ return 1; },
+    hasPhase:false
+  },
+  "2pz": {
+    label:"2p\u1D63", n:2, l:1, m:0, group:2,
+    boxHalf: 16, samplePoints: 16000,
+    desc:"Dumbbell-shaped orbital aligned along the z-axis, with a nodal plane (the xy-plane) separating the two phase-opposite lobes.",
+    radial: function(r){ return (1/(2*Math.sqrt(6)))*r*Math.exp(-r/2); },
+    angular: function(x,y,z,r){ return z/r; },
+    hasPhase:true
+  },
+  "2px": {
+    label:"2p\u2093", n:2, l:1, m:1, group:2,
+    boxHalf: 16, samplePoints: 16000,
+    desc:"Dumbbell-shaped orbital aligned along the x-axis, with a nodal plane (the yz-plane) separating the two phase-opposite lobes.",
+    radial: function(r){ return (1/(2*Math.sqrt(6)))*r*Math.exp(-r/2); },
+    angular: function(x,y,z,r){ return x/r; },
+    hasPhase:true
+  },
+  "2py": {
+    label:"2p\u1D67", n:2, l:1, m:-1, group:2,
+    boxHalf: 16, samplePoints: 16000,
+    desc:"Dumbbell-shaped orbital aligned along the y-axis, with a nodal plane (the xz-plane) separating the two phase-opposite lobes.",
+    radial: function(r){ return (1/(2*Math.sqrt(6)))*r*Math.exp(-r/2); },
+    angular: function(x,y,z,r){ return y/r; },
+    hasPhase:true
+  },
+
+  "3s": {
+    label:"3s", n:3, l:0, m:0, group:3,
+    boxHalf: 30, samplePoints: 18000,
+    desc:"Spherical with two radial nodes, producing three concentric shells of alternating density.",
+    radial: function(r){ return (2/(81*Math.sqrt(3)))*(27-18*r+2*r*r)*Math.exp(-r/3); },
+    angular: function(x,y,z,r){ return 1; },
+    hasPhase:false
+  },
+  "3pz": {
+    label:"3p\u1D63", n:3, l:1, m:0, group:3,
+    boxHalf: 30, samplePoints: 18000,
+    desc:"p-orbital along z with an extra radial node, giving each lobe an inner and outer region of density.",
+    radial: function(r){ return (4/(81*Math.sqrt(6)))*r*(6-r)*Math.exp(-r/3); },
+    angular: function(x,y,z,r){ return z/r; },
+    hasPhase:true
+  },
+  "3px": {
+    label:"3p\u2093", n:3, l:1, m:1, group:3,
+    boxHalf: 30, samplePoints: 18000,
+    desc:"p-orbital along x with an extra radial node, giving each lobe an inner and outer region of density.",
+    radial: function(r){ return (4/(81*Math.sqrt(6)))*r*(6-r)*Math.exp(-r/3); },
+    angular: function(x,y,z,r){ return x/r; },
+    hasPhase:true
+  },
+  "3py": {
+    label:"3p\u1D67", n:3, l:1, m:-1, group:3,
+    boxHalf: 30, samplePoints: 18000,
+    desc:"p-orbital along y with an extra radial node, giving each lobe an inner and outer region of density.",
+    radial: function(r){ return (4/(81*Math.sqrt(6)))*r*(6-r)*Math.exp(-r/3); },
+    angular: function(x,y,z,r){ return y/r; },
+    hasPhase:true
+  },
+  "3dz2": {
+    label:"3d\u1D63\u00B2", n:3, l:2, m:0, group:3,
+    boxHalf: 30, samplePoints: 18000,
+    desc:"Distinctive donut-plus-lobes shape: two large lobes along z and a torus of opposite phase around the xy-plane.",
+    radial: function(r){ return (4/(81*Math.sqrt(30)))*r*r*Math.exp(-r/3); },
+    angular: function(x,y,z,r){ return (2*z*z-x*x-y*y)/(r*r); },
+    hasPhase:true
+  },
+  "3dxz": {
+    label:"3d\u2093\u1D63", n:3, l:2, m:1, group:3,
+    boxHalf: 30, samplePoints: 18000,
+    desc:"Four-lobed cloverleaf lying in the xz-plane, between the x and z axes.",
+    radial: function(r){ return (4/(81*Math.sqrt(30)))*r*r*Math.exp(-r/3); },
+    angular: function(x,y,z,r){ return (x*z)/(r*r); },
+    hasPhase:true
+  },
+  "3dyz": {
+    label:"3d\u1D67\u1D63", n:3, l:2, m:-1, group:3,
+    boxHalf: 30, samplePoints: 18000,
+    desc:"Four-lobed cloverleaf lying in the yz-plane, between the y and z axes.",
+    radial: function(r){ return (4/(81*Math.sqrt(30)))*r*r*Math.exp(-r/3); },
+    angular: function(x,y,z,r){ return (y*z)/(r*r); },
+    hasPhase:true
+  },
+  "3dxy": {
+    label:"3d\u2093\u1D67", n:3, l:2, m:-2, group:3,
+    boxHalf: 30, samplePoints: 18000,
+    desc:"Four-lobed cloverleaf lying in the xy-plane, between the x and y axes.",
+    radial: function(r){ return (4/(81*Math.sqrt(30)))*r*r*Math.exp(-r/3); },
+    angular: function(x,y,z,r){ return (x*y)/(r*r); },
+    hasPhase:true
+  },
+  "3dx2y2": {
+    label:"3d\u2093\u00B2\u208B\u1D67\u00B2", n:3, l:2, m:2, group:3,
+    boxHalf: 30, samplePoints: 18000,
+    desc:"Four-lobed cloverleaf pointing directly along the x and y axes.",
+    radial: function(r){ return (4/(81*2*Math.sqrt(30)))*r*r*Math.exp(-r/3); },
+    angular: function(x,y,z,r){ return (x*x-y*y)/(r*r); },
+    hasPhase:true
+  }
+};
+
+var ORDER_1 = ["1s"];
+var ORDER_2 = ["2s","2pz","2px","2py"];
+var ORDER_3 = ["3s","3pz","3px","3py","3dz2","3dxz","3dyz","3dxy","3dx2y2"];
+
+/* ============================================================
+   2. SCENE SETUP
+   ============================================================ */
+
+var wrap = document.getElementById('canvas-wrap');
+var scene = new THREE.Scene();
+scene.background = new THREE.Color(0x070a14);
+scene.fog = new THREE.FogExp2(0x070a14, 0.012);
+
+var camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 2000);
+camera.position.set(18, 13, 22);
+
+var renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+wrap.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.07;
+controls.minDistance = 2;
+controls.maxDistance = 400;
+controls.rotateSpeed = 0.6;
+controls.zoomSpeed = 0.9;
+
+window.addEventListener('resize', function(){
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+/* ---------- Axes with labels ---------- */
+
+function makeTextSprite(text, color){
+  var canvas = document.createElement('canvas');
+  var size = 128;
+  canvas.width = size; canvas.height = size;
+  var ctx = canvas.getContext('2d');
+  ctx.font = '600 64px "IBM Plex Mono", monospace';
+  ctx.fillStyle = color;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 18;
+  ctx.fillText(text, size/2, size/2);
+  var tex = new THREE.CanvasTexture(canvas);
+  var mat = new THREE.SpriteMaterial({ map:tex, transparent:true, depthWrite:false });
+  var sprite = new THREE.Sprite(mat);
+  sprite.scale.set(1.6,1.6,1.6);
+  return sprite;
+}
+
+var axesGroup = new THREE.Group();
+var axisLabels = {};
+
+function buildAxes(len){
+  while(axesGroup.children.length) axesGroup.remove(axesGroup.children[0]);
+
+  var axisDefs = [
+    { dir:new THREE.Vector3(1,0,0), color:0xff5a6e, label:'X' },
+    { dir:new THREE.Vector3(-1,0,0), color:0xff5a6e, label:null },
+    { dir:new THREE.Vector3(0,1,0), color:0x5aff8a, label:'Y' },
+    { dir:new THREE.Vector3(0,-1,0), color:0x5aff8a, label:null },
+    { dir:new THREE.Vector3(0,0,1), color:0x5ab4ff, label:'Z' },
+    { dir:new THREE.Vector3(0,0,-1), color:0x5ab4ff, label:null }
+  ];
+
+  axisDefs.forEach(function(a){
+    var mat = new THREE.LineBasicMaterial({ color:a.color, transparent:true, opacity:0.55 });
+    var geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), a.dir.clone().multiplyScalar(len)]);
+    axesGroup.add(new THREE.Line(geo, mat));
+
+    if(a.label){
+      var hex = '#' + a.color.toString(16).padStart(6,'0');
+      var sprite = makeTextSprite(a.label, hex);
+      sprite.position.copy(a.dir.clone().multiplyScalar(len*1.08));
+      axesGroup.add(sprite);
+    }
+  });
+
+  // faint ticks every unit along each positive axis for scale reference
+  var tickMat = new THREE.PointsMaterial({ color:0x445078, size:0.09, transparent:true, opacity:0.5 });
+  var tickPos = [];
+  var step = len > 20 ? 5 : (len > 10 ? 2 : 1);
+  for(var i=step; i<=len; i+=step){
+    tickPos.push(i,0,0, 0,i,0, 0,0,i);
+  }
+  var tg = new THREE.BufferGeometry();
+  tg.setAttribute('position', new THREE.Float32BufferAttribute(tickPos,3));
+  axesGroup.add(new THREE.Points(tg, tickMat));
+}
+
+scene.add(axesGroup);
+
+// origin nucleus marker
+var nucleusGeo = new THREE.SphereGeometry(0.14, 20, 20);
+var nucleusMat = new THREE.MeshBasicMaterial({ color:0xfff2d0 });
+var nucleus = new THREE.Mesh(nucleusGeo, nucleusMat);
+scene.add(nucleus);
+var nucleusGlow = new THREE.PointLight(0xfff2d0, 0.6, 8);
+scene.add(nucleusGlow);
+
+/* ============================================================
+   3. SAMPLING (rejection sampling of |psi|^2 in Cartesian space)
+   ============================================================ */
+
+function densityAt(orb, x, y, z){
+  var r = Math.sqrt(x*x+y*y+z*z);
+  if(r < 1e-6) r = 1e-6;
+  var R = orb.radial(r);
+  var A = orb.angular(x,y,z,r);
+  var psi = R*A;          // signed wavefunction amplitude (unnormalized)
+  return { density: psi*psi, sign: A>=0 ? 1 : -1 };
+}
+
+function estimateMaxDensity(orb, half, samples){
+  var max = 0;
+  for(var i=0;i<samples;i++){
+    var x=(Math.random()*2-1)*half, y=(Math.random()*2-1)*half, z=(Math.random()*2-1)*half;
+    var d = densityAt(orb,x,y,z).density;
+    if(d>max) max = d;
+  }
+  return max;
+}
+
+function sampleOrbital(orb, targetCount, statusCb){
+  var half = orb.boxHalf;
+  var maxD = estimateMaxDensity(orb, half, 6000) * 1.15;
+  if(maxD <= 0) maxD = 1e-9;
+
+  var positions = new Float32Array(targetCount*3);
+  var colors = new Float32Array(targetCount*3);
+  var accepted = 0;
+  var attempts = 0;
+  var maxAttempts = targetCount * 900;
+
+  var colPlus = new THREE.Color(0xff9a3c);
+  var colMinus = new THREE.Color(0x3ce6d8);
+  var colS = new THREE.Color(0x7fb2ff);
+
+  while(accepted < targetCount && attempts < maxAttempts){
+    attempts++;
+    var x=(Math.random()*2-1)*half, y=(Math.random()*2-1)*half, z=(Math.random()*2-1)*half;
+    var d = densityAt(orb,x,y,z);
+    var u = Math.random()*maxD;
+    if(u < d.density){
+      var idx = accepted*3;
+      positions[idx]=x; positions[idx+1]=y; positions[idx+2]=z;
+      var c = !orb.hasPhase ? colS : (d.sign>0 ? colPlus : colMinus);
+      colors[idx]=c.r; colors[idx+1]=c.g; colors[idx+2]=c.b;
+      accepted++;
+    }
+  }
+  return { positions: positions.subarray(0, accepted*3), colors: colors.subarray(0, accepted*3), count: accepted };
+}
+
+/* ============================================================
+   4. RENDERING THE POINT CLOUD
+   ============================================================ */
+
+var currentPoints = null;
+
+function clearCurrent(){
+  if(currentPoints){
+    scene.remove(currentPoints);
+    currentPoints.geometry.dispose();
+    currentPoints.material.dispose();
+    currentPoints = null;
+  }
+}
+
+function showOrbital(key){
+  var orb = ORBITALS[key];
+  if(!orb) return;
+
+  document.getElementById('loading').classList.remove('hidden');
+  document.getElementById('loadingTxt').textContent = 'sampling ' + orb.label + ' electron density\u2026';
+
+  // allow the loading overlay to paint before the (synchronous) heavy compute
+  setTimeout(function(){
+    var result = sampleOrbital(orb, orb.samplePoints);
+
+    clearCurrent();
+
+    var geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(result.positions, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(result.colors, 3));
+
+    var mat = new THREE.PointsMaterial({
+      size: Math.max(0.05, orb.boxHalf*0.006),
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.85,
+      sizeAttenuation: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+
+    currentPoints = new THREE.Points(geo, mat);
+    scene.add(currentPoints);
+
+    buildAxes(orb.boxHalf);
+
+    // frame camera to fit box
+    var dist = orb.boxHalf * 2.05;
+    var dirVec = camera.position.clone().sub(controls.target);
+    if(dirVec.length() < 0.001) dirVec.set(1,0.7,1);
+    dirVec.normalize().multiplyScalar(dist);
+    camera.position.copy(dirVec);
+    controls.target.set(0,0,0);
+    camera.near = Math.max(0.05, orb.boxHalf*0.01);
+    camera.far = orb.boxHalf*40;
+    camera.updateProjectionMatrix();
+    controls.update();
+
+    updateInfo(key, orb);
+    setActiveButton(key);
+
+    document.getElementById('loading').classList.add('hidden');
+  }, 30);
+}
+
+function updateInfo(key, orb){
+  document.getElementById('infoName').textContent = niceLabel(key);
+  document.getElementById('infoQn').textContent = 'n = ' + orb.n + '   l = ' + orb.l + '   m = ' + orb.m;
+  document.getElementById('infoDesc').textContent = orb.desc;
+}
+
+function niceLabel(key){
+  var map = {
+    "1s":"1s","2s":"2s","2pz":"2p\u2082","2px":"2p\u2093","2py":"2p\u1D67",
+    "3s":"3s","3pz":"3p\u2082","3px":"3p\u2093","3py":"3p\u1D67",
+    "3dz2":"3d\u1DBB\u00B2","3dxz":"3d\u2093\u1DBB","3dyz":"3d\u1D67\u1DBB","3dxy":"3d\u2093\u1D67","3dx2y2":"3d\u2093\u00B2\u208B\u1D67\u00B2"
+  };
+  return map[key] || key;
+}
+
+/* ============================================================
+   5. UI — buttons
+   ============================================================ */
+
+var buttons = {};
+
+function buildButtons(){
+  fillGroup('shell1', ORDER_1);
+  fillGroup('shell2', ORDER_2);
+  fillGroup('shell3', ORDER_3);
+}
+
+function fillGroup(containerId, keys){
+  var container = document.getElementById(containerId);
+  keys.forEach(function(key){
+    var btn = document.createElement('button');
+    btn.className = 'orb-btn';
+    btn.textContent = niceLabel(key);
+    btn.addEventListener('click', function(){ showOrbital(key); });
+    container.appendChild(btn);
+    buttons[key] = btn;
+  });
+}
+
+function setActiveButton(key){
+  Object.keys(buttons).forEach(function(k){
+    buttons[k].classList.toggle('active', k===key);
+  });
+}
+
+/* ============================================================
+   6. RENDER LOOP
+   ============================================================ */
+
+function animate(){
+  requestAnimationFrame(animate);
+  controls.update();
+  nucleus.rotation.y += 0.002;
+  renderer.render(scene, camera);
+}
+
+/* ============================================================
+   7. INIT
+   ============================================================ */
+
+buildButtons();
+buildAxes(7);
+animate();
+showOrbital('1s');
+
+})();
+</script>
+</body>
+</html>

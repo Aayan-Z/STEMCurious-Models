@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Molecular Geometry Explorer</title>
+<style>
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; width:100%; height:100%;
+    background:#000000;
+    color:#ffffff;
+    font-family:'Times New Roman', Times, serif;
+    overflow:hidden;
+  }
+  #canvas-wrap{ position:fixed; inset:0; background:#000000; }
+  canvas{ display:block; }
+
+  /* ---------- Side panel (floating, iOS-style frosted card) ---------- */
+  #panel{
+    position:fixed; top:16px; left:16px; bottom:16px;
+    width:275px;
+    background:rgba(0,0,0,0.62);
+    -webkit-backdrop-filter: blur(26px);
+    backdrop-filter: blur(26px);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:22px;
+    padding:20px 0;
+    overflow-y:auto;
+    z-index:6;
+  }
+  #panel::-webkit-scrollbar{ width:5px; }
+  #panel::-webkit-scrollbar-thumb{ background:rgba(255,255,255,0.18); border-radius:3px; }
+
+  .shell-block{ padding:0 0 22px 0; }
+  .shell-block:last-child{ padding-bottom:6px; }
+  .shell-label{
+    font-size:13px; color:rgba(255,255,255,0.5);
+    margin:0 22px 10px 22px;
+    letter-spacing:0.4px;
+    font-style:italic;
+  }
+  .num-row{ display:flex; flex-wrap:wrap; gap:9px; padding:0 22px; }
+  .num-btn{
+    background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.1);
+    color:#ffffff;
+    width:42px; height:42px;
+    border-radius:50%;
+    font-family:'Times New Roman', Times, serif;
+    font-size:16.5px;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    transition: background .15s ease, opacity .15s ease, border-color .15s ease;
+  }
+  .num-btn:hover{ background:rgba(255,255,255,0.14); }
+  .num-btn.active{
+    background:rgba(255,255,255,0.92);
+    color:#000000;
+    font-weight:700;
+    border-color:rgba(255,255,255,0.92);
+  }
+  .num-btn.disabled{
+    opacity:0.22;
+    pointer-events:none;
+  }
+
+  .legend-note{
+    margin:16px 22px 0 22px;
+    font-size:12.5px; line-height:1.7; color:rgba(255,255,255,0.45);
+  }
+  .legend-note .dot{
+    display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:7px;
+  }
+
+  /* ---------- Controls hint ---------- */
+  #hint{
+    position:fixed; top:24px; right:28px;
+    font-size:14px; color:#ffffff;
+    text-align:right; line-height:1.9; z-index:6; pointer-events:none;
+    font-family:'Times New Roman', Times, serif;
+  }
+
+  /* ---------- Shape info (bottom-left, translucent) ---------- */
+  #info{
+    position:fixed; left:311px; bottom:26px;
+    max-width:400px;
+    z-index:6; pointer-events:none;
+    color:rgba(255,255,255,0.62);
+    font-family:'Times New Roman', Times, serif;
+  }
+  #info .name{
+    font-size:26px; margin:0 0 4px 0; color:rgba(255,255,255,0.78);
+  }
+  #info .qn{
+    font-size:14px; margin-bottom:8px; color:rgba(255,255,255,0.5);
+  }
+  #info .desc{
+    font-size:14px; line-height:1.5; color:rgba(255,255,255,0.55); max-width:380px;
+  }
+
+  @media (max-width: 760px){
+    #panel{ width:220px; }
+    #hint{ display:none; }
+    #info{ left:236px; max-width:210px; }
+    #info .name{ font-size:20px; }
+    .num-btn{ width:36px; height:36px; font-size:14.5px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="canvas-wrap"></div>
+
+<div id="panel">
+  <div class="shell-block">
+    <div class="shell-label">Bond Pairs (X)</div>
+    <div class="num-row" id="bondRow"></div>
+  </div>
+  <div class="shell-block">
+    <div class="shell-label">Lone Pairs (E)</div>
+    <div class="num-row" id="loneRow"></div>
+  </div>
+  <div class="shell-block">
+    <div class="legend-note">
+      <span class="dot" style="background:#ffc94d;"></span>Central atom<br>
+      <span class="dot" style="background:#4fd7ff;"></span>Bonded atom<br>
+      <span class="dot" style="background:#b9b9c9;"></span>Lone pair
+    </div>
+  </div>
+</div>
+
+<div id="hint">
+  Drag to rotate<br>
+  Scroll to zoom<br>
+  Right-click to pan
+</div>
+
+<div id="info">
+  <div class="name" id="infoName">Linear</div>
+  <div class="qn" id="infoQn"></div>
+  <div class="desc" id="infoDesc"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+
+"use strict";
+
+/* ============================================================
+   1. VSEPR GEOMETRY MODEL
+
+   Idealized unit-vector positions for each electron-domain count
+   (steric number), derived from the standard VSEPR reference
+   polyhedra: linear, trigonal planar, tetrahedral, trigonal
+   bipyramidal, and octahedral. For each bond-pair / lone-pair
+   combination, specific vertices are assigned to bonding pairs
+   and specific vertices to lone pairs, following the standard
+   preference rule that lone pairs occupy the positions of least
+   mutual repulsion (equatorial first in trigonal-bipyramidal
+   arrangements; mutually trans in octahedral arrangements).
+   ============================================================ */
+
+function norm(v){ var l = Math.hypot(v[0],v[1],v[2]); return [v[0]/l, v[1]/l, v[2]/l]; }
+
+var LINEAR = [ [1,0,0], [-1,0,0] ];
+
+var TRIG_PLANAR = [0, 120, 240].map(function(deg){
+  var r = deg*Math.PI/180;
+  return [Math.cos(r), Math.sin(r), 0];
+});
+
+var TETRA = [ norm([1,1,1]), norm([1,-1,-1]), norm([-1,1,-1]), norm([-1,-1,1]) ];
+
+var TBP_EQ = TRIG_PLANAR;
+var TBP_AX_P = [0,0,1];
+var TBP_AX_N = [0,0,-1];
+
+var OCT = [ [1,0,0], [-1,0,0], [0,1,0], [0,-1,0], [0,0,1], [0,0,-1] ];
+
+var SHAPES = {
+
+  "1,0": {
+    name:"Linear", note:"AX", steric:1, electronGeom:"single bond",
+    bonded:[ LINEAR[0] ], lone:[],
+    angle:"No angle (only one bonded atom)",
+    blurb:"A single bond from the central atom defines a linear arrangement by definition \u2014 with only two atoms total, there is no angle to measure."
+  },
+
+  "2,0": {
+    name:"Linear", note:"AX\u2082", steric:2, electronGeom:"linear",
+    bonded: LINEAR, lone:[],
+    angle:"180\u00B0",
+    blurb:"Two bonding pairs and no lone pairs repel each other into a perfectly straight line. Carbon dioxide (CO\u2082) and beryllium chloride (BeCl\u2082) are classic examples."
+  },
+
+  "3,0": {
+    name:"Trigonal Planar", note:"AX\u2083", steric:3, electronGeom:"trigonal planar",
+    bonded: TRIG_PLANAR, lone:[],
+    angle:"120\u00B0",
+    blurb:"Three bonding pairs spread evenly within a single plane, 120\u00B0 apart, minimizing their mutual repulsion. Boron trifluoride (BF\u2083) adopts this shape."
+  },
+  "2,1": {
+    name:"Bent", note:"AX\u2082E", steric:3, electronGeom:"trigonal planar",
+    bonded:[ TRIG_PLANAR[1], TRIG_PLANAR[2] ], lone:[ TRIG_PLANAR[0] ],
+    angle:"\u2248119\u00B0",
+    blurb:"One lone pair sits on a trigonal-planar electron arrangement. Because a lone pair repels more strongly than a bonding pair, it compresses the remaining bond angle slightly below 120\u00B0. Sulfur dioxide (SO\u2082) and ozone (O\u2083) are examples."
+  },
+
+  "4,0": {
+    name:"Tetrahedral", note:"AX\u2084", steric:4, electronGeom:"tetrahedral",
+    bonded: TETRA, lone:[],
+    angle:"109.5\u00B0",
+    blurb:"Four bonding pairs occupy the corners of a tetrahedron, the most even possible spread for four electron domains. Methane (CH\u2084) is the textbook example."
+  },
+  "3,1": {
+    name:"Trigonal Pyramidal", note:"AX\u2083E", steric:4, electronGeom:"tetrahedral",
+    bonded:[ TETRA[1], TETRA[2], TETRA[3] ], lone:[ TETRA[0] ],
+    angle:"\u2248107\u00B0",
+    blurb:"One lone pair occupies a vertex of an otherwise tetrahedral arrangement, pushing the three bonding pairs slightly closer together into a pyramid. Ammonia (NH\u2083) is the classic example."
+  },
+  "2,2": {
+    name:"Bent", note:"AX\u2082E\u2082", steric:4, electronGeom:"tetrahedral",
+    bonded:[ TETRA[2], TETRA[3] ], lone:[ TETRA[0], TETRA[1] ],
+    angle:"\u2248104.5\u00B0",
+    blurb:"Two lone pairs occupy two corners of a tetrahedral arrangement, compressing the angle between the remaining bonding pairs further still. Water (H\u2082O) is the defining example of this shape."
+  },
+
+  "5,0": {
+    name:"Trigonal Bipyramidal", note:"AX\u2085", steric:5, electronGeom:"trigonal bipyramidal",
+    bonded:[ TBP_EQ[0], TBP_EQ[1], TBP_EQ[2], TBP_AX_P, TBP_AX_N ], lone:[],
+    angle:"90\u00B0 / 120\u00B0",
+    blurb:"Five bonding pairs create two distinct angles: 90\u00B0 between axial and equatorial positions, and 120\u00B0 between equatorial positions. Phosphorus pentachloride (PCl\u2085) is a typical example."
+  },
+  "4,1": {
+    name:"Seesaw", note:"AX\u2084E", steric:5, electronGeom:"trigonal bipyramidal",
+    bonded:[ TBP_EQ[1], TBP_EQ[2], TBP_AX_P, TBP_AX_N ], lone:[ TBP_EQ[0] ],
+    angle:"\u224890\u00B0 / \u2248120\u00B0",
+    blurb:"The lone pair takes an equatorial position \u2014 the position of least repulsion \u2014 in a trigonal-bipyramidal arrangement, leaving the four bonding pairs in a seesaw shape. Sulfur tetrafluoride (SF\u2084) is the classic example."
+  },
+  "3,2": {
+    name:"T-shaped", note:"AX\u2083E\u2082", steric:5, electronGeom:"trigonal bipyramidal",
+    bonded:[ TBP_EQ[2], TBP_AX_P, TBP_AX_N ], lone:[ TBP_EQ[0], TBP_EQ[1] ],
+    angle:"\u224890\u00B0 / 180\u00B0",
+    blurb:"Two lone pairs fill two equatorial positions of a trigonal-bipyramidal arrangement, leaving three bonding pairs in a T-shape. Chlorine trifluoride (ClF\u2083) is an example."
+  },
+  "2,3": {
+    name:"Linear", note:"AX\u2082E\u2083", steric:5, electronGeom:"trigonal bipyramidal",
+    bonded:[ TBP_AX_P, TBP_AX_N ], lone:[ TBP_EQ[0], TBP_EQ[1], TBP_EQ[2] ],
+    angle:"180\u00B0",
+    blurb:"Three lone pairs fill all three equatorial positions of a trigonal-bipyramidal arrangement, leaving the two bonding pairs directly opposite each other. Xenon difluoride (XeF\u2082) is a well-known example."
+  },
+
+  "6,0": {
+    name:"Octahedral", note:"AX\u2086", steric:6, electronGeom:"octahedral",
+    bonded: OCT, lone:[],
+    angle:"90\u00B0 / 180\u00B0",
+    blurb:"Six bonding pairs spread evenly to the corners of an octahedron, each neighboring pair 90\u00B0 apart. Sulfur hexafluoride (SF\u2086) is the textbook example."
+  },
+  "5,1": {
+    name:"Square Pyramidal", note:"AX\u2085E", steric:6, electronGeom:"octahedral",
+    bonded:[ OCT[1], OCT[2], OCT[3], OCT[4], OCT[5] ], lone:[ OCT[0] ],
+    angle:"\u224890\u00B0",
+    blurb:"One lone pair replaces a single vertex of an octahedral arrangement, pushing the remaining five bonding pairs slightly toward the opposite side. Bromine pentafluoride (BrF\u2085) is an example."
+  },
+  "4,2": {
+    name:"Square Planar", note:"AX\u2084E\u2082", steric:6, electronGeom:"octahedral",
+    bonded:[ OCT[2], OCT[3], OCT[4], OCT[5] ], lone:[ OCT[0], OCT[1] ],
+    angle:"90\u00B0 / 180\u00B0",
+    blurb:"Two lone pairs occupy opposite vertices of an octahedral arrangement, leaving the four bonding pairs arranged in a flat square. Xenon tetrafluoride (XeF\u2084) is the classic example."
+  }
+};
+
+/* ============================================================
+   2. SCENE SETUP
+   ============================================================ */
+
+var wrap = document.getElementById('canvas-wrap');
+var scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000000);
+
+var camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 500);
+camera.position.set(5.2, 4.0, 6.2);
+
+var renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+wrap.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 2;
+controls.maxDistance = 40;
+controls.rotateSpeed = 0.6;
+controls.zoomSpeed = 0.8;
+controls.target.set(0,0,0);
+
+window.addEventListener('resize', function(){
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+/* ---------- Lighting (for shaded, glossy spheres/cylinders) ---------- */
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+var keyLight = new THREE.DirectionalLight(0xffffff, 0.95);
+keyLight.position.set(6, 9, 7);
+scene.add(keyLight);
+var fillLight = new THREE.DirectionalLight(0xaeccff, 0.35);
+fillLight.position.set(-7, -3, -5);
+scene.add(fillLight);
+
+/* ============================================================
+   3. GEOMETRY BUILDING BLOCKS
+   ============================================================ */
+
+var BOND_LEN = 2.3;
+var LONE_LEN = 1.7;
+var R_CENTRAL = 0.55;
+var R_BONDED = 0.4;
+var R_LONE = 0.22;
+
+var matCentral = new THREE.MeshStandardMaterial({ color:0xffc94d, metalness:0.55, roughness:0.28, emissive:0x2a1a00, emissiveIntensity:0.18 });
+var matBonded  = new THREE.MeshStandardMaterial({ color:0x4fd7ff, metalness:0.5,  roughness:0.3,  emissive:0x00232b, emissiveIntensity:0.18 });
+var matLone    = new THREE.MeshStandardMaterial({ color:0xb9b9c9, metalness:0.15, roughness:0.6,  transparent:true, opacity:0.6 });
+var matBond    = new THREE.MeshStandardMaterial({ color:0xe4e4ec, metalness:0.6,  roughness:0.35 });
+var matDash    = new THREE.MeshStandardMaterial({ color:0x8a8a94, metalness:0.15, roughness:0.6,  transparent:true, opacity:0.55 });
+
+var molGroup = new THREE.Group();
+scene.add(molGroup);
+
+function vec(v){ return new THREE.Vector3(v[0], v[1], v[2]); }
+
+function makeCylinderBetween(p1, p2, radius, material){
+  var dir = new THREE.Vector3().subVectors(p2, p1);
+  var len = dir.length();
+  if(len < 1e-6) len = 1e-6;
+  var geo = new THREE.CylinderGeometry(radius, radius, len, 18, 1, false);
+  var mesh = new THREE.Mesh(geo, material);
+  var mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+  mesh.position.copy(mid);
+  var up = new THREE.Vector3(0,1,0);
+  var quat = new THREE.Quaternion().setFromUnitVectors(up, dir.clone().normalize());
+  mesh.setRotationFromQuaternion(quat);
+  return mesh;
+}
+
+function clearMolecule(){
+  while(molGroup.children.length) molGroup.remove(molGroup.children[0]);
+}
+
+function buildMolecule(shape){
+  clearMolecule();
+
+  // central atom
+  var centralMesh = new THREE.Mesh(new THREE.SphereGeometry(R_CENTRAL, 32, 32), matCentral);
+  molGroup.add(centralMesh);
+
+  var origin = new THREE.Vector3(0,0,0);
+
+  // bonded atoms + solid bonds
+  shape.bonded.forEach(function(dir){
+    var pos = vec(dir).multiplyScalar(BOND_LEN);
+    var atomMesh = new THREE.Mesh(new THREE.SphereGeometry(R_BONDED, 28, 28), matBonded);
+    atomMesh.position.copy(pos);
+    molGroup.add(atomMesh);
+    molGroup.add(makeCylinderBetween(origin, pos, 0.11, matBond));
+  });
+
+  // lone pairs + dotted lines
+  shape.lone.forEach(function(dir){
+    var d = vec(dir);
+    var pos = d.clone().multiplyScalar(LONE_LEN);
+    var loneMesh = new THREE.Mesh(new THREE.SphereGeometry(R_LONE, 20, 20), matLone);
+    loneMesh.position.copy(pos);
+    molGroup.add(loneMesh);
+
+    var segments = 5;
+    var startFrac = 0.30, endFrac = 0.94;
+    for(var i=0; i<segments; i++){
+      var t0 = startFrac + (endFrac-startFrac) * (i/segments);
+      var t1 = t0 + (endFrac-startFrac) * (0.5/segments);
+      var p0 = d.clone().multiplyScalar(LONE_LEN * t0);
+      var p1 = d.clone().multiplyScalar(LONE_LEN * t1);
+      molGroup.add(makeCylinderBetween(p0, p1, 0.05, matDash));
+    }
+  });
+}
+
+/* ============================================================
+   4. UI STATE & INFO PANEL
+   ============================================================ */
+
+var selectedX = 2;
+var selectedE = 0;
+var bondButtons = {};
+var loneButtons = {};
+
+function comboKey(x,e){ return x + ',' + e; }
+
+function updateInfo(shape, x, e){
+  document.getElementById('infoName').textContent = shape.name;
+  document.getElementById('infoQn').textContent =
+    shape.note + '  \u00B7  steric number ' + shape.steric + '  \u00B7  electron geometry: ' + shape.electronGeom + '  \u00B7  bond angle: ' + shape.angle;
+  document.getElementById('infoDesc').textContent = shape.blurb;
+}
+
+function render(){
+  var shape = SHAPES[comboKey(selectedX, selectedE)];
+  if(!shape) return;
+  buildMolecule(shape);
+  updateInfo(shape, selectedX, selectedE);
+}
+
+function refreshLoneAvailability(){
+  for(var e=0; e<=3; e++){
+    var valid = !!SHAPES[comboKey(selectedX, e)];
+    var btn = loneButtons[e];
+    btn.classList.toggle('disabled', !valid);
+  }
+  if(!SHAPES[comboKey(selectedX, selectedE)]){
+    for(var e2=0; e2<=3; e2++){
+      if(SHAPES[comboKey(selectedX, e2)]){ selectedE = e2; break; }
+    }
+  }
+}
+
+function setActive(buttons, value){
+  Object.keys(buttons).forEach(function(k){
+    buttons[k].classList.toggle('active', Number(k) === value);
+  });
+}
+
+function buildButtons(){
+  var bondRow = document.getElementById('bondRow');
+  for(var x=1; x<=6; x++){
+    (function(x){
+      var btn = document.createElement('button');
+      btn.className = 'num-btn';
+      btn.textContent = x;
+      btn.addEventListener('click', function(){
+        selectedX = x;
+        refreshLoneAvailability();
+        setActive(bondButtons, selectedX);
+        setActive(loneButtons, selectedE);
+        render();
+      });
+      bondRow.appendChild(btn);
+      bondButtons[x] = btn;
+    })(x);
+  }
+
+  var loneRow = document.getElementById('loneRow');
+  for(var e=0; e<=3; e++){
+    (function(e){
+      var btn = document.createElement('button');
+      btn.className = 'num-btn';
+      btn.textContent = e;
+      btn.addEventListener('click', function(){
+        if(!SHAPES[comboKey(selectedX, e)]) return;
+        selectedE = e;
+        setActive(loneButtons, selectedE);
+        render();
+      });
+      loneRow.appendChild(btn);
+      loneButtons[e] = btn;
+    })(e);
+  }
+}
+
+/* ============================================================
+   5. RENDER LOOP
+   ============================================================ */
+
+function animate(){
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+/* ============================================================
+   6. INIT
+   ============================================================ */
+
+buildButtons();
+refreshLoneAvailability();
+setActive(bondButtons, selectedX);
+setActive(loneButtons, selectedE);
+render();
+animate();
+
+})();
+</script>
+</body>
+</html>

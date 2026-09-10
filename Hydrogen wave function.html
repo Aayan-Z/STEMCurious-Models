@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wavefunction Contour Explorer</title>
+<style>
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; width:100%; height:100%;
+    background:#000000;
+    color:#ffffff;
+    font-family:'Times New Roman', Times, serif;
+    overflow:hidden;
+  }
+  #canvas-wrap{ position:fixed; inset:0; background:#000000; }
+  canvas{ display:block; }
+
+  #panel{
+    position:fixed; top:16px; left:16px; bottom:16px;
+    width:270px;
+    background:rgba(20,20,26,0.46);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+    backdrop-filter: blur(28px) saturate(160%);
+    border:1px solid rgba(255,255,255,0.16);
+    border-radius:24px;
+    padding:20px 0;
+    overflow-y:auto;
+    z-index:6;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.16);
+  }
+  #panel::-webkit-scrollbar{ width:5px; }
+  #panel::-webkit-scrollbar-thumb{ background:rgba(255,255,255,0.18); border-radius:3px; }
+
+  .shell-block{ padding:0 0 20px 0; }
+  .shell-block:last-child{ padding-bottom:4px; }
+  .shell-label{
+    font-size:13px; color:rgba(255,255,255,0.52);
+    margin:0 22px 8px 22px;
+    font-style:italic;
+  }
+  .orb-list{ display:flex; flex-direction:column; padding:0 12px; gap:4px; }
+  .orb-btn{
+    background:transparent;
+    border:none;
+    color:#ffffff;
+    text-align:left;
+    font-family:'Times New Roman', Times, serif;
+    font-size:16px;
+    padding:10px 14px;
+    border-radius:12px;
+    cursor:pointer;
+    transition: background .15s ease;
+  }
+  .orb-btn:hover{ background:rgba(255,255,255,0.09); }
+  .orb-btn.active{
+    background:rgba(255,255,255,0.17);
+    font-weight:700;
+  }
+
+  #hint{
+    position:fixed; top:24px; right:28px;
+    font-size:14px; color:#ffffff;
+    text-align:right; line-height:1.9; z-index:6; pointer-events:none;
+    font-family:'Times New Roman', Times, serif;
+  }
+
+  #info{
+    position:fixed; left:306px; bottom:26px;
+    max-width:410px;
+    z-index:6; pointer-events:none;
+    color:rgba(255,255,255,0.62);
+    font-family:'Times New Roman', Times, serif;
+  }
+  #info .name{
+    font-size:26px; margin:0 0 6px 0; color:rgba(255,255,255,0.82);
+  }
+  #info .qn{
+    font-size:14px; margin-bottom:8px; color:rgba(255,255,255,0.5);
+  }
+  #info .desc{
+    font-size:14px; line-height:1.5; color:rgba(255,255,255,0.56); max-width:390px;
+  }
+
+  @media (max-width: 780px){
+    #panel{ width:215px; }
+    #hint{ display:none; }
+    #info{ left:231px; max-width:220px; }
+    #info .name{ font-size:20px; }
+    .orb-btn{ font-size:14.5px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="canvas-wrap"></div>
+
+<div id="panel">
+  <div class="shell-block">
+    <div class="shell-label">n = 1</div>
+    <div class="orb-list" id="shell1"></div>
+  </div>
+  <div class="shell-block">
+    <div class="shell-label">n = 2</div>
+    <div class="orb-list" id="shell2"></div>
+  </div>
+  <div class="shell-block">
+    <div class="shell-label">n = 3</div>
+    <div class="orb-list" id="shell3"></div>
+  </div>
+  <div class="shell-block">
+    <div class="shell-label">n = 4</div>
+    <div class="orb-list" id="shell4"></div>
+  </div>
+</div>
+
+<div id="hint">
+  Drag to rotate<br>
+  Scroll to zoom<br>
+  Right-click to pan
+</div>
+
+<div id="info">
+  <div class="name" id="infoName">1s</div>
+  <div class="qn" id="infoQn"></div>
+  <div class="desc" id="infoDesc"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   ORBITAL DEFINITIONS
+   Same real hydrogen-like radial functions and real spherical
+   harmonic angular parts used throughout this series of apps.
+   Here each orbital is evaluated over a 2D cross-section and its
+   actual SIGNED value (not probability density) becomes height:
+   positive lobes rise above the base plane, negative-phase lobes
+   dip below it, and every node touches the base plane exactly,
+   since height = 0 there by construction.
+   ============================================================ */
+
+var ORBITALS = {
+  "1s": { n:1,l:0,m:0, half:5.5, slice:"xy",
+    radial:function(r){ return 2*Math.exp(-r); },
+    angular:function(x,y,z,r){ return 1; },
+    desc:"Shown on the xy-plane. Spherically symmetric with no nodes, so the surface is a single smooth dome that never dips below the base plane." },
+  "2s": { n:2,l:0,m:0, half:11, slice:"xy",
+    radial:function(r){ return (1/(2*Math.sqrt(2)))*(2-r)*Math.exp(-r/2); },
+    angular:function(x,y,z,r){ return 1; },
+    desc:"Shown on the xy-plane. One radial node forms a full circle at r=2 where the surface touches the base plane, separating an inner peak from an outer dip." },
+  "2pz": { n:2,l:1,m:0, half:11, slice:"xz",
+    radial:function(r){ return (1/(2*Math.sqrt(6)))*r*Math.exp(-r/2); },
+    angular:function(x,y,z,r){ return z/r; },
+    desc:"Shown on the xz-plane (its nodal plane is xy, so slicing there would look flat). One lobe rises, the other dips, meeting at a single node through the origin." },
+  "2px": { n:2,l:1,m:1, half:11, slice:"xy",
+    radial:function(r){ return (1/(2*Math.sqrt(6)))*r*Math.exp(-r/2); },
+    angular:function(x,y,z,r){ return x/r; },
+    desc:"Shown on the xy-plane. A positive lobe along +x rises above the base plane and a negative lobe along -x dips below it, meeting at the origin's node." },
+  "2py": { n:2,l:1,m:-1, half:11, slice:"xy",
+    radial:function(r){ return (1/(2*Math.sqrt(6)))*r*Math.exp(-r/2); },
+    angular:function(x,y,z,r){ return y/r; },
+    desc:"Shown on the xy-plane. Identical to 2p\u2093 but rotated 90\u00B0, with its lobes rising and dipping along the y direction." },
+  "3s": { n:3,l:0,m:0, half:20, slice:"xy",
+    radial:function(r){ return (2/(81*Math.sqrt(3)))*(27-18*r+2*r*r)*Math.exp(-r/3); },
+    angular:function(x,y,z,r){ return 1; },
+    desc:"Shown on the xy-plane. Two radial nodes appear as two concentric circles where the surface returns to the base plane between three alternating rings." },
+  "3pz": { n:3,l:1,m:0, half:20, slice:"xz",
+    radial:function(r){ return (4/(81*Math.sqrt(6)))*r*(6-r)*Math.exp(-r/3); },
+    angular:function(x,y,z,r){ return z/r; },
+    desc:"Shown on the xz-plane. An extra radial node splits each lobe into an inner and outer bump before the surface settles back to the base plane." },
+  "3px": { n:3,l:1,m:1, half:20, slice:"xy",
+    radial:function(r){ return (4/(81*Math.sqrt(6)))*r*(6-r)*Math.exp(-r/3); },
+    angular:function(x,y,z,r){ return x/r; },
+    desc:"Shown on the xy-plane. Like 2p\u2093 but with an added radial node, giving each lobe an inner and outer region before flattening out." },
+  "3py": { n:3,l:1,m:-1, half:20, slice:"xy",
+    radial:function(r){ return (4/(81*Math.sqrt(6)))*r*(6-r)*Math.exp(-r/3); },
+    angular:function(x,y,z,r){ return y/r; },
+    desc:"Shown on the xy-plane. The y-axis counterpart of 3p\u2093, with the same inner/outer lobe structure." },
+  "3dz2": { n:3,l:2,m:0, half:20, slice:"xz",
+    radial:function(r){ return (4/(81*Math.sqrt(30)))*r*r*Math.exp(-r/3); },
+    angular:function(x,y,z,r){ return (2*z*z-x*x-y*y)/(r*r); },
+    desc:"Shown on the xz-plane. Two tall lobes rise along z while a shallow negative trough dips along x, the cross-section of its signature donut-plus-lobes shape." },
+  "3dxz": { n:3,l:2,m:1, half:20, slice:"xz",
+    radial:function(r){ return (4/(81*Math.sqrt(30)))*r*r*Math.exp(-r/3); },
+    angular:function(x,y,z,r){ return (x*z)/(r*r); },
+    desc:"Shown on the xz-plane, exactly the plane its four cloverleaf lobes lie in \u2014 alternating peaks and dips visible around the origin." },
+  "3dyz": { n:3,l:2,m:-1, half:20, slice:"yz",
+    radial:function(r){ return (4/(81*Math.sqrt(30)))*r*r*Math.exp(-r/3); },
+    angular:function(x,y,z,r){ return (y*z)/(r*r); },
+    desc:"Shown on the yz-plane, the plane its cloverleaf lobes occupy \u2014 the same shape as 3d\u2093\u1DBB rotated 90\u00B0." },
+  "3dxy": { n:3,l:2,m:-2, half:20, slice:"xy",
+    radial:function(r){ return (4/(81*Math.sqrt(30)))*r*r*Math.exp(-r/3); },
+    angular:function(x,y,z,r){ return (x*y)/(r*r); },
+    desc:"Shown on the xy-plane, where its four cloverleaf lobes lie between the x and y axes, alternating up and down." },
+  "3dx2y2": { n:3,l:2,m:2, half:20, slice:"xy",
+    radial:function(r){ return (4/(81*2*Math.sqrt(30)))*r*r*Math.exp(-r/3); },
+    angular:function(x,y,z,r){ return (x*x-y*y)/(r*r); },
+    desc:"Shown on the xy-plane, where its four lobes point directly along the x and y axes, positive along x, negative along y." },
+  "4fz3": { n:4,l:3,m:0, half:30, slice:"xz",
+    radial:function(r){ return r*r*r*Math.exp(-r/4); },
+    angular:function(x,y,z,r){ return (z*(2*z*z-3*x*x-3*y*y))/(r*r*r); },
+    desc:"Shown on the xz-plane. Two elongated lobes rise and dip along z, each flanked by smaller ripples of the opposite sign further out." },
+  "4fxz2": { n:4,l:3,m:1, half:30, slice:"xz",
+    radial:function(r){ return r*r*r*Math.exp(-r/4); },
+    angular:function(x,y,z,r){ return (x*(4*z*z-x*x-y*y))/(r*r*r); },
+    desc:"Shown on the xz-plane, where this orbital's multi-lobed structure, weighted toward the z-axis, is clearly visible." },
+  "4fyz2": { n:4,l:3,m:-1, half:30, slice:"yz",
+    radial:function(r){ return r*r*r*Math.exp(-r/4); },
+    angular:function(x,y,z,r){ return (y*(4*z*z-x*x-y*y))/(r*r*r); },
+    desc:"Shown on the yz-plane \u2014 the y-axis counterpart of 4f\u2093\u1DBB\u00B2, with the same lobe pattern rotated 90\u00B0." },
+  "4fxyz": { n:4,l:3,m:-2, half:30, slice:"diag",
+    radial:function(r){ return r*r*r*Math.exp(-r/4); },
+    angular:function(x,y,z,r){ return (x*y*z)/(r*r*r); },
+    desc:"This orbital vanishes identically on all three coordinate planes (it is proportional to x\u00B7y\u00B7z), so it is instead shown on a diagonal z=x cross-section, the simplest cut that reveals its eight-lobed structure." },
+  "4fzx2y2": { n:4,l:3,m:2, half:30, slice:"xz",
+    radial:function(r){ return r*r*r*Math.exp(-r/4); },
+    angular:function(x,y,z,r){ return (z*(x*x-y*y))/(r*r*r); },
+    desc:"Shown on the xz-plane, where its lobes \u2014 oriented between the x and y axes and modulated along z \u2014 are clearly visible." },
+  "4fxx23y2": { n:4,l:3,m:3, half:30, slice:"xy",
+    radial:function(r){ return r*r*r*Math.exp(-r/4); },
+    angular:function(x,y,z,r){ return (x*(x*x-3*y*y))/(r*r*r); },
+    desc:"Shown on the xy-plane, where its six-lobed structure, oriented mainly along the x-axis, spreads out around the origin." },
+  "4fy3x2y2": { n:4,l:3,m:-3, half:30, slice:"xy",
+    radial:function(r){ return r*r*r*Math.exp(-r/4); },
+    angular:function(x,y,z,r){ return (y*(3*x*x-y*y))/(r*r*r); },
+    desc:"Shown on the xy-plane, the y-axis counterpart of 4f\u2093\u208D\u2093\u00B2\u208B\u00B3\u1D67\u00B2\u208E, with its six lobes rotated 90\u00B0." }
+};
+
+var ORDER_1 = ["1s"];
+var ORDER_2 = ["2s","2pz","2px","2py"];
+var ORDER_3 = ["3s","3pz","3px","3py","3dz2","3dxz","3dyz","3dxy","3dx2y2"];
+var ORDER_4 = ["4fz3","4fxz2","4fyz2","4fxyz","4fzx2y2","4fxx23y2","4fy3x2y2"];
+
+function niceLabel(key){
+  var map = {
+    "1s":"1s","2s":"2s","2pz":"2p\u2082","2px":"2p\u2093","2py":"2p\u1D67",
+    "3s":"3s","3pz":"3p\u2082","3px":"3p\u2093","3py":"3p\u1D67",
+    "3dz2":"3d\u1DBB\u00B2","3dxz":"3d\u2093\u1DBB","3dyz":"3d\u1D67\u1DBB","3dxy":"3d\u2093\u1D67","3dx2y2":"3d\u2093\u00B2\u208B\u1D67\u00B2",
+    "4fz3":"4f\u1DBB\u00B3","4fxz2":"4f\u2093\u1DBB\u00B2","4fyz2":"4f\u1D67\u1DBB\u00B2","4fxyz":"4f\u2093\u1D67\u1DBB",
+    "4fzx2y2":"4f\u1DBB(\u2093\u00B2\u208B\u1D67\u00B2)","4fxx23y2":"4f\u2093(\u2093\u00B2\u208B\u00B3\u1D67\u00B2)","4fy3x2y2":"4f\u1D67(\u00B3\u2093\u00B2\u208B\u1D67\u00B2)"
+  };
+  return map[key] || key;
+}
+
+function sliceLabel(mode){
+  if(mode==="xy") return "xy-plane cross-section (z = 0)";
+  if(mode==="xz") return "xz-plane cross-section (y = 0)";
+  if(mode==="yz") return "yz-plane cross-section (x = 0)";
+  if(mode==="diag") return "diagonal cross-section (z = x)";
+  return "";
+}
+
+function toPhysical(mode, gx, gy){
+  if(mode==="xy") return [gx, gy, 0];
+  if(mode==="xz") return [gx, 0, gy];
+  if(mode==="yz") return [0, gx, gy];
+  return [gx, gy, gx]; // diag
+}
+
+function evaluatePsi(orb, mode, gx, gy){
+  var p = toPhysical(mode, gx, gy);
+  var r = Math.sqrt(p[0]*p[0]+p[1]*p[1]+p[2]*p[2]);
+  if(r < 1e-6) r = 1e-6;
+  return orb.radial(r) * orb.angular(p[0], p[1], p[2], r);
+}
+
+/* ============================================================
+   SCENE SETUP
+   ============================================================ */
+
+var wrap = document.getElementById('canvas-wrap');
+var scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000000);
+
+var camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.05, 500);
+camera.position.set(9, 7, 10);
+
+var renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+wrap.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 1.5;
+controls.maxDistance = 90;
+controls.rotateSpeed = 0.6;
+controls.zoomSpeed = 0.8;
+controls.target.set(0,0,0);
+
+window.addEventListener('resize', function(){
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+var keyLight = new THREE.DirectionalLight(0xffffff, 0.8);
+keyLight.position.set(6, 9, 7);
+scene.add(keyLight);
+var fillLight = new THREE.DirectionalLight(0xaeccff, 0.35);
+fillLight.position.set(-7, -3, -5);
+scene.add(fillLight);
+
+/* ---------- Axes (X, Y = horizontal domain; Z = height = psi) ---------- */
+
+function makeTextSprite(text, color){
+  var canvas = document.createElement('canvas');
+  var size = 128;
+  canvas.width = size; canvas.height = size;
+  var ctx = canvas.getContext('2d');
+  ctx.font = '400 66px "Times New Roman", Times, serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth = 7;
+  ctx.strokeStyle = 'rgba(0,0,0,0.9)';
+  ctx.strokeText(text, size/2, size/2+2);
+  ctx.fillStyle = color;
+  ctx.fillText(text, size/2, size/2+2);
+  var tex = new THREE.CanvasTexture(canvas);
+  var mat = new THREE.SpriteMaterial({ map:tex, transparent:true, depthWrite:false });
+  var sprite = new THREE.Sprite(mat);
+  sprite.scale.set(1.15,1.15,1.15);
+  return sprite;
+}
+
+var axesGroup = new THREE.Group();
+function buildAxes(half, maxHeight){
+  while(axesGroup.children.length) axesGroup.remove(axesGroup.children[0]);
+  var axisDefs = [
+    { from:[-half,0,0], to:[half,0,0], color:0xff5a6e, hex:'#ff5a6e', label:'X', labelAt:[half*1.12,0,0] },
+    { from:[0,0,-half], to:[0,0,half], color:0x5aff8a, hex:'#5aff8a', label:'Y', labelAt:[0,0,half*1.12] },
+    { from:[0,-maxHeight*1.15,0], to:[0,maxHeight*1.3,0], color:0x5ab4ff, hex:'#5ab4ff', label:'Z', labelAt:[0,maxHeight*1.42,0] }
+  ];
+  axisDefs.forEach(function(a){
+    var mat = new THREE.LineBasicMaterial({ color:a.color, transparent:true, opacity:0.55 });
+    var geo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(a.from[0],a.from[1],a.from[2]),
+      new THREE.Vector3(a.to[0],a.to[1],a.to[2])
+    ]);
+    axesGroup.add(new THREE.Line(geo, mat));
+    var sprite = makeTextSprite(a.label, a.hex);
+    sprite.position.set(a.labelAt[0], a.labelAt[1], a.labelAt[2]);
+    axesGroup.add(sprite);
+  });
+}
+scene.add(axesGroup);
+
+/* ---------- Faint base-plane reference grid (height = 0) ---------- */
+
+var baseGridMat = new THREE.LineBasicMaterial({ color:0xffffff, transparent:true, opacity:0.08 });
+var baseGrid = null;
+function buildBaseGrid(half){
+  if(baseGrid){ scene.remove(baseGrid); baseGrid.geometry.dispose(); }
+  var divisions = 18;
+  var positions = [];
+  for(var i=0;i<=divisions;i++){
+    var t = -half + (2*half)*(i/divisions);
+    positions.push(t,0,-half, t,0,half);
+    positions.push(-half,0,t, half,0,t);
+  }
+  var geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions,3));
+  baseGrid = new THREE.LineSegments(geo, baseGridMat);
+  scene.add(baseGrid);
+}
+
+/* ============================================================
+   HEIGHT-MAPPED CONTOUR SURFACE
+   ============================================================ */
+
+var TARGET_MAX_HEIGHT = 2.0;
+var RES = 130;
+
+// Diverging, continuous colormap: negative -> teal, zero -> near-black, positive -> gold
+var NEG_COLOR = new THREE.Color(0x2fd8d0);
+var MID_COLOR = new THREE.Color(0x0b0b10);
+var POS_COLOR = new THREE.Color(0xffab3c);
+
+function heightColor(t){ // t in [-1, 1]
+  if(t >= 0) return MID_COLOR.clone().lerp(POS_COLOR, Math.pow(t, 0.85));
+  return MID_COLOR.clone().lerp(NEG_COLOR, Math.pow(-t, 0.85));
+}
+
+var currentMesh = null;
+
+function clearCurrent(){
+  if(currentMesh){ scene.remove(currentMesh); currentMesh.geometry.dispose(); currentMesh.material.dispose(); currentMesh=null; }
+}
+
+function buildSurface(orb){
+  var half = orb.half;
+  var n = RES;
+  var raw = new Float32Array((n+1)*(n+1));
+  var maxAbs = 1e-9;
+
+  for(var i=0;i<=n;i++){
+    var gx = -half + (2*half)*(i/n);
+    for(var j=0;j<=n;j++){
+      var gy = -half + (2*half)*(j/n);
+      var v = evaluatePsi(orb, orb.slice, gx, gy);
+      raw[i*(n+1)+j] = v;
+      var av = Math.abs(v);
+      if(av > maxAbs) maxAbs = av;
+    }
+  }
+
+  var scale = TARGET_MAX_HEIGHT / maxAbs;
+  var positions = new Float32Array((n+1)*(n+1)*3);
+  var colors = new Float32Array((n+1)*(n+1)*3);
+
+  for(var i2=0;i2<=n;i2++){
+    var gx2 = -half + (2*half)*(i2/n);
+    for(var j2=0;j2<=n;j2++){
+      var gy2 = -half + (2*half)*(j2/n);
+      var idx = i2*(n+1)+j2;
+      var h = raw[idx]*scale;
+      positions[idx*3]   = gx2;
+      positions[idx*3+1] = h;
+      positions[idx*3+2] = gy2;
+      var c = heightColor(Math.max(-1, Math.min(1, h/TARGET_MAX_HEIGHT)));
+      colors[idx*3]=c.r; colors[idx*3+1]=c.g; colors[idx*3+2]=c.b;
+    }
+  }
+
+  var indices = [];
+  for(var i3=0;i3<n;i3++){
+    for(var j3=0;j3<n;j3++){
+      var a=i3*(n+1)+j3, b=(i3+1)*(n+1)+j3, c2=(i3+1)*(n+1)+(j3+1), d=i3*(n+1)+(j3+1);
+      indices.push(a,b,d, b,c2,d);
+    }
+  }
+
+  var geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions,3));
+  geo.setAttribute('color', new THREE.BufferAttribute(colors,3));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+
+  return { geometry: geo, maxHeight: TARGET_MAX_HEIGHT };
+}
+
+var surfaceMat = new THREE.MeshStandardMaterial({
+  vertexColors:true, metalness:0.12, roughness:0.42, side:THREE.DoubleSide
+});
+
+var buttons = {};
+function setActiveButton(key){
+  Object.keys(buttons).forEach(function(k){ buttons[k].classList.toggle('active', k===key); });
+}
+
+function updateInfo(key, orb){
+  document.getElementById('infoName').textContent = niceLabel(key);
+  document.getElementById('infoQn').textContent =
+    'n = ' + orb.n + '   l = ' + orb.l + '   m = ' + orb.m + '   \u00B7   ' + sliceLabel(orb.slice);
+  document.getElementById('infoDesc').textContent = orb.desc;
+}
+
+function showOrbital(key){
+  var orb = ORBITALS[key];
+  if(!orb) return;
+
+  clearCurrent();
+  var built = buildSurface(orb);
+  currentMesh = new THREE.Mesh(built.geometry, surfaceMat);
+  scene.add(currentMesh);
+
+  buildAxes(orb.half, built.maxHeight);
+  buildBaseGrid(orb.half);
+
+  var dist = Math.max(orb.half*1.6, built.maxHeight*3.2);
+  var dirVec = camera.position.clone().sub(controls.target);
+  if(dirVec.length() < 0.001) dirVec.set(1,0.8,1);
+  dirVec.normalize().multiplyScalar(dist);
+  camera.position.copy(dirVec);
+  controls.target.set(0,0,0);
+  camera.near = Math.max(0.02, dist*0.01);
+  camera.far = dist*50;
+  camera.updateProjectionMatrix();
+  controls.update();
+
+  updateInfo(key, orb);
+  setActiveButton(key);
+}
+
+function buildButtons(){
+  fillGroup('shell1', ORDER_1);
+  fillGroup('shell2', ORDER_2);
+  fillGroup('shell3', ORDER_3);
+  fillGroup('shell4', ORDER_4);
+}
+function fillGroup(containerId, keys){
+  var container = document.getElementById(containerId);
+  keys.forEach(function(key){
+    var btn = document.createElement('button');
+    btn.className = 'orb-btn';
+    btn.textContent = niceLabel(key);
+    btn.addEventListener('click', function(){ showOrbital(key); });
+    container.appendChild(btn);
+    buttons[key] = btn;
+  });
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+buildButtons();
+showOrbital('1s');
+animate();
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,318 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Physics Lab</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            font-family:
+                Inter,
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
+
+            background: #0a0a0c;
+            color: #f2f2f2;
+
+            display: flex;
+            justify-content: center;
+
+            padding: 70px 24px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+        }
+
+        /* Header */
+
+        header {
+            margin-bottom: 55px;
+        }
+
+        .eyebrow {
+            font-size: 12px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: #777;
+            margin-bottom: 14px;
+        }
+
+        h1 {
+            font-size: clamp(42px, 7vw, 68px);
+            font-weight: 500;
+            letter-spacing: -3px;
+            line-height: 1;
+        }
+
+        .subtitle {
+            margin-top: 18px;
+            color: #8b8b91;
+            font-size: 17px;
+            line-height: 1.6;
+            max-width: 600px;
+        }
+
+        /* Projects */
+
+        .projects {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px;
+        }
+
+        .project {
+            position: relative;
+
+            min-height: 190px;
+            padding: 26px;
+
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+
+            text-decoration: none;
+            color: inherit;
+
+            background: #111114;
+            border: 1px solid #202024;
+            border-radius: 16px;
+
+            transition:
+                transform 0.2s ease,
+                border-color 0.2s ease,
+                background 0.2s ease;
+        }
+
+        .project:hover {
+            transform: translateY(-4px);
+            border-color: #3b3b42;
+            background: #151518;
+        }
+
+        .number {
+            font-size: 12px;
+            color: #666;
+            letter-spacing: 1px;
+        }
+
+        .project-content {
+            margin-top: 30px;
+        }
+
+        .project h2 {
+            font-size: 21px;
+            font-weight: 500;
+            letter-spacing: -0.5px;
+        }
+
+        .project p {
+            margin-top: 9px;
+            color: #77777e;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .arrow {
+            position: absolute;
+            right: 24px;
+            bottom: 22px;
+
+            font-size: 20px;
+            color: #555;
+
+            transition:
+                transform 0.2s ease,
+                color 0.2s ease;
+        }
+
+        .project:hover .arrow {
+            transform: translate(3px, -3px);
+            color: #aaa;
+        }
+
+        /* Footer */
+
+        footer {
+            margin-top: 55px;
+
+            padding-top: 20px;
+            border-top: 1px solid #1d1d20;
+
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+
+            color: #555;
+            font-size: 12px;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #777;
+        }
+
+        /* Mobile */
+
+        @media (max-width: 650px) {
+
+            body {
+                padding: 45px 18px;
+            }
+
+            header {
+                margin-bottom: 35px;
+            }
+
+            .projects {
+                grid-template-columns: 1fr;
+            }
+
+            .project {
+                min-height: 165px;
+            }
+
+            footer {
+                margin-top: 40px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <main class="container">
+
+        <header>
+            <div class="eyebrow">Interactive Science</div>
+
+            <h1>Physics Lab</h1>
+
+            <p class="subtitle">
+                Interactive explorations in geometry, molecular structure,
+                atomic orbitals, and quantum mechanics.
+            </p>
+        </header>
+
+
+        <section class="projects">
+
+            <!-- 01 -->
+
+            <a class="project" href="shapes_explorer_3d.html">
+
+                <div class="number">01</div>
+
+                <div class="project-content">
+                    <h2>3D Shapes Explorer</h2>
+
+                    <p>
+                        Explore and manipulate three-dimensional
+                        geometric shapes.
+                    </p>
+                </div>
+
+                <div class="arrow">↗</div>
+
+            </a>
+
+
+            <!-- 02 -->
+
+            <a class="project" href="molecular_geometry_3d.html">
+
+                <div class="number">02</div>
+
+                <div class="project-content">
+                    <h2>Molecular Geometry</h2>
+
+                    <p>
+                        Explore molecular structures and
+                        three-dimensional geometry.
+                    </p>
+                </div>
+
+                <div class="arrow">↗</div>
+
+            </a>
+
+
+            <!-- 03 -->
+
+            <a class="project" href="atomic_orbitals_3d.html">
+
+                <div class="number">03</div>
+
+                <div class="project-content">
+                    <h2>Atomic Orbitals</h2>
+
+                    <p>
+                        Visualize the three-dimensional structure
+                        of atomic orbitals.
+                    </p>
+                </div>
+
+                <div class="arrow">↗</div>
+
+            </a>
+
+
+            <!-- 04 -->
+
+            <a class="project" href="Hydrogen%20wave%20function.html">
+
+                <div class="number">04</div>
+
+                <div class="project-content">
+                    <h2>Hydrogen Wave Function</h2>
+
+                    <p>
+                        Explore the quantum wave functions of
+                        the hydrogen atom.
+                    </p>
+                </div>
+
+                <div class="arrow">↗</div>
+
+            </a>
+
+        </section>
+
+
+        <footer>
+
+            <div>Interactive Physics &amp; Mathematics</div>
+
+            <div class="status">
+                <span class="dot"></span>
+                <span>4 experiments</span>
+            </div>
+
+        </footer>
+
+    </main>
+
+</body>
+</html>
+```
