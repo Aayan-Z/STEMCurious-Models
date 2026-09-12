@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thermal Conduction Explorer</title>
+<style>
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; width:100%; height:100%;
+    background:#000000;
+    color:#ffffff;
+    font-family:'Times New Roman', Times, serif;
+    overflow:hidden;
+  }
+  #canvas-wrap{ position:fixed; inset:0; background:#000000; }
+  canvas{ display:block; }
+
+  #panel{
+    position:fixed; top:16px; left:16px;
+    width:280px;
+    background:rgba(20,20,26,0.46);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+    backdrop-filter: blur(28px) saturate(160%);
+    border:1px solid rgba(255,255,255,0.16);
+    border-radius:24px;
+    padding:22px 22px 18px 22px;
+    z-index:6;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.16);
+  }
+  .slider-label{
+    font-size:14px; color:rgba(255,255,255,0.85); margin-bottom:2px;
+  }
+  .slider-sub{
+    font-size:12.5px; color:rgba(255,255,255,0.45); margin-bottom:8px;
+  }
+  input[type=range]{
+    -webkit-appearance:none; appearance:none;
+    width:100%; height:26px; background:transparent; margin-bottom:2px;
+  }
+  input[type=range]::-webkit-slider-runnable-track{
+    height:5px; border-radius:3px;
+    background:linear-gradient(90deg, rgba(255,255,255,0.5), rgba(255,255,255,0.12));
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:20px; height:20px; border-radius:50%;
+    background:radial-gradient(circle at 32% 28%, #fff 0%, #d8d8de 100%);
+    box-shadow:0 2px 6px rgba(0,0,0,0.5);
+    margin-top:-8px; cursor:pointer;
+  }
+  .slider-block{ margin-bottom:20px; }
+  .slider-block:last-child{ margin-bottom:0; }
+  .value-readout{
+    display:flex; justify-content:space-between;
+    font-size:13px; color:rgba(255,255,255,0.6); margin-top:2px;
+  }
+  .value-readout b{ color:rgba(255,255,255,0.9); font-weight:700; }
+
+  #hint{
+    position:fixed; top:24px; right:28px;
+    font-size:14px; color:#ffffff;
+    text-align:right; line-height:1.9; z-index:6; pointer-events:none;
+    font-family:'Times New Roman', Times, serif;
+  }
+
+  #info{
+    position:fixed; left:16px; bottom:24px;
+    max-width:430px;
+    z-index:6; pointer-events:none;
+    color:rgba(255,255,255,0.62);
+    font-family:'Times New Roman', Times, serif;
+  }
+  #info .name{ font-size:24px; margin:0 0 6px 0; color:rgba(255,255,255,0.85); }
+  #info .qn{ font-size:13.5px; margin-bottom:8px; color:rgba(255,255,255,0.5); line-height:1.6; }
+  #info .desc{ font-size:14px; line-height:1.55; color:rgba(255,255,255,0.58); max-width:410px; }
+
+  #legend{
+    position:fixed; right:26px; bottom:26px;
+    z-index:6;
+    display:flex; align-items:stretch; gap:10px;
+    background:rgba(20,20,26,0.4);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    border:1px solid rgba(255,255,255,0.14);
+    border-radius:16px;
+    padding:12px 14px;
+  }
+  #legendBar{
+    width:16px; height:150px; border-radius:8px;
+    background:linear-gradient(to top,
+      #000010 0%, #1b0f6e 15%, #5b0f9e 32%, #b21a6b 48%,
+      #e8432a 62%, #ff9a1e 78%, #ffd35c 90%, #fffbe6 100%);
+  }
+  #legendLabels{
+    display:flex; flex-direction:column; justify-content:space-between;
+    font-size:12px; color:rgba(255,255,255,0.6);
+  }
+
+  @media (max-width: 820px){
+    #panel{ width:220px; padding:16px; }
+    #hint{ display:none; }
+    #info{ max-width:240px; }
+    #info .name{ font-size:19px; }
+    #legendBar{ height:110px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="canvas-wrap"></div>
+
+<div id="panel">
+  <div class="slider-block">
+    <div class="slider-label">Heat Source Temperature</div>
+    <div class="slider-sub">Temperature held at one end of the rod</div>
+    <input type="range" id="heatSlider" min="25" max="300" step="1" value="150">
+    <div class="value-readout"><span>25&deg;C</span><b id="heatReadout">150&deg;C</b><span>300&deg;C</span></div>
+  </div>
+  <div class="slider-block">
+    <div class="slider-label">Thermal Conductivity</div>
+    <div class="slider-sub" id="materialReadout">Rate at which heat spreads through the metal</div>
+    <input type="range" id="condSlider" min="15" max="430" step="1" value="205">
+    <div class="value-readout"><span>15</span><b id="condReadout">205 W/(m&middot;K)</b><span>430</span></div>
+  </div>
+</div>
+
+<div id="hint">
+  Drag to rotate<br>
+  Scroll to zoom<br>
+  Right-click to pan
+</div>
+
+<div id="info">
+  <div class="name">Heat Conduction Along a Metal Rod</div>
+  <div class="qn" id="infoStats"></div>
+  <div class="desc">Heat flows from the hot end toward the cool end following Fourier's law of conduction, while the rod also loses heat to the surrounding air along its whole length (Newton's law of cooling). The balance between these two effects is why the temperature falls off roughly exponentially with distance rather than staying constant &mdash; higher conductivity pushes heat further before it can escape, flattening and extending the gradient; lower conductivity keeps the heat concentrated near the source, producing a steep drop-off. The simulation runs about 1,500&times; faster than real time so the effect is visible within seconds; the underlying physics and relative timing between materials is accurate.</div>
+</div>
+
+<div id="legend">
+  <div id="legendBar"></div>
+  <div id="legendLabels">
+    <span id="legendMax">300&deg;C</span>
+    <span>Cooler</span>
+    <span id="legendMin">22&deg;C</span>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   PHYSICS: 1D transient conduction with lateral convective loss
+   (the classic "fin" heat-transfer problem), solved by explicit
+   finite differences along the rod's length:
+
+     dT/dt = alpha * d2T/dx2  -  beta * (T - T_ambient)
+
+   alpha = k / (rho*c)      thermal diffusivity
+   beta  = 2*h / (rho*c*r)  lateral heat-loss rate to the air
+
+   A representative volumetric heat capacity (rho*c) for a dense
+   metal is held fixed so the conductivity slider alone controls
+   diffusivity, matching real relative behavior between metals
+   (e.g. copper spreads heat roughly 27x faster than stainless
+   steel, matching the real ratio of their conductivities).
+   ============================================================ */
+
+var T_AMBIENT = 22;
+var RHO_C = 3.5e6;      // J/(m^3 K), representative for a dense metal
+var H_CONV = 15;        // W/(m^2 K), natural convection in still air
+var ROD_LENGTH = 0.5;   // m
+var ROD_RADIUS = 0.03;  // m
+var N = 70;             // grid points along the rod
+var DX = ROD_LENGTH/(N-1);
+var TIME_MULTIPLIER = 1500; // simulated seconds per real second
+
+var T = new Float64Array(N);
+for(var i=0;i<N;i++) T[i] = T_AMBIENT;
+
+var heatTemp = 150;
+var conductivity = 205;
+
+var METALS = [
+  {name:"Stainless Steel", k:16}, {name:"Iron", k:80}, {name:"Aluminum", k:205},
+  {name:"Copper", k:401}, {name:"Silver", k:429}
+];
+function nearestMetal(k){
+  var best=METALS[0], bd=1e9;
+  METALS.forEach(function(m){ var d=Math.abs(m.k-k); if(d<bd){bd=d;best=m;} });
+  return best;
+}
+
+function stepPhysics(dtSim){
+  var beta = 2*H_CONV/(RHO_C*ROD_RADIUS);
+  var alpha = conductivity/RHO_C;
+  var dtStable = Math.max(1e-6, (DX*DX/(2*alpha))*0.9);
+  var steps = Math.min(500, Math.max(1, Math.ceil(dtSim/dtStable)));
+  var dt = dtSim/steps;
+
+  for(var s=0; s<steps; s++){
+    var Tnew = new Float64Array(N);
+    Tnew[0] = heatTemp;
+    for(var i=1;i<N-1;i++){
+      var d2T = (T[i+1]-2*T[i]+T[i-1])/(DX*DX);
+      Tnew[i] = T[i] + dt*( alpha*d2T - beta*(T[i]-T_AMBIENT) );
+    }
+    var d2Ttip = 2*(T[N-2]-T[N-1])/(DX*DX);
+    Tnew[N-1] = T[N-1] + dt*( alpha*d2Ttip - beta*(T[N-1]-T_AMBIENT) );
+    T = Tnew;
+  }
+}
+
+/* ============================================================
+   COLOR PALETTE (thermal / "ironbow" camera style)
+   ============================================================ */
+
+var STOPS = [
+  [0.00, [0,0,16]], [0.15,[27,15,110]], [0.32,[91,15,158]], [0.48,[178,26,107]],
+  [0.62,[232,67,42]], [0.78,[255,154,30]], [0.90,[255,211,92]], [1.00,[255,251,230]]
+];
+function thermalColor(t){
+  t = Math.max(0, Math.min(1,t));
+  for(var i=0;i<STOPS.length-1;i++){
+    var a=STOPS[i], b=STOPS[i+1];
+    if(t>=a[0] && t<=b[0]){
+      var lt = (b[0]-a[0])>1e-6 ? (t-a[0])/(b[0]-a[0]) : 0;
+      return [
+        (a[1][0]+(b[1][0]-a[1][0])*lt)/255,
+        (a[1][1]+(b[1][1]-a[1][1])*lt)/255,
+        (a[1][2]+(b[1][2]-a[1][2])*lt)/255
+      ];
+    }
+  }
+  var last = STOPS[STOPS.length-1][1];
+  return [last[0]/255,last[1]/255,last[2]/255];
+}
+
+var T_COLOR_MIN = 20, T_COLOR_MAX = 300;
+function tempToNorm(temp){ return (temp-T_COLOR_MIN)/(T_COLOR_MAX-T_COLOR_MIN); }
+
+/* ============================================================
+   SCENE SETUP
+   ============================================================ */
+
+var wrap = document.getElementById('canvas-wrap');
+var scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000000);
+
+var camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.02, 200);
+camera.position.set(1.8, 1.1, 2.0);
+
+var renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+wrap.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 0.3;
+controls.maxDistance = 12;
+controls.rotateSpeed = 0.6;
+controls.zoomSpeed = 0.8;
+controls.target.set(0,0,0);
+
+window.addEventListener('resize', function(){
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.75));
+var keyLight = new THREE.DirectionalLight(0xffffff, 0.55);
+keyLight.position.set(4,6,5);
+scene.add(keyLight);
+var fillLight = new THREE.DirectionalLight(0xdfe8ff, 0.3);
+fillLight.position.set(-5,-2,-4);
+scene.add(fillLight);
+
+var CYL_VIS_LENGTH = 2.4;   // scene units representing ROD_LENGTH
+var CYL_VIS_RADIUS = 0.16;
+
+var heightSegs = N-1;
+var cylGeo = new THREE.CylinderGeometry(CYL_VIS_RADIUS, CYL_VIS_RADIUS, CYL_VIS_LENGTH, 40, heightSegs);
+var posAttr = cylGeo.getAttribute('position');
+var colorArr = new Float32Array(posAttr.count*3);
+cylGeo.setAttribute('color', new THREE.BufferAttribute(colorArr,3));
+
+var cylMat = new THREE.MeshStandardMaterial({ vertexColors:true, metalness:0.45, roughness:0.38 });
+var cylinder = new THREE.Mesh(cylGeo, cylMat);
+scene.add(cylinder);
+
+// small end-caps labels via subtle marker rings (metallic look accent, minimal)
+var capMat = new THREE.MeshStandardMaterial({ color:0x8a8a90, metalness:0.6, roughness:0.3 });
+var capGeoTop = new THREE.TorusGeometry(CYL_VIS_RADIUS*1.02, 0.008, 8, 40);
+var capTop = new THREE.Mesh(capGeoTop, capMat);
+capTop.position.y = CYL_VIS_LENGTH/2;
+capTop.rotation.x = Math.PI/2;
+scene.add(capTop);
+var capBottom = capTop.clone();
+capBottom.position.y = -CYL_VIS_LENGTH/2;
+scene.add(capBottom);
+
+function updateCylinderColors(){
+  var colorAttr = cylGeo.getAttribute('color');
+  for(var i=0;i<posAttr.count;i++){
+    var y = posAttr.getY(i);
+    var tFrac = (y + CYL_VIS_LENGTH/2)/CYL_VIS_LENGTH; // 0 bottom .. 1 top
+    var floatIdx = (1-tFrac)*(N-1); // top(1) -> index 0 (hot end)
+    var i0 = Math.max(0, Math.min(N-1, Math.floor(floatIdx)));
+    var i1 = Math.max(0, Math.min(N-1, i0+1));
+    var frac = floatIdx - i0;
+    var temp = T[i0] + (T[i1]-T[i0])*frac;
+    var col = thermalColor(tempToNorm(temp));
+    colorAttr.setXYZ(i, col[0], col[1], col[2]);
+  }
+  colorAttr.needsUpdate = true;
+}
+
+/* ============================================================
+   UI
+   ============================================================ */
+
+var heatSlider = document.getElementById('heatSlider');
+var condSlider = document.getElementById('condSlider');
+var heatReadout = document.getElementById('heatReadout');
+var condReadout = document.getElementById('condReadout');
+var materialReadout = document.getElementById('materialReadout');
+var infoStats = document.getElementById('infoStats');
+var legendMax = document.getElementById('legendMax');
+
+heatSlider.addEventListener('input', function(){
+  heatTemp = parseFloat(heatSlider.value);
+  heatReadout.textContent = heatTemp.toFixed(0)+'\u00B0C';
+  legendMax.textContent = Math.max(heatTemp,300).toFixed(0)+'\u00B0C';
+});
+condSlider.addEventListener('input', function(){
+  conductivity = parseFloat(condSlider.value);
+  condReadout.textContent = conductivity.toFixed(0)+' W/(m\u00B7K)';
+  materialReadout.textContent = 'Closest common metal: '+nearestMetal(conductivity).name;
+});
+materialReadout.textContent = 'Closest common metal: '+nearestMetal(conductivity).name;
+
+/* ============================================================
+   RENDER LOOP
+   ============================================================ */
+
+var lastTime = performance.now();
+
+function animate(now){
+  requestAnimationFrame(animate);
+  var wallDt = Math.min((now-lastTime)/1000, 0.05);
+  lastTime = now;
+
+  stepPhysics(wallDt*TIME_MULTIPLIER);
+  updateCylinderColors();
+
+  infoStats.innerHTML =
+    'Hot end: <b>'+T[0].toFixed(1)+'\u00B0C</b>   \u00B7   '+
+    'Cool tip: <b>'+T[N-1].toFixed(1)+'\u00B0C</b>   \u00B7   '+
+    'Ambient air: '+T_AMBIENT+'\u00B0C';
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+requestAnimationFrame(animate);
+
+})();
+</script>
+</body>
+</html>

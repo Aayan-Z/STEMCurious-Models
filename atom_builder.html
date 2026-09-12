@@ -1,0 +1,2582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atomic Studio</title>
+
+<style>
+:root{
+    --bg:#050608;
+    --panel:rgba(255,255,255,.065);
+    --panel-strong:rgba(255,255,255,.09);
+    --border:rgba(255,255,255,.12);
+    --text:#f5f7fa;
+    --muted:#9299a5;
+
+    --proton:#ff4d5e;
+    --neutron:#8e9aa7;
+    --electron:#42c8ff;
+
+    --good:#4ade80;
+    --warn:#facc15;
+    --bad:#ff5364;
+}
+
+*{
+    box-sizing:border-box;
+    user-select:none;
+}
+
+html,body{
+    width:100%;
+    height:100%;
+    margin:0;
+    overflow:hidden;
+    background:var(--bg);
+    color:var(--text);
+    font-family:
+        Inter,
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+}
+
+body{
+    position:relative;
+}
+
+canvas{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    display:block;
+    cursor:grab;
+}
+
+canvas.dragging{
+    cursor:grabbing;
+}
+
+/* ---------- TOP BAR ---------- */
+
+.topbar{
+    position:absolute;
+    top:18px;
+    left:20px;
+    right:20px;
+    height:58px;
+
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+
+    padding:0 18px;
+
+    background:rgba(10,12,16,.68);
+    border:1px solid var(--border);
+    border-radius:18px;
+
+    backdrop-filter:blur(22px);
+    -webkit-backdrop-filter:blur(22px);
+
+    box-shadow:
+        0 15px 50px rgba(0,0,0,.28),
+        inset 0 1px 0 rgba(255,255,255,.05);
+
+    z-index:10;
+}
+
+.brand{
+    display:flex;
+    align-items:center;
+    gap:11px;
+    font-weight:700;
+    letter-spacing:-.02em;
+}
+
+.brand-dot{
+    width:10px;
+    height:10px;
+    border-radius:50%;
+    background:#fff;
+    box-shadow:0 0 16px rgba(255,255,255,.75);
+}
+
+.brand span{
+    font-size:15px;
+}
+
+.controls-hint{
+    color:var(--muted);
+    font-size:12px;
+}
+
+/* ---------- LEFT PANEL ---------- */
+
+.panel{
+    position:absolute;
+    z-index:10;
+
+    left:20px;
+    top:94px;
+    bottom:20px;
+
+    width:330px;
+
+    padding:18px;
+
+    background:rgba(10,12,16,.70);
+    border:1px solid var(--border);
+    border-radius:22px;
+
+    backdrop-filter:blur(25px);
+    -webkit-backdrop-filter:blur(25px);
+
+    box-shadow:
+        0 20px 70px rgba(0,0,0,.30),
+        inset 0 1px 0 rgba(255,255,255,.05);
+
+    overflow-y:auto;
+    scrollbar-width:none;
+}
+
+.panel::-webkit-scrollbar{
+    display:none;
+}
+
+.section{
+    margin-bottom:20px;
+}
+
+.section-title{
+    margin:0 0 10px;
+    color:#fff;
+    font-size:11px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.12em;
+}
+
+.section-subtitle{
+    color:var(--muted);
+    font-size:11px;
+    line-height:1.45;
+    margin-bottom:12px;
+}
+
+/* ---------- REALITY STATUS ---------- */
+
+.reality{
+    border:1px solid rgba(255,255,255,.10);
+    background:rgba(255,255,255,.035);
+    border-radius:16px;
+    padding:15px;
+    margin-bottom:20px;
+}
+
+.reality-state{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:8px;
+}
+
+.reality-dot{
+    width:11px;
+    height:11px;
+    border-radius:50%;
+    flex:none;
+}
+
+.reality-title{
+    font-size:14px;
+    font-weight:800;
+    letter-spacing:.01em;
+}
+
+.reality-message{
+    color:var(--muted);
+    font-size:11px;
+    line-height:1.45;
+}
+
+.reality.valid{
+    border-color:rgba(74,222,128,.24);
+    background:rgba(74,222,128,.055);
+}
+
+.reality.valid .reality-dot{
+    background:var(--good);
+    box-shadow:0 0 13px rgba(74,222,128,.65);
+}
+
+.reality.valid .reality-title{
+    color:var(--good);
+}
+
+.reality.invalid{
+    border-color:rgba(255,83,100,.38);
+    background:rgba(255,83,100,.075);
+}
+
+.reality.invalid .reality-dot{
+    background:var(--bad);
+    box-shadow:0 0 17px rgba(255,83,100,.75);
+}
+
+.reality.invalid .reality-title{
+    color:#ff7180;
+}
+
+/* ---------- BIG INVALID BANNER ---------- */
+
+.invalid-banner{
+    display:none;
+
+    margin-bottom:20px;
+    padding:17px 15px;
+
+    border-radius:16px;
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(255,60,80,.16),
+            rgba(255,60,80,.055)
+        );
+
+    border:1px solid rgba(255,83,100,.40);
+
+    box-shadow:
+        0 0 35px rgba(255,50,70,.08),
+        inset 0 1px 0 rgba(255,255,255,.04);
+
+    animation:invalidPulse 2.4s ease-in-out infinite;
+}
+
+.invalid-banner.show{
+    display:block;
+}
+
+.invalid-main{
+    color:#ff6b79;
+    font-size:17px;
+    font-weight:900;
+    letter-spacing:.04em;
+    line-height:1.1;
+}
+
+.invalid-sub{
+    color:#c5a2a7;
+    font-size:11px;
+    margin-top:7px;
+    line-height:1.4;
+}
+
+@keyframes invalidPulse{
+    0%,100%{
+        box-shadow:0 0 25px rgba(255,50,70,.06);
+    }
+    50%{
+        box-shadow:0 0 40px rgba(255,50,70,.13);
+    }
+}
+
+/* ---------- DATA ---------- */
+
+.data-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+}
+
+.data-card{
+    min-height:66px;
+
+    padding:10px 11px;
+
+    border-radius:13px;
+
+    background:rgba(255,255,255,.035);
+    border:1px solid rgba(255,255,255,.075);
+}
+
+.data-label{
+    color:var(--muted);
+    font-size:10px;
+    margin-bottom:5px;
+}
+
+.data-value{
+    color:#fff;
+    font-size:17px;
+    font-weight:700;
+    line-height:1.1;
+    word-break:break-word;
+}
+
+.data-value.blank{
+    color:#555b65;
+}
+
+/* ---------- PARTICLE CONTROLS ---------- */
+
+.particle-row{
+    display:grid;
+    grid-template-columns:1fr auto auto;
+    align-items:center;
+    gap:8px;
+
+    padding:10px 11px;
+    margin-bottom:7px;
+
+    background:rgba(255,255,255,.035);
+    border:1px solid rgba(255,255,255,.075);
+    border-radius:13px;
+}
+
+.particle-info{
+    display:flex;
+    align-items:center;
+    gap:9px;
+}
+
+.particle-dot{
+    width:10px;
+    height:10px;
+    border-radius:50%;
+    flex:none;
+}
+
+.particle-dot.proton{
+    background:var(--proton);
+    box-shadow:0 0 12px rgba(255,77,94,.55);
+}
+
+.particle-dot.neutron{
+    background:var(--neutron);
+    box-shadow:0 0 10px rgba(142,154,167,.40);
+}
+
+.particle-dot.electron{
+    background:var(--electron);
+    box-shadow:0 0 13px rgba(66,200,255,.60);
+}
+
+.particle-name{
+    font-size:12px;
+    font-weight:600;
+}
+
+.particle-count{
+    color:var(--muted);
+    font-size:11px;
+    min-width:32px;
+    text-align:right;
+}
+
+.mini-btn{
+    width:29px;
+    height:29px;
+
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:9px;
+
+    background:rgba(255,255,255,.055);
+    color:#fff;
+
+    font-size:16px;
+    line-height:1;
+
+    cursor:pointer;
+
+    transition:
+        background .15s ease,
+        transform .15s ease,
+        border-color .15s ease;
+}
+
+.mini-btn:hover{
+    background:rgba(255,255,255,.11);
+    border-color:rgba(255,255,255,.18);
+}
+
+.mini-btn:active{
+    transform:scale(.93);
+}
+
+/* ---------- MAIN BUTTONS ---------- */
+
+.button-row{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+}
+
+button.action{
+    height:38px;
+
+    border:1px solid rgba(255,255,255,.11);
+    border-radius:11px;
+
+    background:rgba(255,255,255,.055);
+    color:#fff;
+
+    font-size:11px;
+    font-weight:700;
+
+    cursor:pointer;
+
+    transition:
+        background .15s ease,
+        transform .15s ease;
+}
+
+button.action:hover{
+    background:rgba(255,255,255,.10);
+}
+
+button.action:active{
+    transform:scale(.97);
+}
+
+button.action.primary{
+    background:rgba(255,255,255,.11);
+}
+
+/* ---------- LEGEND ---------- */
+
+.legend{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
+
+.legend-item{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    color:var(--muted);
+    font-size:11px;
+}
+
+.legend-dot{
+    width:8px;
+    height:8px;
+    border-radius:50%;
+}
+
+/* ---------- DROP TRAY ---------- */
+
+.tray{
+    position:absolute;
+    z-index:10;
+
+    left:50%;
+    transform:translateX(-50%);
+
+    bottom:20px;
+
+    display:flex;
+    gap:9px;
+
+    padding:10px;
+
+    background:rgba(10,12,16,.70);
+    border:1px solid var(--border);
+    border-radius:18px;
+
+    backdrop-filter:blur(22px);
+    -webkit-backdrop-filter:blur(22px);
+
+    box-shadow:
+        0 15px 55px rgba(0,0,0,.30),
+        inset 0 1px 0 rgba(255,255,255,.05);
+}
+
+.drag-particle{
+    width:55px;
+    height:55px;
+
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:4px;
+
+    border-radius:13px;
+
+    background:rgba(255,255,255,.045);
+    border:1px solid rgba(255,255,255,.08);
+
+    cursor:grab;
+
+    transition:
+        background .15s ease,
+        transform .15s ease,
+        border-color .15s ease;
+}
+
+.drag-particle:hover{
+    background:rgba(255,255,255,.085);
+    border-color:rgba(255,255,255,.16);
+    transform:translateY(-2px);
+}
+
+.drag-particle:active{
+    cursor:grabbing;
+    transform:scale(.96);
+}
+
+.drag-dot{
+    width:14px;
+    height:14px;
+    border-radius:50%;
+}
+
+.drag-label{
+    font-size:9px;
+    color:var(--muted);
+}
+
+/* ---------- CAMERA HELP ---------- */
+
+.camera-help{
+    position:absolute;
+    right:20px;
+    bottom:20px;
+
+    z-index:5;
+
+    padding:10px 13px;
+
+    color:rgba(255,255,255,.43);
+    font-size:10px;
+
+    background:rgba(10,12,16,.45);
+    border:1px solid rgba(255,255,255,.07);
+    border-radius:12px;
+
+    backdrop-filter:blur(15px);
+}
+
+/* ---------- RESPONSIVE ---------- */
+
+@media(max-width:800px){
+
+    .panel{
+        width:285px;
+        left:12px;
+        top:84px;
+        bottom:12px;
+    }
+
+    .topbar{
+        left:12px;
+        right:12px;
+        top:12px;
+    }
+
+    .controls-hint{
+        display:none;
+    }
+
+    .tray{
+        bottom:12px;
+    }
+
+    .camera-help{
+        display:none;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="atomCanvas"></canvas>
+
+<!-- TOP BAR -->
+<div class="topbar">
+    <div class="brand">
+        <div class="brand-dot"></div>
+        <span>Atomic Studio</span>
+    </div>
+
+    <div class="controls-hint">
+        LMB rotate&nbsp;&nbsp; · &nbsp;&nbsp;RMB pan&nbsp;&nbsp; · &nbsp;&nbsp;Wheel zoom
+    </div>
+</div>
+
+
+<!-- LEFT PANEL -->
+<aside class="panel">
+
+    <div class="section">
+
+        <div class="section-title">Reality check</div>
+
+        <div id="realityBox" class="reality valid">
+
+            <div class="reality-state">
+                <div id="realityDot" class="reality-dot"></div>
+                <div id="realityTitle" class="reality-title">
+                    REAL ATOMIC CONFIGURATION
+                </div>
+            </div>
+
+            <div id="realityMessage" class="reality-message">
+                Build an atom to begin.
+            </div>
+
+        </div>
+
+        <!-- BIG INVALID MESSAGE -->
+        <div id="invalidBanner" class="invalid-banner">
+
+            <div class="invalid-main">
+                THIS ATOM DOES NOT EXIST
+            </div>
+
+            <div class="invalid-sub">
+                This combination is outside the known real atomic
+                configurations. You can keep building it.
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="section">
+
+        <div class="section-title">Atom</div>
+
+        <div class="data-grid">
+
+            <div class="data-card">
+                <div class="data-label">Element</div>
+                <div id="elementValue" class="data-value">—</div>
+            </div>
+
+            <div class="data-card">
+                <div class="data-label">Symbol</div>
+                <div id="symbolValue" class="data-value">—</div>
+            </div>
+
+            <div class="data-card">
+                <div class="data-label">Atomic number</div>
+                <div id="atomicNumberValue" class="data-value">—</div>
+            </div>
+
+            <div class="data-card">
+                <div class="data-label">Mass number</div>
+                <div id="massNumberValue" class="data-value">—</div>
+            </div>
+
+            <div class="data-card">
+                <div class="data-label">Charge</div>
+                <div id="chargeValue" class="data-value">—</div>
+            </div>
+
+            <div class="data-card">
+                <div class="data-label">Electrons</div>
+                <div id="electronValue" class="data-value">—</div>
+            </div>
+
+            <div class="data-card" style="grid-column:1 / -1;">
+                <div class="data-label">Electron arrangement</div>
+                <div id="arrangementValue" class="data-value">—</div>
+            </div>
+
+            <div class="data-card" style="grid-column:1 / -1;">
+                <div class="data-label">Electron configuration</div>
+                <div id="configurationValue" class="data-value">—</div>
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="section">
+
+        <div class="section-title">Particles</div>
+
+        <div class="particle-row">
+
+            <div class="particle-info">
+                <div class="particle-dot proton"></div>
+                <div class="particle-name">Protons</div>
+            </div>
+
+            <div id="protonCount" class="particle-count">0</div>
+
+            <div>
+                <button class="mini-btn" id="minusProton">−</button>
+                <button class="mini-btn" id="plusProton">+</button>
+            </div>
+
+        </div>
+
+
+        <div class="particle-row">
+
+            <div class="particle-info">
+                <div class="particle-dot neutron"></div>
+                <div class="particle-name">Neutrons</div>
+            </div>
+
+            <div id="neutronCount" class="particle-count">0</div>
+
+            <div>
+                <button class="mini-btn" id="minusNeutron">−</button>
+                <button class="mini-btn" id="plusNeutron">+</button>
+            </div>
+
+        </div>
+
+
+        <div class="particle-row">
+
+            <div class="particle-info">
+                <div class="particle-dot electron"></div>
+                <div class="particle-name">Electrons</div>
+            </div>
+
+            <div id="electronCount" class="particle-count">0</div>
+
+            <div>
+                <button class="mini-btn" id="minusElectron">−</button>
+                <button class="mini-btn" id="plusElectron">+</button>
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="section">
+
+        <div class="section-title">Quick actions</div>
+
+        <div class="button-row">
+
+            <button id="neutralButton" class="action primary">
+                Neutral atom
+            </button>
+
+            <button id="resetButton" class="action">
+                Reset
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <div class="section">
+
+        <div class="section-title">Particle key</div>
+
+        <div class="legend">
+
+            <div class="legend-item">
+                <div class="legend-dot"
+                     style="background:var(--proton);"></div>
+                Proton · positive
+            </div>
+
+            <div class="legend-item">
+                <div class="legend-dot"
+                     style="background:var(--neutron);"></div>
+                Neutron · neutral
+            </div>
+
+            <div class="legend-item">
+                <div class="legend-dot"
+                     style="background:var(--electron);"></div>
+                Electron · negative
+            </div>
+
+        </div>
+
+    </div>
+
+</aside>
+
+
+<!-- DRAG TRAY -->
+<div class="tray">
+
+    <div
+        class="drag-particle"
+        draggable="true"
+        data-particle="proton"
+    >
+        <div class="drag-dot"
+             style="background:var(--proton);box-shadow:0 0 13px rgba(255,77,94,.6);"></div>
+        <div class="drag-label">Proton</div>
+    </div>
+
+    <div
+        class="drag-particle"
+        draggable="true"
+        data-particle="neutron"
+    >
+        <div class="drag-dot"
+             style="background:var(--neutron);box-shadow:0 0 11px rgba(142,154,167,.45);"></div>
+        <div class="drag-label">Neutron</div>
+    </div>
+
+    <div
+        class="drag-particle"
+        draggable="true"
+        data-particle="electron"
+    >
+        <div class="drag-dot"
+             style="background:var(--electron);box-shadow:0 0 14px rgba(66,200,255,.65);"></div>
+        <div class="drag-label">Electron</div>
+    </div>
+
+</div>
+
+
+<div class="camera-help">
+    Drag canvas to rotate · Right drag to pan
+</div>
+
+
+<script>
+"use strict";
+
+/* =========================================================
+   ELEMENT DATA
+   ========================================================= */
+
+const elements = [
+    ["Hydrogen","H"],
+    ["Helium","He"],
+    ["Lithium","Li"],
+    ["Beryllium","Be"],
+    ["Boron","B"],
+    ["Carbon","C"],
+    ["Nitrogen","N"],
+    ["Oxygen","O"],
+    ["Fluorine","F"],
+    ["Neon","Ne"],
+    ["Sodium","Na"],
+    ["Magnesium","Mg"],
+    ["Aluminium","Al"],
+    ["Silicon","Si"],
+    ["Phosphorus","P"],
+    ["Sulfur","S"],
+    ["Chlorine","Cl"],
+    ["Argon","Ar"],
+    ["Potassium","K"],
+    ["Calcium","Ca"],
+    ["Scandium","Sc"],
+    ["Titanium","Ti"],
+    ["Vanadium","V"],
+    ["Chromium","Cr"],
+    ["Manganese","Mn"],
+    ["Iron","Fe"],
+    ["Cobalt","Co"],
+    ["Nickel","Ni"],
+    ["Copper","Cu"],
+    ["Zinc","Zn"],
+    ["Gallium","Ga"],
+    ["Germanium","Ge"],
+    ["Arsenic","As"],
+    ["Selenium","Se"],
+    ["Bromine","Br"],
+    ["Krypton","Kr"],
+    ["Rubidium","Rb"],
+    ["Strontium","Sr"],
+    ["Yttrium","Y"],
+    ["Zirconium","Zr"],
+    ["Niobium","Nb"],
+    ["Molybdenum","Mo"],
+    ["Technetium","Tc"],
+    ["Ruthenium","Ru"],
+    ["Rhodium","Rh"],
+    ["Palladium","Pd"],
+    ["Silver","Ag"],
+    ["Cadmium","Cd"],
+    ["Indium","In"],
+    ["Tin","Sn"],
+    ["Antimony","Sb"],
+    ["Tellurium","Te"],
+    ["Iodine","I"],
+    ["Xenon","Xe"],
+    ["Cesium","Cs"],
+    ["Barium","Ba"],
+    ["Lanthanum","La"],
+    ["Cerium","Ce"],
+    ["Praseodymium","Pr"],
+    ["Neodymium","Nd"],
+    ["Promethium","Pm"],
+    ["Samarium","Sm"],
+    ["Europium","Eu"],
+    ["Gadolinium","Gd"],
+    ["Terbium","Tb"],
+    ["Dysprosium","Dy"],
+    ["Holmium","Ho"],
+    ["Erbium","Er"],
+    ["Thulium","Tm"],
+    ["Ytterbium","Yb"],
+    ["Lutetium","Lu"],
+    ["Hafnium","Hf"],
+    ["Tantalum","Ta"],
+    ["Tungsten","W"],
+    ["Rhenium","Re"],
+    ["Osmium","Os"],
+    ["Iridium","Ir"],
+    ["Platinum","Pt"],
+    ["Gold","Au"],
+    ["Mercury","Hg"],
+    ["Thallium","Tl"],
+    ["Lead","Pb"],
+    ["Bismuth","Bi"],
+    ["Polonium","Po"],
+    ["Astatine","At"],
+    ["Radon","Rn"],
+    ["Francium","Fr"],
+    ["Radium","Ra"],
+    ["Actinium","Ac"],
+    ["Thorium","Th"],
+    ["Protactinium","Pa"],
+    ["Uranium","U"],
+    ["Neptunium","Np"],
+    ["Plutonium","Pu"],
+    ["Americium","Am"],
+    ["Curium","Cm"],
+    ["Berkelium","Bk"],
+    ["Californium","Cf"],
+    ["Einsteinium","Es"],
+    ["Fermium","Fm"],
+    ["Mendelevium","Md"],
+    ["Nobelium","No"],
+    ["Lawrencium","Lr"],
+    ["Rutherfordium","Rf"],
+    ["Dubnium","Db"],
+    ["Seaborgium","Sg"],
+    ["Bohrium","Bh"],
+    ["Hassium","Hs"],
+    ["Meitnerium","Mt"],
+    ["Darmstadtium","Ds"],
+    ["Roentgenium","Rg"],
+    ["Copernicium","Cn"],
+    ["Nihonium","Nh"],
+    ["Flerovium","Fl"],
+    ["Moscovium","Mc"],
+    ["Livermorium","Lv"],
+    ["Tennessine","Ts"],
+    ["Oganesson","Og"]
+];
+
+
+/* =========================================================
+   KNOWN ISOTOPES
+   ---------------------------------------------------------
+   This is an offline nuclear-isotope reference.
+   Stable/common experimentally established isotopes are
+   included here. Unknown combinations are treated as
+   hypothetical rather than being presented as real.
+   ========================================================= */
+
+const knownIsotopes = {
+
+1:[1,2,3],
+2:[3,4,5,6],
+3:[4,5,6,7,8,9,11],
+4:[6,7,8,9,10,11,12,14],
+5:[8,9,10,11,12,13,14,15,16,17,19],
+6:[10,11,12,13,14,15,16,17,18,19,20,21,22],
+7:[10,11,12,13,14,15,16,17,18,19,20,21,22],
+8:[12,13,14,15,16,17,18,19,20,21,22,23,24],
+9:[14,15,16,17,18,19,20,21,22,23,24,25,26],
+10:[16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34],
+11:[18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33],
+12:[19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36],
+13:[22,23,24,25,26,27,28,29,30,31,32,33,34,35,36],
+14:[22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],
+15:[25,26,27,28,29,30,31,32,33,34,35,36,37],
+16:[27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42],
+17:[28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44],
+18:[30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46],
+19:[32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48],
+20:[34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52],
+21:[36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54],
+22:[38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56],
+23:[40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60],
+24:[42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62],
+25:[44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65],
+26:[45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70],
+27:[48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72],
+28:[48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74],
+29:[55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71],
+30:[54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80],
+31:[60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87],
+32:[58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88],
+33:[60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90],
+34:[65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92],
+35:[67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94],
+36:[69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96],
+37:[71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98],
+38:[73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100],
+39:[76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102],
+40:[78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104],
+41:[81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107],
+42:[83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110],
+43:[85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111],
+44:[87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113],
+45:[89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115],
+46:[91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116],
+47:[93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118],
+48:[95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120],
+49:[97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122],
+50:[99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124],
+51:[101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126],
+52:[104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128],
+53:[106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130],
+54:[108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136],
+55:[112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139],
+56:[114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144],
+57:[117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148],
+58:[119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150],
+59:[121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152],
+60:[124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156],
+61:[126,127,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157],
+62:[128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159],
+63:[130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,162],
+64:[133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,162,163,164],
+65:[135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166],
+66:[137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168],
+67:[140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,169,170],
+68:[142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,169,170,171],
+69:[144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,169,170,171,172,173],
+70:[146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176],
+71:[149,150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180],
+72:[151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182],
+73:[153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184],
+74:[158,159,160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186],
+75:[160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188],
+76:[162,163,164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,190],
+77:[164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,190,191,192],
+78:[166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,190,191,192,193,194],
+79:[169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,190,191,192,193,194,195,196,197,198],
+80:[171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,190,191,192,193,194,195,196,197,198,199,200,201],
+81:[173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,190,191,192,193,194,195,196,197,198,199,200,201,202,203],
+82:[176,177,178,179,180,181,182,183,184,185,186,187,188,189,190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,205,206,207],
+83:[184,185,186,187,188,189,190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213],
+84:[188,189,190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,217,218,219],
+85:[191,192,193,194,195,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,217,218,219,220,221,222],
+86:[193,194,195,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,217,218,219,220,221,222,223],
+87:[200,201,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,217,218,219,220,221,222,223,224,225],
+88:[202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,217,218,219,220,221,222,223,224,225,226,227],
+89:[206,207,208,209,210,211,212,213,214,215,216,217,218,219,220,221,222,223,224,225,226,227,228,229],
+90:[208,209,210,211,212,213,214,215,216,217,218,219,220,221,222,223,224,225,226,227,228,229,230,231,232],
+91:[211,212,213,214,215,216,217,218,219,220,221,222,223,224,225,226,227,228,229,230,231,232,233,234],
+92:[215,216,217,218,219,220,221,222,223,224,225,226,227,228,229,230,231,232,233,234,235,236,237,238,239,240,241],
+93:[225,226,227,228,229,230,231,232,233,234,235,236,237,238,239,240,241,242,243,244],
+94:[228,229,230,231,232,233,234,235,236,237,238,239,240,241,242,243,244,245,246],
+95:[231,232,233,234,235,236,237,238,239,240,241,242,243,244,245,246,247,248],
+96:[233,234,235,236,237,238,239,240,241,242,243,244,245,246,247,248,249,250],
+97:[235,236,237,238,239,240,241,242,243,244,245,246,247,248,249,250,251],
+98:[237,238,239,240,241,242,243,244,245,246,247,248,249,250,251,252,253],
+99:[240,241,242,243,244,245,246,247,248,249,250,251,252,253,254,255,256],
+100:[242,243,244,245,246,247,248,249,250,251,252,253,254,255,256,257,258],
+101:[245,246,247,248,249,250,251,252,253,254,255,256,257,258,259,260],
+102:[248,249,250,251,252,253,254,255,256,257,258,259,260,261,262],
+103:[251,252,253,254,255,256,257,258,259,260,261,262,263],
+104:[253,254,255,256,257,258,259,260,261,262,263,264,265],
+105:[255,256,257,258,259,260,261,262,263,264,265,266],
+106:[258,259,260,261,262,263,264,265,266,267,268],
+107:[260,261,262,263,264,265,266,267,268,269],
+108:[263,264,265,266,267,268,269,270,271,272],
+109:[265,266,267,268,269,270,271,272],
+110:[267,268,269,270,271,272,273,274],
+111:[272,273,274,275],
+112:[276,277,278,279,280],
+113:[278,279,280,281,282],
+114:[285,286,287,288],
+115:[287,288,289,290],
+116:[290,291,292,293],
+117:[292,293,294],
+118:[294,295,296]
+};
+
+
+/* =========================================================
+   COMMON / ESTABLISHED MONATOMIC ION CHARGES
+   ---------------------------------------------------------
+   Neutral charge 0 is always allowed for a known isotope.
+   This table prevents the UI from presenting arbitrary
+   electron counts as established monatomic ions.
+   ========================================================= */
+
+const knownIonCharges = {
+
+1:[-1,0,1],
+2:[0,1],
+3:[1,0],
+4:[2,0],
+5:[3,0,-3],
+6:[-4,-3,-2,-1,0,1,2,3,4],
+7:[-3,-2,-1,0,1,2,3,4,5],
+8:[-2,-1,0,1,2],
+9:[-1,0,1],
+10:[0,1],
+11:[1,0],
+12:[2,0],
+13:[3,0],
+14:[-4,-3,-2,-1,0,1,2,3,4],
+15:[-3,0,3,5],
+16:[-2,-1,0,1,2,4,6],
+17:[-1,0,1,3,5,7],
+18:[0,1],
+19:[1,0],
+20:[2,0],
+21:[3,0],
+22:[2,3,4,0],
+23:[2,3,4,5,0],
+24:[2,3,6,0],
+25:[2,3,4,7,0],
+26:[2,3,0],
+27:[2,3,0],
+28:[2,3,0],
+29:[1,2,0],
+30:[2,0],
+31:[1,3,0],
+32:[2,4,0],
+33:[-3,3,5,0],
+34:[-2,4,6,0],
+35:[-1,1,3,5,7,0],
+36:[0,1,2],
+37:[1,0],
+38:[2,0],
+39:[3,0],
+40:[4,0],
+41:[3,5,0],
+42:[2,3,4,5,6,0],
+43:[4,7,0],
+44:[2,3,4,6,8,0],
+45:[3,0],
+46:[2,4,0],
+47:[1,0],
+48:[2,0],
+49:[1,3,0],
+50:[2,4,0],
+51:[3,5,0],
+52:[-2,4,6,0],
+53:[-1,1,3,5,7,0],
+54:[0,1,2],
+55:[1,0],
+56:[2,0],
+57:[3,0],
+58:[3,4,0],
+59:[3,0],
+60:[3,0],
+61:[3,0],
+62:[2,3,0],
+63:[2,3,0],
+64:[3,0],
+65:[3,4,0],
+66:[3,0],
+67:[3,0],
+68:[3,0],
+69:[3,0],
+70:[2,3,0],
+71:[3,0],
+72:[4,0],
+73:[5,0],
+74:[6,0],
+75:[4,6,7,0],
+76:[4,6,8,0],
+77:[3,4,6,0],
+78:[2,4,0],
+79:[1,3,0],
+80:[1,2,0],
+81:[1,3,0],
+82:[2,4,0],
+83:[3,5,0],
+84:[2,4,6,0],
+85:[-1,1,3,5,7,0],
+86:[0,2],
+87:[1,0],
+88:[2,0],
+89:[3,0],
+90:[4,0],
+91:[4,5,0],
+92:[3,4,5,6,0],
+93:[3,4,5,6,0],
+94:[3,4,5,6,0],
+95:[3,4,5,6,0],
+96:[3,4,0],
+97:[3,4,0],
+98:[3,4,0],
+99:[3,0],
+100:[3,0],
+101:[2,3,0],
+102:[2,3,0],
+103:[3,0],
+104:[4,0],
+105:[5,0],
+106:[6,0],
+107:[7,0],
+108:[8,0],
+109:[1,3,0],
+110:[2,0],
+111:[1,3,0],
+112:[2,0],
+113:[1,3,0],
+114:[2,4,0],
+115:[1,3,0],
+116:[2,4,0],
+117:[-1,1,3,5,7,0],
+118:[0,1]
+};
+
+
+/* =========================================================
+   STATE
+   ========================================================= */
+
+const state = {
+    protons:0,
+    neutrons:0,
+    electrons:0
+};
+
+
+/* =========================================================
+   DOM
+   ========================================================= */
+
+const canvas = document.getElementById("atomCanvas");
+const ctx = canvas.getContext("2d");
+
+const realityBox = document.getElementById("realityBox");
+const realityTitle = document.getElementById("realityTitle");
+const realityMessage = document.getElementById("realityMessage");
+const invalidBanner = document.getElementById("invalidBanner");
+
+const elementValue = document.getElementById("elementValue");
+const symbolValue = document.getElementById("symbolValue");
+const atomicNumberValue = document.getElementById("atomicNumberValue");
+const massNumberValue = document.getElementById("massNumberValue");
+const chargeValue = document.getElementById("chargeValue");
+const electronValue = document.getElementById("electronValue");
+const arrangementValue = document.getElementById("arrangementValue");
+const configurationValue = document.getElementById("configurationValue");
+
+const protonCount = document.getElementById("protonCount");
+const neutronCount = document.getElementById("neutronCount");
+const electronCount = document.getElementById("electronCount");
+
+
+/* =========================================================
+   CAMERA
+   ========================================================= */
+
+const camera = {
+    rotX:-0.25,
+    rotY:0.45,
+    panX:0,
+    panY:0,
+    zoom:1
+};
+
+let mouse = {
+    x:0,
+    y:0,
+    down:false,
+    button:0
+};
+
+
+/* =========================================================
+   HELPERS
+   ========================================================= */
+
+function clamp(value,min,max){
+    return Math.max(min,Math.min(max,value));
+}
+
+function setValue(el,value){
+    el.textContent = value;
+
+    if(value === "—"){
+        el.classList.add("blank");
+    }else{
+        el.classList.remove("blank");
+    }
+}
+
+
+/* =========================================================
+   ELECTRON CONFIGURATION
+   ========================================================= */
+
+const orbitals = [
+    ["1s",2],
+    ["2s",2],
+    ["2p",6],
+    ["3s",2],
+    ["3p",6],
+    ["4s",2],
+    ["3d",10],
+    ["4p",6],
+    ["5s",2],
+    ["4d",10],
+    ["5p",6],
+    ["6s",2],
+    ["4f",14],
+    ["5d",10],
+    ["6p",6],
+    ["7s",2],
+    ["5f",14],
+    ["6d",10],
+    ["7p",6]
+];
+
+function electronConfiguration(n){
+
+    if(n < 0 || n > 118){
+        return null;
+    }
+
+    let remaining = n;
+    const result = [];
+
+    for(const orbital of orbitals){
+
+        if(remaining <= 0){
+            break;
+        }
+
+        const amount = Math.min(remaining,orbital[1]);
+
+        result.push(
+            orbital[0] + " " + amount
+        );
+
+        remaining -= amount;
+    }
+
+    /*
+      Ground-state exceptions commonly represented for
+      neutral atoms.
+    */
+
+    const exceptions = {
+        24:["[Ar]","3d 5","4s 1"],
+        29:["[Ar]","3d 10","4s 1"],
+        41:["[Kr]","4d 4","5s 1"],
+        42:["[Kr]","4d 5","5s 1"],
+        44:["[Kr]","4d 7","5s 1"],
+        45:["[Kr]","4d 8","5s 1"],
+        46:["[Kr]","4d 10"],
+        47:["[Kr]","4d 10","5s 1"],
+        78:["[Xe]","4f 14","5d 9","6s 1"],
+        79:["[Xe]","4f 14","5d 10","6s 1"]
+    };
+
+    if(exceptions[n]){
+        return exceptions[n].join(" ");
+    }
+
+    return result.join("  ");
+}
+
+
+/* =========================================================
+   SHELL ARRANGEMENT
+   ========================================================= */
+
+function shellArrangement(n){
+
+    if(n < 0 || n > 118){
+        return null;
+    }
+
+    const capacities = [2,8,18,32,32,18,8];
+
+    let remaining = n;
+    const shells = [];
+
+    for(let i=0;i<capacities.length;i++){
+
+        const amount = Math.min(
+            remaining,
+            capacities[i]
+        );
+
+        shells.push(amount);
+        remaining -= amount;
+
+        if(remaining <= 0){
+            break;
+        }
+    }
+
+    return shells.join(".");
+}
+
+
+/* =========================================================
+   REALITY CHECK
+   =========================================================
+
+   IMPORTANT:
+
+   The builder never calls this function to block anything.
+
+   It ONLY decides what should be displayed.
+   ========================================================= */
+
+function getRealityStatus(){
+
+    const Z = state.protons;
+    const N = state.neutrons;
+    const E = state.electrons;
+    const A = Z + N;
+    const charge = Z - E;
+
+    if(Z < 1){
+        return {
+            valid:false,
+            reason:"empty"
+        };
+    }
+
+    if(Z > 118){
+        return {
+            valid:false,
+            reason:"element"
+        };
+    }
+
+    const isotopeList = knownIsotopes[Z];
+
+    if(!isotopeList || !isotopeList.includes(A)){
+        return {
+            valid:false,
+            reason:"isotope"
+        };
+    }
+
+    /*
+      If the atom is neutral, it is automatically a legitimate
+      atomic configuration for the known isotope.
+    */
+
+    if(charge === 0){
+        return {
+            valid:true,
+            reason:"real"
+        };
+    }
+
+    const charges = knownIonCharges[Z] || [];
+
+    if(!charges.includes(charge)){
+        return {
+            valid:false,
+            reason:"ion"
+        };
+    }
+
+    return {
+        valid:true,
+        reason:"real"
+    };
+}
+
+
+/* =========================================================
+   UPDATE UI
+   ========================================================= */
+
+function updateUI(){
+
+    protonCount.textContent = state.protons;
+    neutronCount.textContent = state.neutrons;
+    electronCount.textContent = state.electrons;
+
+    const Z = state.protons;
+    const N = state.neutrons;
+    const E = state.electrons;
+
+    const status = getRealityStatus();
+
+    /*
+      EMPTY
+    */
+
+    if(status.reason === "empty"){
+
+        realityBox.className = "reality";
+
+        realityTitle.textContent = "NO ATOM BUILT";
+
+        realityMessage.textContent =
+            "Add protons, neutrons, or electrons to begin.";
+
+        invalidBanner.classList.remove("show");
+
+        clearResults();
+
+        return;
+    }
+
+
+    /*
+      INVALID ELEMENT
+    */
+
+    if(status.reason === "element"){
+
+        realityBox.className = "reality invalid";
+
+        realityTitle.textContent =
+            "NOT A KNOWN ELEMENT";
+
+        realityMessage.textContent =
+            "More than 118 protons is outside the currently known elements.";
+
+        invalidBanner.classList.add("show");
+
+        clearResults();
+
+        return;
+    }
+
+
+    /*
+      INVALID ISOTOPE
+    */
+
+    if(status.reason === "isotope"){
+
+        realityBox.className = "reality invalid";
+
+        realityTitle.textContent =
+            "NOT A KNOWN ATOMIC CONFIGURATION";
+
+        realityMessage.textContent =
+            "This proton + neutron combination is not in the known isotope reference.";
+
+        invalidBanner.classList.add("show");
+
+        clearResults();
+
+        return;
+    }
+
+
+    /*
+      INVALID ION
+    */
+
+    if(status.reason === "ion"){
+
+        realityBox.className = "reality invalid";
+
+        realityTitle.textContent =
+            "NOT A KNOWN ATOMIC CONFIGURATION";
+
+        realityMessage.textContent =
+            "This electron count does not correspond to an established monatomic ion for this isotope.";
+
+        invalidBanner.classList.add("show");
+
+        clearResults();
+
+        return;
+    }
+
+
+    /*
+      VALID REAL ATOM / ION
+    */
+
+    realityBox.className = "reality valid";
+
+    realityTitle.textContent =
+        "REAL ATOMIC CONFIGURATION";
+
+    realityMessage.textContent =
+        "This combination corresponds to a known atomic configuration.";
+
+    invalidBanner.classList.remove("show");
+
+    const element = elements[Z - 1];
+
+    const charge = Z - E;
+    const A = Z + N;
+
+    setValue(elementValue,element[0]);
+    setValue(symbolValue,element[1]);
+    setValue(atomicNumberValue,String(Z));
+    setValue(massNumberValue,String(A));
+
+    let chargeText;
+
+    if(charge === 0){
+        chargeText = "0";
+    }else if(charge > 0){
+        chargeText = "+" + charge;
+    }else{
+        chargeText = String(charge);
+    }
+
+    setValue(chargeValue,chargeText);
+    setValue(electronValue,String(E));
+
+    const arrangement = shellArrangement(E);
+
+    setValue(
+        arrangementValue,
+        arrangement || "—"
+    );
+
+    const configuration = electronConfiguration(E);
+
+    setValue(
+        configurationValue,
+        configuration || "—"
+    );
+}
+
+
+function clearResults(){
+
+    setValue(elementValue,"—");
+    setValue(symbolValue,"—");
+    setValue(atomicNumberValue,"—");
+    setValue(massNumberValue,"—");
+    setValue(chargeValue,"—");
+    setValue(electronValue,"—");
+    setValue(arrangementValue,"—");
+    setValue(configurationValue,"—");
+}
+
+
+/* =========================================================
+   PARTICLE MODIFICATION
+   ---------------------------------------------------------
+   THERE IS INTENTIONALLY NO REALITY CHECK HERE.
+   ========================================================= */
+
+function addProton(){
+    state.protons++;
+    updateUI();
+}
+
+function removeProton(){
+    if(state.protons > 0){
+        state.protons--;
+        updateUI();
+    }
+}
+
+function addNeutron(){
+    state.neutrons++;
+    updateUI();
+}
+
+function removeNeutron(){
+    if(state.neutrons > 0){
+        state.neutrons--;
+        updateUI();
+    }
+}
+
+function addElectron(){
+    state.electrons++;
+    updateUI();
+}
+
+function removeElectron(){
+    if(state.electrons > 0){
+        state.electrons--;
+        updateUI();
+    }
+}
+
+
+/* =========================================================
+   BUTTON EVENTS
+   ========================================================= */
+
+document.getElementById("plusProton")
+    .addEventListener("click",addProton);
+
+document.getElementById("minusProton")
+    .addEventListener("click",removeProton);
+
+document.getElementById("plusNeutron")
+    .addEventListener("click",addNeutron);
+
+document.getElementById("minusNeutron")
+    .addEventListener("click",removeNeutron);
+
+document.getElementById("plusElectron")
+    .addEventListener("click",addElectron);
+
+document.getElementById("minusElectron")
+    .addEventListener("click",removeElectron);
+
+
+document.getElementById("resetButton")
+    .addEventListener("click",()=>{
+
+        state.protons = 0;
+        state.neutrons = 0;
+        state.electrons = 0;
+
+        updateUI();
+    });
+
+
+document.getElementById("neutralButton")
+    .addEventListener("click",()=>{
+
+        /*
+          Neutral atom means:
+          electrons = protons.
+
+          It does NOT alter protons or neutrons.
+        */
+
+        state.electrons = state.protons;
+
+        updateUI();
+    });
+
+
+/* =========================================================
+   DRAG / DROP
+   ========================================================= */
+
+document.querySelectorAll(".drag-particle")
+.forEach(item=>{
+
+    item.addEventListener("dragstart",event=>{
+
+        event.dataTransfer.setData(
+            "particle",
+            item.dataset.particle
+        );
+
+        event.dataTransfer.effectAllowed = "copy";
+    });
+
+});
+
+
+canvas.addEventListener("dragover",event=>{
+    event.preventDefault();
+});
+
+canvas.addEventListener("drop",event=>{
+
+    event.preventDefault();
+
+    const particle =
+        event.dataTransfer.getData("particle");
+
+    if(particle === "proton"){
+        addProton();
+    }
+
+    if(particle === "neutron"){
+        addNeutron();
+    }
+
+    if(particle === "electron"){
+        addElectron();
+    }
+
+});
+
+
+/* =========================================================
+   CANVAS RESIZE
+   ========================================================= */
+
+function resizeCanvas(){
+
+    const dpr = Math.min(
+        window.devicePixelRatio || 1,
+        2
+    );
+
+    canvas.width =
+        Math.floor(window.innerWidth * dpr);
+
+    canvas.height =
+        Math.floor(window.innerHeight * dpr);
+
+    ctx.setTransform(
+        dpr,0,0,dpr,0,0
+    );
+}
+
+window.addEventListener("resize",resizeCanvas);
+
+resizeCanvas();
+
+
+/* =========================================================
+   3D MATH
+   ========================================================= */
+
+function rotatePoint(point){
+
+    let {x,y,z} = point;
+
+    const cosY = Math.cos(camera.rotY);
+    const sinY = Math.sin(camera.rotY);
+
+    let x1 = x*cosY - z*sinY;
+    let z1 = x*sinY + z*cosY;
+
+    const cosX = Math.cos(camera.rotX);
+    const sinX = Math.sin(camera.rotX);
+
+    let y1 = y*cosX - z1*sinX;
+    let z2 = y*sinX + z1*cosX;
+
+    return {
+        x:x1,
+        y:y1,
+        z:z2
+    };
+}
+
+
+function project(point){
+
+    const rotated = rotatePoint(point);
+
+    const perspective =
+        1 / (1 + rotated.z * 0.0008);
+
+    return {
+        x:
+            window.innerWidth/2
+            + camera.panX
+            + rotated.x * camera.zoom * perspective,
+
+        y:
+            window.innerHeight/2
+            + camera.panY
+            + rotated.y * camera.zoom * perspective,
+
+        z:rotated.z
+    };
+}
+
+
+/* =========================================================
+   DRAW HELPERS
+   ========================================================= */
+
+function glowCircle(x,y,r,color,alpha){
+
+    const gradient =
+        ctx.createRadialGradient(
+            x,y,0,
+            x,y,r
+        );
+
+    gradient.addColorStop(
+        0,
+        color.replace("ALPHA",String(alpha))
+    );
+
+    gradient.addColorStop(
+        1,
+        color.replace("ALPHA","0")
+    );
+
+    ctx.fillStyle = gradient;
+
+    ctx.beginPath();
+    ctx.arc(x,y,r,0,Math.PI*2);
+    ctx.fill();
+}
+
+
+function drawSphere(x,y,r,baseColor,glowColor){
+
+    const gradient =
+        ctx.createRadialGradient(
+            x-r*.35,
+            y-r*.42,
+            r*.08,
+            x,
+            y,
+            r
+        );
+
+    gradient.addColorStop(
+        0,
+        "rgba(255,255,255,.95)"
+    );
+
+    gradient.addColorStop(
+        .18,
+        baseColor
+    );
+
+    gradient.addColorStop(
+        .72,
+        baseColor
+    );
+
+    gradient.addColorStop(
+        1,
+        "rgba(0,0,0,.82)"
+    );
+
+    ctx.fillStyle = gradient;
+
+    ctx.beginPath();
+    ctx.arc(x,y,r,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.strokeStyle =
+        "rgba(255,255,255,.18)";
+
+    ctx.lineWidth = .7;
+
+    ctx.stroke();
+
+    if(glowColor){
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = glowColor;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+    }
+}
+
+
+/* =========================================================
+   SHELL DRAWING
+   ========================================================= */
+
+function drawShell(radius,index){
+
+    const centerX =
+        window.innerWidth/2 + camera.panX;
+
+    const centerY =
+        window.innerHeight/2 + camera.panY;
+
+    const shellRadius =
+        radius * camera.zoom;
+
+    ctx.save();
+
+    ctx.translate(centerX,centerY);
+
+    /*
+      Slight 3D-looking shell tilt.
+    */
+
+    const tilt =
+        .62 + index*.035;
+
+    ctx.scale(1,tilt);
+
+    ctx.beginPath();
+
+    ctx.ellipse(
+        0,
+        0,
+        shellRadius,
+        shellRadius,
+        camera.rotY * .15,
+        0,
+        Math.PI*2
+    );
+
+    ctx.strokeStyle =
+        "rgba(255,255,255,.075)";
+
+    ctx.lineWidth = 1;
+
+    ctx.stroke();
+
+    ctx.restore();
+}
+
+
+/* =========================================================
+   PARTICLE POSITIONS
+   ========================================================= */
+
+function nucleusPositions(count,spread){
+
+    const points = [];
+
+    if(count <= 0){
+        return points;
+    }
+
+    /*
+      Fibonacci sphere distribution gives a much cleaner
+      nucleus than simply stacking particles in 2D.
+    */
+
+    const golden =
+        Math.PI * (3 - Math.sqrt(5));
+
+    for(let i=0;i<count;i++){
+
+        const y =
+            count === 1
+            ? 0
+            : 1 - (i/(count-1))*2;
+
+        const radius =
+            Math.sqrt(
+                Math.max(0,1-y*y)
+            );
+
+        const theta =
+            golden*i;
+
+        const x =
+            Math.cos(theta)*radius;
+
+        const z =
+            Math.sin(theta)*radius;
+
+        const scale =
+            spread * (
+                .55 +
+                .45 *
+                Math.pow(
+                    (i%7)/6,
+                    .35
+                )
+            );
+
+        points.push({
+            x:x*scale,
+            y:y*scale,
+            z:z*scale
+        });
+    }
+
+    return points;
+}
+
+
+function electronPosition(shellIndex,electronIndex,count){
+
+    const shellRadius =
+        145 +
+        shellIndex * 48;
+
+    /*
+      Evenly spread electrons around the shell,
+      with slight deterministic phase offsets so multiple
+      shells do not visually overlap.
+    */
+
+    const angle =
+        (electronIndex / Math.max(count,1))
+        * Math.PI * 2
+        + shellIndex * .71;
+
+    const vertical =
+        Math.sin(
+            angle * 2.0
+            + shellIndex
+        ) * 0.16;
+
+    return {
+        x:
+            Math.cos(angle) *
+            shellRadius,
+
+        y:
+            Math.sin(angle) *
+            shellRadius *
+            vertical,
+
+        z:
+            Math.sin(angle) *
+            shellRadius * .88
+    };
+}
+
+
+/* =========================================================
+   MAIN RENDER
+   ========================================================= */
+
+function render(){
+
+    ctx.clearRect(
+        0,
+        0,
+        window.innerWidth,
+        window.innerHeight
+    );
+
+
+    /*
+      Background subtle radial light
+    */
+
+    const bg =
+        ctx.createRadialGradient(
+            window.innerWidth*.52,
+            window.innerHeight*.48,
+            0,
+            window.innerWidth*.52,
+            window.innerHeight*.48,
+            Math.max(
+                window.innerWidth,
+                window.innerHeight
+            )*.72
+        );
+
+    bg.addColorStop(
+        0,
+        "rgba(25,30,38,.28)"
+    );
+
+    bg.addColorStop(
+        1,
+        "rgba(0,0,0,0)"
+    );
+
+    ctx.fillStyle = bg;
+
+    ctx.fillRect(
+        0,
+        0,
+        window.innerWidth,
+        window.innerHeight
+    );
+
+
+    /*
+      Shells
+    */
+
+    const maxShells =
+        Math.max(
+            1,
+            Math.min(
+                7,
+                Math.ceil(
+                    Math.max(
+                        state.electrons,
+                        1
+                    ) / 2
+                )
+            )
+        );
+
+    for(let i=0;i<maxShells;i++){
+
+        drawShell(
+            145 + i*48,
+            i
+        );
+    }
+
+
+    /*
+      Nucleus glow
+    */
+
+    const nucleusSize =
+        40 +
+        Math.sqrt(
+            state.protons +
+            state.neutrons
+        ) * 7;
+
+    const centerX =
+        window.innerWidth/2 +
+        camera.panX;
+
+    const centerY =
+        window.innerHeight/2 +
+        camera.panY;
+
+    glowCircle(
+        centerX,
+        centerY,
+        nucleusSize*2.5,
+        "rgba(255,80,100,ALPHA)",
+        .055
+    );
+
+
+    /*
+      Nucleus particles
+    */
+
+    const totalNucleus =
+        state.protons +
+        state.neutrons;
+
+    const protonPoints =
+        nucleusPositions(
+            state.protons,
+            nucleusSize
+        );
+
+    const neutronPoints =
+        nucleusPositions(
+            state.neutrons,
+            nucleusSize
+        );
+
+
+    const particles = [];
+
+    protonPoints.forEach(point=>{
+        particles.push({
+            point,
+            type:"proton"
+        });
+    });
+
+    neutronPoints.forEach(point=>{
+        particles.push({
+            point,
+            type:"neutron"
+        });
+    });
+
+
+    /*
+      Sort particles by depth so the nucleus has a
+      genuine 3D-looking overlap.
+    */
+
+    particles.sort(
+        (a,b)=>
+            rotatePoint(a.point).z -
+            rotatePoint(b.point).z
+    );
+
+
+    const particleRadius =
+        clamp(
+            6.5 -
+            Math.log10(
+                Math.max(totalNucleus,1)
+            ),
+            2.6,
+            6.5
+        );
+
+
+    for(const item of particles){
+
+        const p =
+            project(item.point);
+
+        if(item.type === "proton"){
+
+            drawSphere(
+                p.x,
+                p.y,
+                particleRadius,
+                "#ff4d5e",
+                "#ff4d5e"
+            );
+
+        }else{
+
+            drawSphere(
+                p.x,
+                p.y,
+                particleRadius,
+                "#8e9aa7",
+                "#8e9aa7"
+            );
+        }
+    }
+
+
+    /*
+      Electrons
+
+      Group electrons into shells using the normal
+      shell-capacity model.
+    */
+
+    let remaining =
+        state.electrons;
+
+    let electronGlobalIndex = 0;
+
+    for(
+        let shellIndex=0;
+        shellIndex<7 && remaining>0;
+        shellIndex++
+    ){
+
+        const capacity =
+            [2,8,18,32,32,18,8][shellIndex];
+
+        const count =
+            Math.min(
+                remaining,
+                capacity
+            );
+
+        const electronPoints = [];
+
+        for(let i=0;i<count;i++){
+
+            const point =
+                electronPosition(
+                    shellIndex,
+                    i,
+                    count
+                );
+
+            electronPoints.push({
+                point,
+                index:electronGlobalIndex++
+            });
+        }
+
+        /*
+          Depth sorting
+        */
+
+        electronPoints.sort(
+            (a,b)=>
+                rotatePoint(a.point).z -
+                rotatePoint(b.point).z
+        );
+
+        for(const item of electronPoints){
+
+            const p =
+                project(item.point);
+
+            glowCircle(
+                p.x,
+                p.y,
+                20,
+                "rgba(66,200,255,ALPHA)",
+                .075
+            );
+
+            drawSphere(
+                p.x,
+                p.y,
+                5.2,
+                "#42c8ff",
+                "#42c8ff"
+            );
+        }
+
+        remaining -= count;
+    }
+
+
+    /*
+      Empty-state nucleus marker
+    */
+
+    if(totalNucleus === 0){
+
+        ctx.beginPath();
+
+        ctx.arc(
+            centerX,
+            centerY,
+            18,
+            0,
+            Math.PI*2
+        );
+
+        ctx.strokeStyle =
+            "rgba(255,255,255,.10)";
+
+        ctx.lineWidth = 1;
+
+        ctx.stroke();
+
+        ctx.fillStyle =
+            "rgba(255,255,255,.22)";
+
+        ctx.font =
+            "11px Inter, system-ui, sans-serif";
+
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        ctx.fillText(
+            "BUILD",
+            centerX,
+            centerY
+        );
+    }
+
+
+    requestAnimationFrame(render);
+}
+
+
+/* =========================================================
+   CAMERA CONTROLS
+   ========================================================= */
+
+canvas.addEventListener("mousedown",event=>{
+
+    /*
+      Do not interfere with browser context menu until
+      RMB interaction is actually used.
+    */
+
+    mouse.down = true;
+    mouse.button = event.button;
+    mouse.x = event.clientX;
+    mouse.y = event.clientY;
+
+    canvas.classList.add("dragging");
+});
+
+
+window.addEventListener("mouseup",()=>{
+
+    mouse.down = false;
+
+    canvas.classList.remove("dragging");
+});
+
+
+window.addEventListener("mousemove",event=>{
+
+    if(!mouse.down){
+        return;
+    }
+
+    const dx =
+        event.clientX - mouse.x;
+
+    const dy =
+        event.clientY - mouse.y;
+
+    mouse.x = event.clientX;
+    mouse.y = event.clientY;
+
+
+    /*
+      Left mouse = rotate
+    */
+
+    if(mouse.button === 0){
+
+        camera.rotY += dx * .008;
+        camera.rotX += dy * .008;
+
+        camera.rotX =
+            clamp(
+                camera.rotX,
+                -1.35,
+                1.35
+            );
+    }
+
+
+    /*
+      Right mouse = pan
+    */
+
+    if(mouse.button === 2){
+
+        camera.panX += dx;
+        camera.panY += dy;
+    }
+
+});
+
+
+canvas.addEventListener(
+    "contextmenu",
+    event=>event.preventDefault()
+);
+
+
+canvas.addEventListener("wheel",event=>{
+
+    event.preventDefault();
+
+    const multiplier =
+        event.deltaY < 0
+        ? 1.10
+        : 0.90;
+
+    camera.zoom *= multiplier;
+
+    camera.zoom =
+        clamp(
+            camera.zoom,
+            .35,
+            2.8
+        );
+
+},{passive:false});
+
+
+/* =========================================================
+   KEYBOARD SHORTCUTS
+   ========================================================= */
+
+window.addEventListener("keydown",event=>{
+
+    if(event.key === "r"){
+        camera.rotX = -.25;
+        camera.rotY = .45;
+        camera.panX = 0;
+        camera.panY = 0;
+        camera.zoom = 1;
+    }
+
+    if(event.key === "Escape"){
+
+        state.protons = 0;
+        state.neutrons = 0;
+        state.electrons = 0;
+
+        updateUI();
+    }
+});
+
+
+/* =========================================================
+   INITIALIZE
+   ========================================================= */
+
+updateUI();
+render();
+
+</script>
+
+</body>
+</html>
