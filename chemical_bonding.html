@@ -1,0 +1,883 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Orbital overlap</title>
+
+<style>
+:root{
+  --bg:#050505;
+  --panel:rgba(17,17,17,.9);
+  --line:rgba(255,255,255,.16);
+  --text:#ededed;
+  --muted:#858585;
+}
+
+*{
+  box-sizing:border-box;
+}
+
+html,
+body{
+  width:100%;
+  height:100%;
+  margin:0;
+  overflow:hidden;
+  background:var(--bg);
+  color:var(--text);
+  font-family:Inter,system-ui,sans-serif;
+}
+
+body{
+  display:block;
+}
+
+.app{
+  width:100%;
+  height:100%;
+  display:grid;
+  grid-template-rows:54px minmax(0,1fr) 112px;
+}
+
+.topbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 22px;
+  border-bottom:1px solid var(--line);
+  background:#070707;
+}
+
+.brand{
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:.18em;
+}
+
+.actions{
+  display:flex;
+  gap:7px;
+}
+
+button{
+  padding:8px 11px;
+  border:1px solid var(--line);
+  border-radius:7px;
+  background:#111;
+  color:#ddd;
+  cursor:pointer;
+}
+
+button:hover{
+  border-color:#888;
+}
+
+.main{
+  position:relative;
+  min-height:0;
+  overflow:hidden;
+}
+
+#scene{
+  width:100%;
+  height:100%;
+  display:block;
+  touch-action:none;
+}
+
+.panel{
+  position:absolute;
+  top:18px;
+  right:18px;
+  width:276px;
+  padding:16px;
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:var(--panel);
+  backdrop-filter:blur(20px);
+}
+
+.section{
+  padding-bottom:15px;
+  margin-bottom:15px;
+  border-bottom:1px solid var(--line);
+}
+
+.section:last-child{
+  padding-bottom:0;
+  margin-bottom:0;
+  border-bottom:0;
+}
+
+.section-title{
+  margin-bottom:10px;
+  color:#aaa;
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:.16em;
+}
+
+.bond-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:6px;
+}
+
+.bond-grid button{
+  font-size:11px;
+}
+
+.bond-grid button.active{
+  color:#050505;
+  background:#eee;
+  border-color:#eee;
+}
+
+.control{
+  margin-top:14px;
+}
+
+.control-head{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:5px;
+  color:#aaa;
+}
+
+.control-head strong{
+  color:#eee;
+  font-weight:400;
+}
+
+input[type=range]{
+  width:100%;
+  accent-color:#ddd;
+}
+
+.toggle{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin:10px 0;
+  color:#aaa;
+}
+
+input[type=checkbox]{
+  accent-color:#ddd;
+}
+
+.note{
+  color:#888;
+  font-size:11px;
+  line-height:1.45;
+}
+
+.legend{
+  position:absolute;
+  left:20px;
+  bottom:20px;
+  color:#777;
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+}
+
+.bottom{
+  display:grid;
+  grid-template-columns:1.1fr 1fr 1fr 1fr;
+  border-top:1px solid var(--line);
+  background:#080808;
+}
+
+.readout{
+  padding:16px 20px;
+  border-right:1px solid var(--line);
+}
+
+.readout:last-child{
+  border-right:0;
+}
+
+.readout-label{
+  color:#777;
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:.14em;
+}
+
+.readout-value{
+  margin-top:8px;
+  font-size:25px;
+  letter-spacing:-.04em;
+}
+
+.unit{
+  color:#777;
+  font-size:11px;
+  margin-left:4px;
+}
+
+.status{
+  margin-top:5px;
+  color:#888;
+}
+
+@media(max-width:720px){
+  .app{
+    grid-template-rows:48px minmax(0,1fr) 138px;
+  }
+
+  .panel{
+    top:10px;
+    right:10px;
+    width:235px;
+    padding:12px;
+  }
+
+  .bottom{
+    grid-template-columns:1fr 1fr;
+  }
+
+  .readout{
+    padding:10px 14px;
+  }
+
+  .readout-value{
+    font-size:20px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+<header class="topbar">
+  <div class="brand">Orbital overlap / sigma and pi bonding</div>
+
+  <div class="actions">
+    <button id="pauseButton">Pause</button>
+    <button id="resetButton">Reset</button>
+  </div>
+</header>
+
+<main class="main">
+  <canvas id="scene"></canvas>
+
+  <aside class="panel">
+
+    <section class="section">
+      <div class="section-title">Bond type</div>
+
+      <div class="bond-grid">
+        <button class="active" data-bond="ss">σ s–s</button>
+        <button data-bond="sp">σ s–p</button>
+        <button data-bond="pp">σ p–p</button>
+        <button data-bond="pi">π p–p</button>
+      </div>
+
+      <div class="control">
+        <div class="control-head">
+          <span>Orbital radius</span>
+          <strong id="radiusValue">1.00×</strong>
+        </div>
+        <input id="radiusSlider" type="range" min="50" max="170" value="100">
+      </div>
+
+      <div class="control">
+        <div class="control-head">
+          <span>Orbital overlap</span>
+          <strong id="overlapValue">60%</strong>
+        </div>
+        <input id="overlapSlider" type="range" min="0" max="100" value="60">
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title">Display</div>
+
+      <label class="toggle">
+        <span>XYZ axes</span>
+        <input id="axisToggle" type="checkbox" checked>
+      </label>
+
+      <label class="toggle">
+        <span>Overlap region</span>
+        <input id="overlapToggle" type="checkbox" checked>
+      </label>
+
+      <label class="toggle">
+        <span>Surface highlights</span>
+        <input id="shineToggle" type="checkbox" checked>
+      </label>
+
+      <label class="toggle">
+        <span>Phase colours</span>
+        <input id="phaseToggle" type="checkbox" checked>
+      </label>
+    </section>
+
+    <section>
+      <div class="section-title">Interpretation</div>
+
+      <div id="description" class="note">
+        Two s orbitals overlap head-on along the internuclear axis.
+        The resulting σ bond is cylindrically symmetric.
+      </div>
+    </section>
+
+  </aside>
+
+  <div class="legend">
+    Drag to rotate · Shift-drag to pan · Scroll to zoom
+  </div>
+</main>
+
+<footer class="bottom">
+
+  <div class="readout">
+    <div class="readout-label">Bond</div>
+    <div class="readout-value" id="bondReadout">σ s–s</div>
+    <div class="status">Head-on overlap</div>
+  </div>
+
+  <div class="readout">
+    <div class="readout-label">Symmetry</div>
+    <div class="readout-value" id="symmetryReadout">Cylindrical</div>
+    <div class="status">Around the bond axis</div>
+  </div>
+
+  <div class="readout">
+    <div class="readout-label">Radius</div>
+    <div class="readout-value" id="radiusReadout">
+      1.00<span class="unit">×</span>
+    </div>
+    <div class="status">Orbital extent</div>
+  </div>
+
+  <div class="readout">
+    <div class="readout-label">Overlap</div>
+    <div class="readout-value" id="overlapReadout">
+      60<span class="unit">%</span>
+    </div>
+    <div class="status">Relative interaction</div>
+  </div>
+
+</footer>
+
+</div>
+
+<script>
+const canvas=document.getElementById("scene");
+const ctx=canvas.getContext("2d");
+
+let width=0;
+let height=0;
+let dpr=1;
+
+let bond="ss";
+let radius=1;
+let overlap=60;
+
+let showAxes=true;
+let showOverlap=true;
+let showShine=true;
+let showPhase=true;
+let paused=false;
+
+let yaw=-.35;
+let pitch=.18;
+let zoom=1;
+let panX=0;
+let panY=0;
+
+let dragging=false;
+let lastX=0;
+let lastY=0;
+let pointerMode="rotate";
+
+const descriptions={
+  ss:"Two s orbitals overlap head-on along the internuclear axis. The resulting σ bond is cylindrically symmetric.",
+  sp:"An s orbital overlaps end-on with one lobe of a p orbital. The overlap is concentrated along the bond axis.",
+  pp:"Two p orbitals point toward one another and overlap head-on. The resulting σ bond has cylindrical symmetry.",
+  pi:"Two parallel p orbitals overlap sideways. Electron density forms lobes above and below the internuclear axis."
+};
+
+function $(id){
+  return document.getElementById(id);
+}
+
+function resize(){
+  const rect=canvas.getBoundingClientRect();
+
+  width=rect.width;
+  height=rect.height;
+  dpr=Math.min(window.devicePixelRatio||1,2);
+
+  canvas.width=Math.max(1,Math.floor(width*dpr));
+  canvas.height=Math.max(1,Math.floor(height*dpr));
+
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+
+function screenScale(){
+  return Math.min(width,height)*.115*zoom;
+}
+
+function project(x,y,z){
+  const cy=Math.cos(yaw);
+  const sy=Math.sin(yaw);
+  const cp=Math.cos(pitch);
+  const sp=Math.sin(pitch);
+
+  const rotatedX=x*cy-z*sy;
+  const rotatedZ=x*sy+z*cy;
+
+  const rotatedY=y*cp-rotatedZ*sp;
+  const depth=y*sp+rotatedZ*cp;
+
+  const scale=screenScale();
+
+  return{
+    x:width*.42+panX+rotatedX*scale,
+    y:height*.5+panY-rotatedY*scale,
+    depth
+  };
+}
+
+function phaseColor(phase){
+  if(!showPhase){
+    return{
+      base:"#b7b7b7",
+      edge:"rgba(255,255,255,.48)",
+      highlight:"#eeeeee"
+    };
+  }
+
+  if(phase>0){
+    return{
+      base:"#b84f47",
+      edge:"#f1a19a",
+      highlight:"#ffe0db"
+    };
+  }
+
+  return{
+    base:"#4e79b7",
+    edge:"#a5c4ef",
+    highlight:"#dceaff"
+  };
+}
+
+function metallicGradient(center,rx,ry,colors){
+  const gradient=ctx.createRadialGradient(
+    center.x-rx*.35,
+    center.y-ry*.38,
+    1,
+    center.x,
+    center.y,
+    Math.max(rx,ry)
+  );
+
+  gradient.addColorStop(0,showShine?colors.highlight:colors.base);
+  gradient.addColorStop(.18,colors.base);
+  gradient.addColorStop(.68,colors.base);
+  gradient.addColorStop(1,"#070707");
+
+  return gradient;
+}
+
+function drawEllipse(center,rx,ry,rotation,phase){
+  const colors=phaseColor(phase);
+
+  ctx.save();
+  ctx.translate(center.x,center.y);
+  ctx.rotate(rotation);
+
+  ctx.beginPath();
+  ctx.ellipse(0,0,rx,ry,0,0,Math.PI*2);
+  ctx.fillStyle=metallicGradient(center,rx,ry,colors);
+  ctx.fill();
+
+  ctx.strokeStyle=colors.edge;
+  ctx.lineWidth=1.1;
+  ctx.stroke();
+
+  if(showShine){
+    ctx.beginPath();
+    ctx.ellipse(
+      -rx*.22,
+      -ry*.28,
+      rx*.42,
+      ry*.16,
+      -.3,
+      0,
+      Math.PI*2
+    );
+
+    ctx.fillStyle="rgba(255,255,255,.14)";
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+function drawSphere(center,radiusWorld,phase=1){
+  const r=radiusWorld*screenScale();
+  const colors=phaseColor(phase);
+
+  ctx.beginPath();
+  ctx.arc(center.x,center.y,r,0,Math.PI*2);
+  ctx.fillStyle=metallicGradient(center,r,r,colors);
+  ctx.fill();
+
+  ctx.strokeStyle=colors.edge;
+  ctx.lineWidth=1.2;
+  ctx.stroke();
+
+  if(showShine){
+    ctx.beginPath();
+    ctx.arc(
+      center.x-r*.27,
+      center.y-r*.3,
+      r*.23,
+      0,
+      Math.PI*2
+    );
+
+    ctx.fillStyle="rgba(255,255,255,.22)";
+    ctx.fill();
+  }
+}
+
+function drawLine(a,b,color,lineWidth=1,dash=[]){
+  ctx.save();
+  ctx.strokeStyle=color;
+  ctx.lineWidth=lineWidth;
+  ctx.setLineDash(dash);
+  ctx.beginPath();
+  ctx.moveTo(a.x,a.y);
+  ctx.lineTo(b.x,b.y);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawAxes(){
+  if(!showAxes)return;
+
+  const origin=project(0,0,0);
+  const x=project(4,0,0);
+  const nx=project(-4,0,0);
+  const y=project(0,3.5,0);
+  const ny=project(0,-3.5,0);
+  const z=project(0,0,3.5);
+  const nz=project(0,0,-3.5);
+
+  drawLine(nx,x,"rgba(225,105,96,.95)",1.7,[8,5]);
+  drawLine(ny,y,"rgba(105,155,235,.95)",1.7,[8,5]);
+  drawLine(nz,z,"rgba(105,205,155,.95)",1.7,[8,5]);
+
+  ctx.font="11px Inter,system-ui,sans-serif";
+
+  ctx.fillStyle="#e28a82";
+  ctx.fillText("X",x.x+8,x.y);
+
+  ctx.fillStyle="#8bb4f0";
+  ctx.fillText("Y",y.x+8,y.y);
+
+  ctx.fillStyle="#8dd6b1";
+  ctx.fillText("Z",z.x+8,z.y);
+
+  ctx.fillStyle="#999";
+  ctx.fillText("origin",origin.x+8,origin.y-9);
+}
+
+function drawSOrbital(x,scaleFactor,phase){
+  const center=project(x,0,0);
+  const r=1.03*scaleFactor*screenScale();
+
+  drawEllipse(center,r,r,0,phase);
+}
+
+function drawHorizontalPOrbital(x,scaleFactor){
+  const left=project(x-1.08*scaleFactor,0,0);
+  const right=project(x+1.08*scaleFactor,0,0);
+
+  const rx=.82*scaleFactor*screenScale();
+  const ry=.62*scaleFactor*screenScale();
+
+  drawEllipse(left,rx,ry,0,-1);
+  drawEllipse(right,rx,ry,0,1);
+}
+
+function drawVerticalPOrbital(x,scaleFactor){
+  const top=project(x,1.08*scaleFactor,0);
+  const bottom=project(x,-1.08*scaleFactor,0);
+
+  const rx=.62*scaleFactor*screenScale();
+  const ry=.82*scaleFactor*screenScale();
+
+  drawEllipse(top,rx,ry,0,1);
+  drawEllipse(bottom,rx,ry,0,-1);
+}
+
+function drawOverlap(scaleFactor){
+  if(!showOverlap)return;
+
+  const center=project(0,0,0);
+  const amount=.12+(overlap/100)*.34;
+
+  ctx.save();
+  ctx.globalAlpha=amount;
+
+  if(bond==="pi"){
+    const top=project(0,.72*scaleFactor,0);
+    const bottom=project(0,-.72*scaleFactor,0);
+
+    drawEllipse(
+      top,
+      .98*scaleFactor*screenScale(),
+      .4*scaleFactor*screenScale(),
+      0,
+      1
+    );
+
+    drawEllipse(
+      bottom,
+      .98*scaleFactor*screenScale(),
+      .4*scaleFactor*screenScale(),
+      0,
+      -1
+    );
+  }else{
+    drawEllipse(
+      center,
+      .85*scaleFactor*screenScale(),
+      .42*scaleFactor*screenScale(),
+      0,
+      1
+    );
+  }
+
+  ctx.restore();
+}
+
+function drawScene(){
+  ctx.clearRect(0,0,width,height);
+
+  ctx.fillStyle="#050505";
+  ctx.fillRect(0,0,width,height);
+
+  const backgroundGlow=ctx.createRadialGradient(
+    width*.36,
+    height*.5,
+    0,
+    width*.36,
+    height*.5,
+    width*.7
+  );
+
+  backgroundGlow.addColorStop(0,"rgba(255,255,255,.045)");
+  backgroundGlow.addColorStop(1,"rgba(0,0,0,0)");
+
+  ctx.fillStyle=backgroundGlow;
+  ctx.fillRect(0,0,width,height);
+
+  const scaleFactor=radius;
+  const distance=2.9-(overlap/100)*.95;
+  const leftX=-distance/2;
+  const rightX=distance/2;
+
+  drawAxes();
+
+  if(bond==="ss"){
+    drawSOrbital(leftX,scaleFactor,1);
+    drawSOrbital(rightX,scaleFactor,1);
+  }
+
+  if(bond==="sp"){
+    drawSOrbital(leftX,scaleFactor,1);
+    drawHorizontalPOrbital(rightX,scaleFactor);
+  }
+
+  if(bond==="pp"){
+    drawHorizontalPOrbital(leftX,scaleFactor);
+    drawHorizontalPOrbital(rightX,scaleFactor);
+  }
+
+  if(bond==="pi"){
+    drawVerticalPOrbital(leftX,scaleFactor);
+    drawVerticalPOrbital(rightX,scaleFactor);
+  }
+
+  drawOverlap(scaleFactor);
+
+  const leftAtom=project(leftX,0,0);
+  const rightAtom=project(rightX,0,0);
+
+  drawSphere(leftAtom,.17);
+  drawSphere(rightAtom,.17);
+}
+
+function updateReadouts(){
+  const names={
+    ss:"σ s–s",
+    sp:"σ s–p",
+    pp:"σ p–p",
+    pi:"π p–p"
+  };
+
+  $("bondReadout").textContent=names[bond];
+  $("symmetryReadout").textContent=bond==="pi"?"Two-lobed":"Cylindrical";
+
+  $("radiusReadout").innerHTML=
+    `${radius.toFixed(2)}<span class="unit">×</span>`;
+
+  $("overlapReadout").innerHTML=
+    `${overlap}<span class="unit">%</span>`;
+
+  $("radiusValue").textContent=`${radius.toFixed(2)}×`;
+  $("overlapValue").textContent=`${overlap}%`;
+  $("description").textContent=descriptions[bond];
+}
+
+document.querySelectorAll("[data-bond]").forEach(button=>{
+  button.addEventListener("click",()=>{
+    bond=button.dataset.bond;
+
+    document.querySelectorAll("[data-bond]").forEach(other=>{
+      other.classList.toggle("active",other===button);
+    });
+
+    updateReadouts();
+  });
+});
+
+$("radiusSlider").addEventListener("input",event=>{
+  radius=Number(event.target.value)/100;
+  updateReadouts();
+});
+
+$("overlapSlider").addEventListener("input",event=>{
+  overlap=Number(event.target.value);
+  updateReadouts();
+});
+
+$("axisToggle").addEventListener("change",event=>{
+  showAxes=event.target.checked;
+});
+
+$("overlapToggle").addEventListener("change",event=>{
+  showOverlap=event.target.checked;
+});
+
+$("shineToggle").addEventListener("change",event=>{
+  showShine=event.target.checked;
+});
+
+$("phaseToggle").addEventListener("change",event=>{
+  showPhase=event.target.checked;
+});
+
+$("pauseButton").addEventListener("click",()=>{
+  paused=!paused;
+  $("pauseButton").textContent=paused?"Resume":"Pause";
+});
+
+$("resetButton").addEventListener("click",()=>{
+  bond="ss";
+  radius=1;
+  overlap=60;
+  showAxes=true;
+  showOverlap=true;
+  showShine=true;
+  showPhase=true;
+  paused=false;
+
+  yaw=-.35;
+  pitch=.18;
+  zoom=1;
+  panX=0;
+  panY=0;
+
+  $("radiusSlider").value=100;
+  $("overlapSlider").value=60;
+  $("axisToggle").checked=true;
+  $("overlapToggle").checked=true;
+  $("shineToggle").checked=true;
+  $("phaseToggle").checked=true;
+  $("pauseButton").textContent="Pause";
+
+  document.querySelectorAll("[data-bond]").forEach(button=>{
+    button.classList.toggle("active",button.dataset.bond==="ss");
+  });
+
+  updateReadouts();
+});
+
+canvas.addEventListener("pointerdown",event=>{
+  dragging=true;
+  lastX=event.clientX;
+  lastY=event.clientY;
+  pointerMode=event.shiftKey?"pan":"rotate";
+  canvas.setPointerCapture(event.pointerId);
+});
+
+canvas.addEventListener("pointermove",event=>{
+  if(!dragging)return;
+
+  const dx=event.clientX-lastX;
+  const dy=event.clientY-lastY;
+
+  if(event.shiftKey||pointerMode==="pan"){
+    panX+=dx;
+    panY+=dy;
+  }else{
+    yaw+=dx*.006;
+    pitch+=dy*.006;
+    pitch=Math.max(-1.25,Math.min(1.25,pitch));
+  }
+
+  lastX=event.clientX;
+  lastY=event.clientY;
+});
+
+canvas.addEventListener("pointerup",event=>{
+  dragging=false;
+  canvas.releasePointerCapture(event.pointerId);
+});
+
+canvas.addEventListener("pointercancel",()=>{
+  dragging=false;
+});
+
+canvas.addEventListener("wheel",event=>{
+  event.preventDefault();
+
+  zoom*=Math.exp(-event.deltaY*.001);
+  zoom=Math.max(.45,Math.min(2.4,zoom));
+},{passive:false});
+
+window.addEventListener("resize",resize);
+
+resize();
+updateReadouts();
+
+function animate(){
+  drawScene();
+
+  if(!paused){
+    yaw+=.001;
+  }
+
+  requestAnimationFrame(animate);
+}
+
+animate();
+</script>
+
+</body>
+</html>

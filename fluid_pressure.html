@@ -1,0 +1,1258 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fluid Pressure</title>
+
+<style>
+:root{
+  --background:#050505;
+  --panel:rgba(18,18,18,.88);
+  --panel-border:rgba(255,255,255,.18);
+  --text:#ededed;
+  --muted:#858585;
+  --soft:#bdbdbd;
+}
+
+*{
+  box-sizing:border-box;
+}
+
+html,
+body{
+  width:100%;
+  height:100%;
+  margin:0;
+  overflow:hidden;
+  background:var(--background);
+  color:var(--text);
+  font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+
+body{
+  user-select:none;
+}
+
+button,
+select,
+input{
+  font:inherit;
+}
+
+button,
+select{
+  color:var(--text);
+  background:#111;
+  border:1px solid var(--panel-border);
+  border-radius:7px;
+}
+
+button{
+  padding:8px 12px;
+  cursor:pointer;
+}
+
+button:hover,
+select:hover{
+  border-color:#777;
+}
+
+.app{
+  width:100%;
+  height:100%;
+  display:grid;
+  grid-template-rows:54px minmax(0,1fr) 116px;
+}
+
+.topbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  padding:0 20px;
+  border-bottom:1px solid var(--panel-border);
+  background:#080808;
+}
+
+.title{
+  font-size:11px;
+  font-weight:500;
+  letter-spacing:.17em;
+  text-transform:uppercase;
+}
+
+.actions{
+  display:flex;
+  gap:8px;
+}
+
+.main{
+  position:relative;
+  min-height:0;
+  overflow:hidden;
+}
+
+#scene{
+  display:block;
+  width:100%;
+  height:100%;
+  touch-action:none;
+  cursor:grab;
+}
+
+#scene:active{
+  cursor:grabbing;
+}
+
+.panel{
+  position:absolute;
+  top:18px;
+  right:18px;
+  width:300px;
+  max-height:calc(100% - 36px);
+  overflow:auto;
+  padding:16px;
+  border:1px solid var(--panel-border);
+  border-radius:13px;
+  background:var(--panel);
+  backdrop-filter:blur(20px);
+}
+
+.section{
+  padding-bottom:16px;
+  margin-bottom:16px;
+  border-bottom:1px solid var(--panel-border);
+}
+
+.section:last-child{
+  padding-bottom:0;
+  margin-bottom:0;
+  border-bottom:0;
+}
+
+.section-title{
+  margin-bottom:12px;
+  color:#a0a0a0;
+  font-size:10px;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+}
+
+.control{
+  margin-top:14px;
+}
+
+.control:first-child{
+  margin-top:0;
+}
+
+.control-head{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:6px;
+  color:#aaa;
+  font-size:12px;
+}
+
+.control-head strong{
+  color:#eee;
+  font-weight:400;
+  white-space:nowrap;
+}
+
+input[type="range"]{
+  display:block;
+  width:100%;
+  accent-color:#dedede;
+  cursor:pointer;
+}
+
+select{
+  width:100%;
+  padding:9px 10px;
+}
+
+.toggle{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-top:12px;
+  color:#aaa;
+  font-size:12px;
+}
+
+input[type="checkbox"]{
+  accent-color:#ddd;
+}
+
+.note{
+  color:#888;
+  font-size:11px;
+  line-height:1.55;
+}
+
+.legend{
+  position:absolute;
+  left:20px;
+  bottom:20px;
+  color:#777;
+  font-size:10px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+
+.bottom{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  border-top:1px solid var(--panel-border);
+  background:#080808;
+}
+
+.readout{
+  min-width:0;
+  padding:16px 20px;
+  border-right:1px solid var(--panel-border);
+}
+
+.readout:last-child{
+  border-right:0;
+}
+
+.readout-label{
+  color:#777;
+  font-size:10px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+}
+
+.readout-value{
+  margin-top:8px;
+  color:#f0f0f0;
+  font-size:25px;
+  letter-spacing:-.045em;
+}
+
+.unit{
+  margin-left:4px;
+  color:#777;
+  font-size:11px;
+  letter-spacing:0;
+}
+
+.readout-status{
+  margin-top:5px;
+  color:#888;
+  font-size:12px;
+}
+
+@media(max-width:760px){
+  .app{
+    grid-template-rows:48px minmax(0,1fr) 142px;
+  }
+
+  .topbar{
+    padding:0 12px;
+  }
+
+  .title{
+    font-size:9px;
+  }
+
+  .panel{
+    top:10px;
+    right:10px;
+    width:255px;
+    max-height:calc(100% - 20px);
+    padding:13px;
+  }
+
+  .bottom{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .readout{
+    padding:11px 14px;
+  }
+
+  .readout-value{
+    font-size:20px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+  <header class="topbar">
+    <div class="title">Fluid pressure / hydrostatic equilibrium</div>
+
+    <div class="actions">
+      <button id="pauseButton">Pause</button>
+      <button id="resetButton">Reset</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <canvas id="scene"></canvas>
+
+    <aside class="panel">
+
+      <section class="section">
+        <div class="section-title">Fluid parameters</div>
+
+        <div class="control">
+          <div class="control-head">
+            <span>Volume</span>
+            <strong id="volumeValue">1.00 m³</strong>
+          </div>
+          <input
+            id="volumeSlider"
+            type="range"
+            min="0.10"
+            max="8.00"
+            step="0.05"
+            value="1.00"
+          >
+        </div>
+
+        <div class="control">
+          <div class="control-head">
+            <span>Cross-section area</span>
+            <strong id="areaValue">1.00 m²</strong>
+          </div>
+          <input
+            id="areaSlider"
+            type="range"
+            min="0.25"
+            max="4.00"
+            step="0.05"
+            value="1.00"
+          >
+        </div>
+
+        <div class="control">
+          <div class="control-head">
+            <span>Depth</span>
+            <strong id="depthValue">1.00 m</strong>
+          </div>
+          <input
+            id="depthSlider"
+            type="range"
+            min="0.10"
+            max="5.00"
+            step="0.05"
+            value="1.00"
+          >
+        </div>
+
+        <div class="control">
+          <div class="control-head">
+            <span>Geometry constraint</span>
+          </div>
+
+          <select id="geometryMode">
+            <option value="volume">Volume and area determine depth</option>
+            <option value="depth">Depth and area determine volume</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-title">Material and environment</div>
+
+        <div class="control">
+          <div class="control-head">
+            <span>Density</span>
+            <strong id="densityValue">1000 kg/m³</strong>
+          </div>
+          <input
+            id="densitySlider"
+            type="range"
+            min="200"
+            max="1800"
+            step="10"
+            value="1000"
+          >
+        </div>
+
+        <div class="control">
+          <div class="control-head">
+            <span>Gravity</span>
+            <strong id="gravityValue">9.81 m/s²</strong>
+          </div>
+          <input
+            id="gravitySlider"
+            type="range"
+            min="1"
+            max="20"
+            step="0.01"
+            value="9.81"
+          >
+        </div>
+
+        <div class="control">
+          <div class="control-head">
+            <span>Atmospheric pressure</span>
+            <strong id="atmosphereValue">101.3 kPa</strong>
+          </div>
+          <input
+            id="atmosphereSlider"
+            type="range"
+            min="0"
+            max="200"
+            step="0.1"
+            value="101.3"
+          >
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-title">Display</div>
+
+        <label class="toggle">
+          <span>Absolute pressure</span>
+          <input id="absoluteToggle" type="checkbox">
+        </label>
+
+        <label class="toggle">
+          <span>Pressure vectors</span>
+          <input id="vectorsToggle" type="checkbox" checked>
+        </label>
+
+        <label class="toggle">
+          <span>Fluid particles</span>
+          <input id="particlesToggle" type="checkbox" checked>
+        </label>
+
+        <label class="toggle">
+          <span>Depth markers</span>
+          <input id="markersToggle" type="checkbox" checked>
+        </label>
+
+        <label class="toggle">
+          <span>Coordinate axes</span>
+          <input id="axesToggle" type="checkbox" checked>
+        </label>
+      </section>
+
+      <section>
+        <div class="section-title">Physical model</div>
+
+        <div class="note">
+          The fluid is modeled as an incompressible fluid at hydrostatic
+          equilibrium. Pressure increases linearly with depth:
+          P = ρgh for gauge pressure and P = Patm + ρgh for absolute pressure.
+          The geometric relationship is V = Ah.
+        </div>
+      </section>
+
+    </aside>
+
+    <div class="legend">
+      LMB rotate · RMB pan · Scroll zoom
+    </div>
+  </main>
+
+  <footer class="bottom">
+
+    <div class="readout">
+      <div class="readout-label">Bottom pressure</div>
+      <div class="readout-value" id="pressureReadout">
+        9.81<span class="unit">kPa</span>
+      </div>
+      <div class="readout-status" id="pressureStatus">
+        Gauge pressure
+      </div>
+    </div>
+
+    <div class="readout">
+      <div class="readout-label">Fluid depth</div>
+      <div class="readout-value" id="depthReadout">
+        1.00<span class="unit">m</span>
+      </div>
+      <div class="readout-status">
+        Vertical fluid height
+      </div>
+    </div>
+
+    <div class="readout">
+      <div class="readout-label">Fluid volume</div>
+      <div class="readout-value" id="volumeReadout">
+        1.00<span class="unit">m³</span>
+      </div>
+      <div class="readout-status">
+        Contained fluid
+      </div>
+    </div>
+
+    <div class="readout">
+      <div class="readout-label">Density</div>
+      <div class="readout-value" id="densityReadout">
+        1000<span class="unit">kg/m³</span>
+      </div>
+      <div class="readout-status">
+        Mass per unit volume
+      </div>
+    </div>
+
+  </footer>
+
+</div>
+
+<script>
+"use strict";
+
+const canvas=document.getElementById("scene");
+const ctx=canvas.getContext("2d");
+
+const $=id=>document.getElementById(id);
+
+let width=0;
+let height=0;
+let pixelRatio=1;
+
+let volume=1;
+let area=1;
+let depth=1;
+let density=1000;
+let gravity=9.81;
+let atmosphere=101.3;
+
+let geometryMode="volume";
+
+let showAbsolute=false;
+let showVectors=true;
+let showParticles=true;
+let showMarkers=true;
+let showAxes=true;
+let paused=false;
+
+let yaw=-0.35;
+let pitch=0.18;
+let zoom=1;
+let panX=0;
+let panY=0;
+
+let pointerDown=false;
+let pointerMode="rotate";
+let lastPointerX=0;
+let lastPointerY=0;
+
+let particles=[];
+let lastFrameTime=0;
+
+function clamp(value,min,max){
+  return Math.max(min,Math.min(max,value));
+}
+
+function getDepth(){
+  return geometryMode==="volume"
+    ? volume/area
+    : depth;
+}
+
+function getVolume(){
+  return geometryMode==="volume"
+    ? volume
+    : area*depth;
+}
+
+function getArea(){
+  return area;
+}
+
+function syncGeometry(changed){
+  if(changed==="volume"){
+    if(geometryMode==="volume"){
+      depth=volume/area;
+    }else{
+      volume=area*depth;
+    }
+  }
+
+  if(changed==="area"){
+    if(geometryMode==="volume"){
+      depth=volume/area;
+    }else{
+      volume=area*depth;
+    }
+  }
+
+  if(changed==="depth"){
+    if(geometryMode==="volume"){
+      volume=area*depth;
+    }else{
+      volume=area*depth;
+    }
+  }
+
+  if(changed==="mode"){
+    if(geometryMode==="volume"){
+      depth=volume/area;
+    }else{
+      volume=area*depth;
+    }
+  }
+
+  volume=clamp(volume,0.1,8);
+  area=clamp(area,0.25,4);
+  depth=clamp(depth,0.1,5);
+
+  $("volumeSlider").value=volume;
+  $("areaSlider").value=area;
+  $("depthSlider").value=depth;
+}
+
+function resize(){
+  const rect=canvas.getBoundingClientRect();
+
+  width=rect.width;
+  height=rect.height;
+  pixelRatio=Math.min(window.devicePixelRatio||1,2);
+
+  canvas.width=Math.max(1,Math.round(width*pixelRatio));
+  canvas.height=Math.max(1,Math.round(height*pixelRatio));
+
+  ctx.setTransform(pixelRatio,0,0,pixelRatio,0,0);
+
+  createParticles();
+}
+
+function worldScale(){
+  return Math.min(width,height)*0.095*zoom;
+}
+
+function project(x,y,z){
+  const cosYaw=Math.cos(yaw);
+  const sinYaw=Math.sin(yaw);
+
+  const cosPitch=Math.cos(pitch);
+  const sinPitch=Math.sin(pitch);
+
+  const rotatedX=x*cosYaw-z*sinYaw;
+  const rotatedZ=x*sinYaw+z*cosYaw;
+
+  const rotatedY=y*cosPitch-rotatedZ*sinPitch;
+  const finalZ=y*sinPitch+rotatedZ*cosPitch;
+
+  const scale=worldScale();
+
+  return{
+    x:width*0.40+panX+rotatedX*scale,
+    y:height*0.56+panY-rotatedY*scale,
+    depth:finalZ
+  };
+}
+
+function drawLine(a,b,color,lineWidth=1,dash=[]){
+  ctx.save();
+  ctx.strokeStyle=color;
+  ctx.lineWidth=lineWidth;
+  ctx.setLineDash(dash);
+  ctx.beginPath();
+  ctx.moveTo(a.x,a.y);
+  ctx.lineTo(b.x,b.y);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawAxes(){
+  if(!showAxes)return;
+
+  const origin=project(0,0,0);
+
+  const positiveX=project(4,0,0);
+  const negativeX=project(-4,0,0);
+
+  const positiveY=project(0,4,0);
+  const negativeY=project(0,-4,0);
+
+  const positiveZ=project(0,0,4);
+  const negativeZ=project(0,0,-4);
+
+  drawLine(
+    negativeX,
+    positiveX,
+    "rgba(224,112,104,.95)",
+    1.7,
+    [8,5]
+  );
+
+  drawLine(
+    negativeY,
+    positiveY,
+    "rgba(111,158,236,.95)",
+    1.7,
+    [8,5]
+  );
+
+  drawLine(
+    negativeZ,
+    positiveZ,
+    "rgba(105,205,157,.95)",
+    1.7,
+    [8,5]
+  );
+
+  ctx.font="11px Inter,system-ui,sans-serif";
+
+  ctx.fillStyle="#e28a82";
+  ctx.fillText("X",positiveX.x+8,positiveX.y);
+
+  ctx.fillStyle="#8bb4f0";
+  ctx.fillText("Y",positiveY.x+8,positiveY.y);
+
+  ctx.fillStyle="#8dd6b1";
+  ctx.fillText("Z",positiveZ.x+8,positiveZ.y);
+
+  ctx.fillStyle="#999";
+  ctx.fillText("origin",origin.x+8,origin.y-8);
+}
+
+function pressureAt(localDepth){
+  return density*gravity*Math.max(0,localDepth);
+}
+
+function createParticles(){
+  particles=[];
+
+  const currentDepth=getDepth();
+  const halfWidth=Math.sqrt(getArea())/2;
+
+  for(let i=0;i<150;i++){
+    particles.push({
+      x:(Math.random()*2-1)*halfWidth*.9,
+      y:Math.random()*currentDepth,
+      z:(Math.random()*2-1)*halfWidth*.9,
+      vx:(Math.random()-.5)*.12,
+      vy:(Math.random()-.5)*.12,
+      vz:(Math.random()-.5)*.12
+    });
+  }
+}
+
+function updateParticles(deltaTime){
+  if(!showParticles)return;
+
+  const currentDepth=getDepth();
+  const halfWidth=Math.sqrt(getArea())/2;
+
+  for(const particle of particles){
+    particle.x+=particle.vx*deltaTime;
+    particle.y+=particle.vy*deltaTime;
+    particle.z+=particle.vz*deltaTime;
+
+    particle.vx+=(Math.random()-.5)*0.014;
+    particle.vy+=(Math.random()-.5)*0.014;
+    particle.vz+=(Math.random()-.5)*0.014;
+
+    particle.vx*=0.995;
+    particle.vy*=0.995;
+    particle.vz*=0.995;
+
+    const horizontalLimit=halfWidth*.9;
+
+    if(particle.x<-horizontalLimit){
+      particle.x=-horizontalLimit;
+      particle.vx=Math.abs(particle.vx);
+    }
+
+    if(particle.x>horizontalLimit){
+      particle.x=horizontalLimit;
+      particle.vx=-Math.abs(particle.vx);
+    }
+
+    if(particle.z<-horizontalLimit){
+      particle.z=-horizontalLimit;
+      particle.vz=Math.abs(particle.vz);
+    }
+
+    if(particle.z>horizontalLimit){
+      particle.z=horizontalLimit;
+      particle.vz=-Math.abs(particle.vz);
+    }
+
+    if(particle.y<0){
+      particle.y=0;
+      particle.vy=Math.abs(particle.vy);
+    }
+
+    if(particle.y>currentDepth){
+      particle.y=currentDepth;
+      particle.vy=-Math.abs(particle.vy);
+    }
+  }
+}
+
+function drawParticle(particle){
+  const currentDepth=getDepth();
+  const point=project(
+    particle.x,
+    particle.y,
+    particle.z
+  );
+
+  const relativeDepth=particle.y/Math.max(currentDepth,0.1);
+  const radius=1.1+relativeDepth*1.5;
+  const alpha=.18+relativeDepth*.34;
+
+  ctx.beginPath();
+  ctx.arc(point.x,point.y,radius,0,Math.PI*2);
+  ctx.fillStyle=`rgba(210,225,235,${alpha})`;
+  ctx.fill();
+}
+
+function drawContainer(){
+  const currentDepth=getDepth();
+  const halfWidth=Math.sqrt(getArea())/2;
+  const containerHeight=Math.max(1.25,currentDepth+0.4);
+
+  const bottomFrontLeft=project(-halfWidth,0,-halfWidth);
+  const bottomFrontRight=project(halfWidth,0,-halfWidth);
+  const bottomBackRight=project(halfWidth,0,halfWidth);
+  const bottomBackLeft=project(-halfWidth,0,halfWidth);
+
+  const topFrontLeft=project(-halfWidth,containerHeight,-halfWidth);
+  const topFrontRight=project(halfWidth,containerHeight,-halfWidth);
+  const topBackRight=project(halfWidth,containerHeight,halfWidth);
+  const topBackLeft=project(-halfWidth,containerHeight,halfWidth);
+
+  const surfaceFrontLeft=project(-halfWidth,currentDepth,-halfWidth);
+  const surfaceFrontRight=project(halfWidth,currentDepth,-halfWidth);
+  const surfaceBackRight=project(halfWidth,currentDepth,halfWidth);
+  const surfaceBackLeft=project(-halfWidth,currentDepth,halfWidth);
+
+  const fluidGradient=ctx.createLinearGradient(
+    surfaceFrontLeft.x,
+    surfaceFrontLeft.y,
+    bottomFrontLeft.x,
+    bottomFrontLeft.y
+  );
+
+  fluidGradient.addColorStop(0,"rgba(113,155,184,.27)");
+  fluidGradient.addColorStop(.5,"rgba(72,112,145,.21)");
+  fluidGradient.addColorStop(1,"rgba(35,62,84,.34)");
+
+  ctx.save();
+
+  ctx.fillStyle=fluidGradient;
+
+  ctx.beginPath();
+  ctx.moveTo(surfaceFrontLeft.x,surfaceFrontLeft.y);
+  ctx.lineTo(surfaceFrontRight.x,surfaceFrontRight.y);
+  ctx.lineTo(bottomFrontRight.x,bottomFrontRight.y);
+  ctx.lineTo(bottomFrontLeft.x,bottomFrontLeft.y);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(surfaceFrontRight.x,surfaceFrontRight.y);
+  ctx.lineTo(surfaceBackRight.x,surfaceBackRight.y);
+  ctx.lineTo(bottomBackRight.x,bottomBackRight.y);
+  ctx.lineTo(bottomFrontRight.x,bottomFrontRight.y);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(surfaceFrontLeft.x,surfaceFrontLeft.y);
+  ctx.lineTo(surfaceBackLeft.x,surfaceBackLeft.y);
+  ctx.lineTo(bottomBackLeft.x,bottomBackLeft.y);
+  ctx.lineTo(bottomFrontLeft.x,bottomFrontLeft.y);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle="rgba(190,220,235,.72)";
+  ctx.lineWidth=1.4;
+
+  ctx.beginPath();
+  ctx.moveTo(surfaceFrontLeft.x,surfaceFrontLeft.y);
+  ctx.lineTo(surfaceFrontRight.x,surfaceFrontRight.y);
+  ctx.lineTo(surfaceBackRight.x,surfaceBackRight.y);
+  ctx.lineTo(surfaceBackLeft.x,surfaceBackLeft.y);
+  ctx.closePath();
+  ctx.stroke();
+
+  ctx.restore();
+
+  const edges=[
+    [bottomFrontLeft,bottomFrontRight],
+    [bottomFrontRight,bottomBackRight],
+    [bottomBackRight,bottomBackLeft],
+    [bottomBackLeft,bottomFrontLeft],
+
+    [topFrontLeft,topFrontRight],
+    [topFrontRight,topBackRight],
+    [topBackRight,topBackLeft],
+    [topBackLeft,topFrontLeft],
+
+    [bottomFrontLeft,topFrontLeft],
+    [bottomFrontRight,topFrontRight],
+    [bottomBackRight,topBackRight],
+    [bottomBackLeft,topBackLeft]
+  ];
+
+  for(const edge of edges){
+    drawLine(
+      edge[0],
+      edge[1],
+      "rgba(255,255,255,.24)",
+      1.1
+    );
+  }
+}
+
+function drawPressureVectors(){
+  if(!showVectors)return;
+
+  const currentDepth=getDepth();
+  const halfWidth=Math.sqrt(getArea())/2;
+
+  for(let i=0;i<9;i++){
+    const localDepth=currentDepth*(i+.5)/9;
+    const pressure=pressureAt(localDepth);
+    const strength=Math.min(1.6,pressure/50000);
+    const arrowLength=.12+strength*.42;
+
+    const leftStart=project(-halfWidth-.03,localDepth,0);
+    const leftEnd=project(-halfWidth-arrowLength,localDepth,0);
+
+    const rightStart=project(halfWidth+.03,localDepth,0);
+    const rightEnd=project(halfWidth+arrowLength,localDepth,0);
+
+    drawLine(
+      leftStart,
+      leftEnd,
+      "rgba(225,225,225,.68)",
+      1.25
+    );
+
+    drawLine(
+      rightStart,
+      rightEnd,
+      "rgba(225,225,225,.68)",
+      1.25
+    );
+
+    const center=project(0,localDepth,0);
+
+    ctx.beginPath();
+    ctx.arc(center.x,center.y,2+strength*2,0,Math.PI*2);
+    ctx.fillStyle="rgba(240,240,240,.76)";
+    ctx.fill();
+  }
+}
+
+function drawDepthMarkers(){
+  if(!showMarkers)return;
+
+  const currentDepth=getDepth();
+  const halfWidth=Math.sqrt(getArea())/2;
+
+  for(let i=0;i<=5;i++){
+    const localDepth=currentDepth*i/5;
+    const marker=project(-halfWidth-.2,localDepth,0);
+
+    ctx.font="10px Inter,system-ui,sans-serif";
+    ctx.fillStyle="#777";
+    ctx.fillText(
+      `${localDepth.toFixed(2)} m`,
+      marker.x-35,
+      marker.y+3
+    );
+
+    drawLine(
+      project(-halfWidth,localDepth,0),
+      project(halfWidth,localDepth,0),
+      "rgba(255,255,255,.08)",
+      1,
+      [4,5]
+    );
+  }
+}
+
+function drawScene(){
+  ctx.clearRect(0,0,width,height);
+
+  ctx.fillStyle="#050505";
+  ctx.fillRect(0,0,width,height);
+
+  const glow=ctx.createRadialGradient(
+    width*.34,
+    height*.5,
+    0,
+    width*.34,
+    height*.5,
+    width*.75
+  );
+
+  glow.addColorStop(0,"rgba(255,255,255,.045)");
+  glow.addColorStop(1,"rgba(0,0,0,0)");
+
+  ctx.fillStyle=glow;
+  ctx.fillRect(0,0,width,height);
+
+  drawAxes();
+  drawContainer();
+  drawDepthMarkers();
+
+  if(showParticles){
+    for(const particle of particles){
+      drawParticle(particle);
+    }
+  }
+
+  drawPressureVectors();
+}
+
+function updateReadouts(){
+  const currentDepth=getDepth();
+  const currentVolume=getVolume();
+  const gaugePressure=pressureAt(currentDepth);
+  const absolutePressure=gaugePressure+atmosphere*1000;
+  const displayedPressure=showAbsolute
+    ? absolutePressure
+    : gaugePressure;
+
+  $("volumeValue").textContent=
+    `${currentVolume.toFixed(2)} m³`;
+
+  $("areaValue").textContent=
+    `${area.toFixed(2)} m²`;
+
+  $("depthValue").textContent=
+    `${currentDepth.toFixed(2)} m`;
+
+  $("densityValue").textContent=
+    `${density.toFixed(0)} kg/m³`;
+
+  $("gravityValue").textContent=
+    `${gravity.toFixed(2)} m/s²`;
+
+  $("atmosphereValue").textContent=
+    `${atmosphere.toFixed(1)} kPa`;
+
+  $("pressureReadout").innerHTML=
+    `${(displayedPressure/1000).toFixed(2)}<span class="unit">kPa</span>`;
+
+  $("pressureStatus").textContent=
+    showAbsolute
+      ? "Absolute pressure"
+      : "Gauge pressure";
+
+  $("depthReadout").innerHTML=
+    `${currentDepth.toFixed(2)}<span class="unit">m</span>`;
+
+  $("volumeReadout").innerHTML=
+    `${currentVolume.toFixed(2)}<span class="unit">m³</span>`;
+
+  $("densityReadout").innerHTML=
+    `${density.toFixed(0)}<span class="unit">kg/m³</span>`;
+}
+
+function refresh(changed){
+  syncGeometry(changed);
+  createParticles();
+  updateReadouts();
+  drawScene();
+}
+
+$("volumeSlider").addEventListener("input",event=>{
+  volume=Number(event.target.value);
+  refresh("volume");
+});
+
+$("areaSlider").addEventListener("input",event=>{
+  area=Number(event.target.value);
+  refresh("area");
+});
+
+$("depthSlider").addEventListener("input",event=>{
+  depth=Number(event.target.value);
+  refresh("depth");
+});
+
+$("geometryMode").addEventListener("change",event=>{
+  geometryMode=event.target.value;
+  refresh("mode");
+});
+
+$("densitySlider").addEventListener("input",event=>{
+  density=Number(event.target.value);
+  updateReadouts();
+});
+
+$("gravitySlider").addEventListener("input",event=>{
+  gravity=Number(event.target.value);
+  updateReadouts();
+});
+
+$("atmosphereSlider").addEventListener("input",event=>{
+  atmosphere=Number(event.target.value);
+  updateReadouts();
+});
+
+$("absoluteToggle").addEventListener("change",event=>{
+  showAbsolute=event.target.checked;
+  updateReadouts();
+});
+
+$("vectorsToggle").addEventListener("change",event=>{
+  showVectors=event.target.checked;
+  drawScene();
+});
+
+$("particlesToggle").addEventListener("change",event=>{
+  showParticles=event.target.checked;
+  drawScene();
+});
+
+$("markersToggle").addEventListener("change",event=>{
+  showMarkers=event.target.checked;
+  drawScene();
+});
+
+$("axesToggle").addEventListener("change",event=>{
+  showAxes=event.target.checked;
+  drawScene();
+});
+
+$("pauseButton").addEventListener("click",()=>{
+  paused=!paused;
+  $("pauseButton").textContent=paused?"Resume":"Pause";
+});
+
+$("resetButton").addEventListener("click",()=>{
+  volume=1;
+  area=1;
+  depth=1;
+  density=1000;
+  gravity=9.81;
+  atmosphere=101.3;
+
+  geometryMode="volume";
+
+  showAbsolute=false;
+  showVectors=true;
+  showParticles=true;
+  showMarkers=true;
+  showAxes=true;
+  paused=false;
+
+  yaw=-0.35;
+  pitch=0.18;
+  zoom=1;
+  panX=0;
+  panY=0;
+
+  $("volumeSlider").value=1;
+  $("areaSlider").value=1;
+  $("depthSlider").value=1;
+  $("densitySlider").value=1000;
+  $("gravitySlider").value=9.81;
+  $("atmosphereSlider").value=101.3;
+
+  $("geometryMode").value="volume";
+
+  $("absoluteToggle").checked=false;
+  $("vectorsToggle").checked=true;
+  $("particlesToggle").checked=true;
+  $("markersToggle").checked=true;
+  $("axesToggle").checked=true;
+
+  $("pauseButton").textContent="Pause";
+
+  refresh("reset");
+});
+
+canvas.addEventListener("contextmenu",event=>{
+  event.preventDefault();
+});
+
+canvas.addEventListener("pointerdown",event=>{
+  pointerDown=true;
+  pointerMode=event.button===2?"pan":"rotate";
+  lastPointerX=event.clientX;
+  lastPointerY=event.clientY;
+
+  canvas.setPointerCapture(event.pointerId);
+});
+
+canvas.addEventListener("pointermove",event=>{
+  if(!pointerDown)return;
+
+  const deltaX=event.clientX-lastPointerX;
+  const deltaY=event.clientY-lastPointerY;
+
+  if(pointerMode==="pan"){
+    panX+=deltaX;
+    panY+=deltaY;
+  }else{
+    yaw+=deltaX*.006;
+
+    // Correct camera direction:
+    // dragging upward rotates the camera upward,
+    // dragging downward rotates the camera downward.
+    pitch-=deltaY*.006;
+
+    pitch=clamp(pitch,-1.25,1.25);
+  }
+
+  lastPointerX=event.clientX;
+  lastPointerY=event.clientY;
+
+  drawScene();
+});
+
+canvas.addEventListener("pointerup",event=>{
+  pointerDown=false;
+
+  if(canvas.hasPointerCapture(event.pointerId)){
+    canvas.releasePointerCapture(event.pointerId);
+  }
+});
+
+canvas.addEventListener("pointercancel",()=>{
+  pointerDown=false;
+});
+
+canvas.addEventListener("wheel",event=>{
+  event.preventDefault();
+
+  zoom*=Math.exp(-event.deltaY*.001);
+  zoom=clamp(zoom,.45,2.5);
+
+  drawScene();
+},{passive:false});
+
+window.addEventListener("resize",resize);
+
+function animate(timestamp){
+  const deltaTime=Math.min(
+    .04,
+    (timestamp-lastFrameTime)/1000||0
+  );
+
+  lastFrameTime=timestamp;
+
+  if(!paused){
+    updateParticles(deltaTime);
+  }
+
+  drawScene();
+  requestAnimationFrame(animate);
+}
+
+syncGeometry("mode");
+resize();
+updateReadouts();
+requestAnimationFrame(animate);
+</script>
+
+</body>
+</html>

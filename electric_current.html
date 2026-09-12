@@ -1,0 +1,1154 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Electron Flow / Resistance</title>
+
+<style>
+:root{
+  --bg:#050505;
+  --panel:rgba(18,18,18,.9);
+  --border:rgba(255,255,255,.18);
+  --text:#ededed;
+  --muted:#858585;
+}
+
+*{
+  box-sizing:border-box;
+}
+
+html,
+body{
+  width:100%;
+  height:100%;
+  margin:0;
+  overflow:hidden;
+  background:var(--bg);
+  color:var(--text);
+  font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+
+button,
+select,
+input{
+  font:inherit;
+}
+
+button,
+select{
+  color:var(--text);
+  background:#111;
+  border:1px solid var(--border);
+  border-radius:7px;
+}
+
+button{
+  padding:8px 12px;
+  cursor:pointer;
+}
+
+button:hover,
+select:hover{
+  border-color:#777;
+}
+
+.app{
+  width:100%;
+  height:100%;
+  display:grid;
+  grid-template-rows:54px minmax(0,1fr) 116px;
+}
+
+.topbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 20px;
+  border-bottom:1px solid var(--border);
+  background:#080808;
+}
+
+.title{
+  font-size:11px;
+  font-weight:500;
+  letter-spacing:.17em;
+  text-transform:uppercase;
+}
+
+.actions{
+  display:flex;
+  gap:8px;
+}
+
+.main{
+  position:relative;
+  min-height:0;
+  overflow:hidden;
+}
+
+#scene{
+  width:100%;
+  height:100%;
+  display:block;
+  touch-action:none;
+  cursor:grab;
+}
+
+#scene:active{
+  cursor:grabbing;
+}
+
+.panel{
+  position:absolute;
+  top:18px;
+  right:18px;
+  width:310px;
+  max-height:calc(100% - 36px);
+  overflow:auto;
+  padding:16px;
+  border:1px solid var(--border);
+  border-radius:13px;
+  background:var(--panel);
+  backdrop-filter:blur(20px);
+}
+
+.section{
+  margin-bottom:16px;
+  padding-bottom:16px;
+  border-bottom:1px solid var(--border);
+}
+
+.section:last-child{
+  margin-bottom:0;
+  padding-bottom:0;
+  border-bottom:0;
+}
+
+.section-title{
+  margin-bottom:12px;
+  color:#999;
+  font-size:10px;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+}
+
+.control{
+  margin-top:14px;
+}
+
+.control:first-child{
+  margin-top:0;
+}
+
+.control-head{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:6px;
+  color:#aaa;
+  font-size:12px;
+}
+
+.control-head strong{
+  color:#eee;
+  font-weight:400;
+  white-space:nowrap;
+}
+
+input[type="range"]{
+  display:block;
+  width:100%;
+  accent-color:#dedede;
+  cursor:pointer;
+}
+
+select{
+  width:100%;
+  padding:9px 10px;
+}
+
+.toggle{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  margin-top:12px;
+  color:#aaa;
+  font-size:12px;
+}
+
+input[type="checkbox"]{
+  accent-color:#ddd;
+}
+
+.note{
+  color:#888;
+  font-size:11px;
+  line-height:1.55;
+}
+
+.legend{
+  position:absolute;
+  left:20px;
+  bottom:20px;
+  color:#777;
+  font-size:10px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+
+.bottom{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  border-top:1px solid var(--border);
+  background:#080808;
+}
+
+.readout{
+  min-width:0;
+  padding:16px 20px;
+  border-right:1px solid var(--border);
+}
+
+.readout:last-child{
+  border-right:0;
+}
+
+.readout-label{
+  color:#777;
+  font-size:10px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+}
+
+.readout-value{
+  margin-top:8px;
+  color:#f0f0f0;
+  font-size:25px;
+  letter-spacing:-.045em;
+}
+
+.unit{
+  margin-left:4px;
+  color:#777;
+  font-size:11px;
+  letter-spacing:0;
+}
+
+.readout-status{
+  margin-top:5px;
+  color:#888;
+  font-size:12px;
+}
+
+@media(max-width:760px){
+  .app{
+    grid-template-rows:48px minmax(0,1fr) 142px;
+  }
+
+  .topbar{
+    padding:0 12px;
+  }
+
+  .title{
+    font-size:9px;
+  }
+
+  .panel{
+    top:10px;
+    right:10px;
+    width:265px;
+    max-height:calc(100% - 20px);
+    padding:13px;
+  }
+
+  .bottom{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .readout{
+    padding:11px 14px;
+  }
+
+  .readout-value{
+    font-size:20px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+  <header class="topbar">
+    <div class="title">Electron flow / resistance and Ohm's law</div>
+
+    <div class="actions">
+      <button id="pauseButton">Pause</button>
+      <button id="resetButton">Reset</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <canvas id="scene"></canvas>
+
+    <aside class="panel">
+
+      <section class="section">
+        <div class="section-title">Circuit parameters</div>
+
+        <div class="control">
+          <div class="control-head">
+            <span>Applied voltage</span>
+            <strong id="voltageValue">12.0 V</strong>
+          </div>
+          <input
+            id="voltageSlider"
+            type="range"
+            min="0"
+            max="48"
+            step="0.1"
+            value="12"
+          >
+        </div>
+
+        <div class="control">
+          <div class="control-head">
+            <span>Wire length</span>
+            <strong id="lengthValue">1.00 m</strong>
+          </div>
+          <input
+            id="lengthSlider"
+            type="range"
+            min="0.25"
+            max="5"
+            step="0.05"
+            value="1"
+          >
+        </div>
+
+        <div class="control">
+          <div class="control-head">
+            <span>Cross-sectional area</span>
+            <strong id="areaValue">1.00 mm²</strong>
+          </div>
+          <input
+            id="areaSlider"
+            type="range"
+            min="0.10"
+            max="10"
+            step="0.05"
+            value="1"
+          >
+        </div>
+
+        <div class="control">
+          <div class="control-head">
+            <span>Resistivity</span>
+            <strong id="resistivityValue">1.68 × 10⁻⁸ Ω·m</strong>
+          </div>
+          <input
+            id="resistivitySlider"
+            type="range"
+            min="0.1"
+            max="20"
+            step="0.1"
+            value="1.68"
+          >
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-title">Physical display</div>
+
+        <label class="toggle">
+          <span>Electron motion</span>
+          <input id="electronsToggle" type="checkbox" checked>
+        </label>
+
+        <label class="toggle">
+          <span>Current direction</span>
+          <input id="currentToggle" type="checkbox" checked>
+        </label>
+
+        <label class="toggle">
+          <span>Electric field markers</span>
+          <input id="fieldToggle" type="checkbox" checked>
+        </label>
+
+        <label class="toggle">
+          <span>Coordinate axes</span>
+          <input id="axesToggle" type="checkbox" checked>
+        </label>
+
+        <label class="toggle">
+          <span>Wire surface shine</span>
+          <input id="shineToggle" type="checkbox" checked>
+        </label>
+      </section>
+
+      <section>
+        <div class="section-title">Physical model</div>
+
+        <div class="note">
+          Resistance follows R = ρL/A. Current follows I = V/R.
+          Increasing length raises resistance. Increasing cross-sectional
+          area lowers resistance. Increasing resistivity lowers the current
+          for the same applied voltage. Electron animation represents
+          conventional drift qualitatively; random thermal motion is also
+          shown.
+        </div>
+      </section>
+
+    </aside>
+
+    <div class="legend">
+      LMB rotate · RMB pan · Scroll zoom
+    </div>
+  </main>
+
+  <footer class="bottom">
+
+    <div class="readout">
+      <div class="readout-label">Resistance</div>
+      <div class="readout-value" id="resistanceReadout">
+        0.0168<span class="unit">Ω</span>
+      </div>
+      <div class="readout-status">
+        R = ρL/A
+      </div>
+    </div>
+
+    <div class="readout">
+      <div class="readout-label">Current</div>
+      <div class="readout-value" id="currentReadout">
+        714<span class="unit">A</span>
+      </div>
+      <div class="readout-status">
+        I = V/R
+      </div>
+    </div>
+
+    <div class="readout">
+      <div class="readout-label">Charge flow rate</div>
+      <div class="readout-value" id="chargeReadout">
+        714<span class="unit">C/s</span>
+      </div>
+      <div class="readout-status">
+        Current is charge per second
+      </div>
+    </div>
+
+    <div class="readout">
+      <div class="readout-label">Electric field</div>
+      <div class="readout-value" id="fieldReadout">
+        12<span class="unit">V/m</span>
+      </div>
+      <div class="readout-status">
+        E = V/L
+      </div>
+    </div>
+
+  </footer>
+
+</div>
+
+<script>
+"use strict";
+
+const canvas=document.getElementById("scene");
+const ctx=canvas.getContext("2d");
+
+const $=id=>document.getElementById(id);
+
+let width=0;
+let height=0;
+let pixelRatio=1;
+
+let voltage=12;
+let length=1;
+let areaMm2=1;
+let resistivityMicro=1.68;
+
+let showElectrons=true;
+let showCurrent=true;
+let showField=true;
+let showAxes=true;
+let showShine=true;
+let paused=false;
+
+let yaw=-0.32;
+let pitch=0.20;
+let zoom=1;
+let panX=0;
+let panY=0;
+
+let pointerDown=false;
+let pointerMode="rotate";
+let lastPointerX=0;
+let lastPointerY=0;
+
+let electrons=[];
+let lastFrameTime=0;
+
+const electronCharge=1.602176634e-19;
+
+function clamp(value,min,max){
+  return Math.max(min,Math.min(max,value));
+}
+
+function getAreaM2(){
+  return areaMm2*1e-6;
+}
+
+function getResistivity(){
+  return resistivityMicro*1e-8;
+}
+
+function getResistance(){
+  return getResistivity()*length/getAreaM2();
+}
+
+function getCurrent(){
+  const resistance=getResistance();
+  return resistance>0?voltage/resistance:0;
+}
+
+function getElectricField(){
+  return length>0?voltage/length:0;
+}
+
+function getDriftStrength(){
+  const current=getCurrent();
+  return clamp(Math.log10(1+current)/5,0,1);
+}
+
+function resize(){
+  const rect=canvas.getBoundingClientRect();
+
+  width=rect.width;
+  height=rect.height;
+  pixelRatio=Math.min(window.devicePixelRatio||1,2);
+
+  canvas.width=Math.max(1,Math.round(width*pixelRatio));
+  canvas.height=Math.max(1,Math.round(height*pixelRatio));
+
+  ctx.setTransform(pixelRatio,0,0,pixelRatio,0,0);
+
+  createElectrons();
+}
+
+function worldScale(){
+  return Math.min(width,height)*0.085*zoom;
+}
+
+function project(x,y,z){
+  const cosYaw=Math.cos(yaw);
+  const sinYaw=Math.sin(yaw);
+
+  const cosPitch=Math.cos(pitch);
+  const sinPitch=Math.sin(pitch);
+
+  const rotatedX=x*cosYaw-z*sinYaw;
+  const rotatedZ=x*sinYaw+z*cosYaw;
+
+  const rotatedY=y*cosPitch-rotatedZ*sinPitch;
+  const finalZ=y*sinPitch+rotatedZ*cosPitch;
+
+  const scale=worldScale();
+
+  return{
+    x:width*.39+panX+rotatedX*scale,
+    y:height*.53+panY-rotatedY*scale,
+    depth:finalZ
+  };
+}
+
+function drawLine(a,b,color,lineWidth=1,dash=[]){
+  ctx.save();
+  ctx.strokeStyle=color;
+  ctx.lineWidth=lineWidth;
+  ctx.setLineDash(dash);
+  ctx.beginPath();
+  ctx.moveTo(a.x,a.y);
+  ctx.lineTo(b.x,b.y);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawAxes(){
+  if(!showAxes)return;
+
+  const origin=project(0,0,0);
+  const xEnd=project(5,0,0);
+  const yEnd=project(0,3,0);
+  const zEnd=project(0,0,3);
+
+  drawLine(
+    project(-3,0,0),
+    xEnd,
+    "rgba(224,125,116,.95)",
+    1.7,
+    [8,5]
+  );
+
+  drawLine(
+    project(0,-2,0),
+    yEnd,
+    "rgba(120,160,235,.95)",
+    1.7,
+    [8,5]
+  );
+
+  drawLine(
+    project(0,0,-2),
+    zEnd,
+    "rgba(115,205,160,.95)",
+    1.7,
+    [8,5]
+  );
+
+  ctx.font="11px Inter,system-ui,sans-serif";
+
+  ctx.fillStyle="#e28b83";
+  ctx.fillText("X",xEnd.x+8,xEnd.y);
+
+  ctx.fillStyle="#8bb4ef";
+  ctx.fillText("Y",yEnd.x+8,yEnd.y);
+
+  ctx.fillStyle="#8dd6b1";
+  ctx.fillText("Z",zEnd.x+8,zEnd.y);
+
+  ctx.fillStyle="#999";
+  ctx.fillText("origin",origin.x+8,origin.y-8);
+}
+
+function createElectrons(){
+  electrons=[];
+
+  for(let i=0;i<100;i++){
+    electrons.push({
+      x:Math.random(),
+      y:(Math.random()-.5)*.72,
+      z:(Math.random()-.5)*.72,
+      thermalX:(Math.random()-.5)*.012,
+      thermalY:(Math.random()-.5)*.012,
+      thermalZ:(Math.random()-.5)*.012
+    });
+  }
+}
+
+function updateElectrons(deltaTime){
+  if(!showElectrons)return;
+
+  const drift=getDriftStrength();
+  const speed=.025+drift*.9;
+
+  for(const electron of electrons){
+    electron.x+=speed*deltaTime;
+
+    electron.y+=electron.thermalY*deltaTime*60;
+    electron.z+=electron.thermalZ*deltaTime*60;
+
+    electron.thermalX+=(Math.random()-.5)*.002;
+    electron.thermalY+=(Math.random()-.5)*.002;
+    electron.thermalZ+=(Math.random()-.5)*.002;
+
+    electron.thermalY*=.985;
+    electron.thermalZ*=.985;
+
+    if(electron.x>1){
+      electron.x-=1;
+    }
+
+    if(electron.y<-.72){
+      electron.y=-.72;
+      electron.thermalY=Math.abs(electron.thermalY);
+    }
+
+    if(electron.y>.72){
+      electron.y=.72;
+      electron.thermalY=-Math.abs(electron.thermalY);
+    }
+
+    if(electron.z<-.72){
+      electron.z=-.72;
+      electron.thermalZ=Math.abs(electron.thermalZ);
+    }
+
+    if(electron.z>.72){
+      electron.z=.72;
+      electron.thermalZ=-Math.abs(electron.thermalZ);
+    }
+  }
+}
+
+function drawWire(){
+  const wireLength=length;
+  const radius=.22+Math.sqrt(areaMm2)*.055;
+
+  const startX=-wireLength/2;
+  const endX=wireLength/2;
+
+  const frontLeft=project(startX,radius,-radius);
+  const frontRight=project(endX,radius,-radius);
+  const backRight=project(endX,radius,radius);
+  const backLeft=project(startX,radius,radius);
+
+  const bottomFrontLeft=project(startX,-radius,-radius);
+  const bottomFrontRight=project(endX,-radius,-radius);
+  const bottomBackRight=project(endX,-radius,radius);
+  const bottomBackLeft=project(startX,-radius,radius);
+
+  const topGradient=ctx.createLinearGradient(
+    frontLeft.x,
+    frontLeft.y,
+    bottomFrontLeft.x,
+    bottomFrontLeft.y
+  );
+
+  topGradient.addColorStop(0,"#bfc5ca");
+  topGradient.addColorStop(.25,"#70777d");
+  topGradient.addColorStop(.5,"#252a2e");
+  topGradient.addColorStop(.72,"#8f979e");
+  topGradient.addColorStop(1,"#30353a");
+
+  ctx.save();
+
+  ctx.beginPath();
+  ctx.moveTo(frontLeft.x,frontLeft.y);
+  ctx.lineTo(frontRight.x,frontRight.y);
+  ctx.lineTo(bottomFrontRight.x,bottomFrontRight.y);
+  ctx.lineTo(bottomFrontLeft.x,bottomFrontLeft.y);
+  ctx.closePath();
+
+  ctx.fillStyle=topGradient;
+  ctx.fill();
+
+  const sideGradient=ctx.createLinearGradient(
+    frontRight.x,
+    frontRight.y,
+    bottomFrontRight.x,
+    bottomFrontRight.y
+  );
+
+  sideGradient.addColorStop(0,"#8e969d");
+  sideGradient.addColorStop(.45,"#343a40");
+  sideGradient.addColorStop(1,"#111417");
+
+  ctx.beginPath();
+  ctx.moveTo(frontRight.x,frontRight.y);
+  ctx.lineTo(backRight.x,backRight.y);
+  ctx.lineTo(bottomBackRight.x,bottomBackRight.y);
+  ctx.lineTo(bottomFrontRight.x,bottomFrontRight.y);
+  ctx.closePath();
+
+  ctx.fillStyle=sideGradient;
+  ctx.fill();
+
+  const lowerGradient=ctx.createLinearGradient(
+    bottomFrontLeft.x,
+    bottomFrontLeft.y,
+    bottomBackLeft.x,
+    bottomBackLeft.y
+  );
+
+  lowerGradient.addColorStop(0,"#252a2e");
+  lowerGradient.addColorStop(1,"#0c0e10");
+
+  ctx.beginPath();
+  ctx.moveTo(bottomFrontLeft.x,bottomFrontLeft.y);
+  ctx.lineTo(bottomFrontRight.x,bottomFrontRight.y);
+  ctx.lineTo(bottomBackRight.x,bottomBackRight.y);
+  ctx.lineTo(bottomBackLeft.x,bottomBackLeft.y);
+  ctx.closePath();
+
+  ctx.fillStyle=lowerGradient;
+  ctx.fill();
+
+  if(showShine){
+    const shineStart=project(startX,0.12,-radius-.01);
+    const shineEnd=project(endX,0.12,-radius-.01);
+
+    drawLine(
+      shineStart,
+      shineEnd,
+      "rgba(255,255,255,.58)",
+      1.5
+    );
+  }
+
+  ctx.restore();
+
+  const edges=[
+    [frontLeft,frontRight],
+    [frontRight,backRight],
+    [backRight,backLeft],
+    [backLeft,frontLeft],
+
+    [bottomFrontLeft,bottomFrontRight],
+    [bottomFrontRight,bottomBackRight],
+    [bottomBackRight,bottomBackLeft],
+    [bottomBackLeft,bottomFrontLeft],
+
+    [frontLeft,bottomFrontLeft],
+    [frontRight,bottomFrontRight],
+    [backRight,bottomBackRight],
+    [backLeft,bottomBackLeft]
+  ];
+
+  for(const edge of edges){
+    drawLine(edge[0],edge[1],"rgba(255,255,255,.28)",1.1);
+  }
+}
+
+function drawElectrons(){
+  if(!showElectrons)return;
+
+  const radius=.22+Math.sqrt(areaMm2)*.055;
+  const wireLength=length;
+  const drift=getDriftStrength();
+
+  for(const electron of electrons){
+    const point=project(
+      -wireLength/2+electron.x*wireLength,
+      electron.y*radius,
+      electron.z*radius
+    );
+
+    const particleRadius=1.6+drift*1.5;
+
+    ctx.beginPath();
+    ctx.arc(point.x,point.y,particleRadius,0,Math.PI*2);
+    ctx.fillStyle="rgba(238,242,245,.92)";
+    ctx.fill();
+
+    if(drift>.05){
+      const trail=project(
+        -wireLength/2+Math.max(0,electron.x-.035)*wireLength,
+        electron.y*radius,
+        electron.z*radius
+      );
+
+      drawLine(
+        trail,
+        point,
+        "rgba(232,237,241,.4)",
+        1
+      );
+    }
+  }
+}
+
+function drawFieldMarkers(){
+  if(!showField)return;
+
+  const wireLength=length;
+  const radius=.22+Math.sqrt(areaMm2)*.055;
+  const field=getElectricField();
+  const markerStrength=clamp(field/48,0,1);
+
+  for(let i=0;i<9;i++){
+    const x=-wireLength/2+wireLength*(i+.5)/9;
+
+    const start=project(x,-radius-.12,0);
+    const end=project(x,-radius-.12-markerStrength*.45,0);
+
+    drawLine(
+      start,
+      end,
+      "rgba(230,230,230,.72)",
+      1.3
+    );
+
+    const left=project(x,-radius-.12-markerStrength*.45,0);
+    const right=project(x-.055,-radius-.12-markerStrength*.35,0);
+
+    drawLine(
+      left,
+      right,
+      "rgba(230,230,230,.72)",
+      1.3
+    );
+  }
+}
+
+function drawCurrentDirection(){
+  if(!showCurrent)return;
+
+  const wireLength=length;
+  const radius=.22+Math.sqrt(areaMm2)*.055;
+  const y=radius+.16;
+
+  const start=project(-wireLength/2,y,0);
+  const end=project(wireLength/2,y,0);
+
+  drawLine(
+    start,
+    end,
+    "rgba(240,240,240,.7)",
+    1.5
+  );
+
+  const arrowTip=end;
+  const arrowA=project(wireLength/2-.15,y+.07,0);
+  const arrowB=project(wireLength/2-.15,y-.07,0);
+
+  drawLine(arrowA,arrowTip,"rgba(240,240,240,.7)",1.5);
+  drawLine(arrowB,arrowTip,"rgba(240,240,240,.7)",1.5);
+
+  ctx.font="10px Inter,system-ui,sans-serif";
+  ctx.fillStyle="#999";
+  ctx.fillText("conventional current",start.x,start.y-12);
+}
+
+function drawScene(){
+  ctx.clearRect(0,0,width,height);
+
+  ctx.fillStyle="#050505";
+  ctx.fillRect(0,0,width,height);
+
+  const glow=ctx.createRadialGradient(
+    width*.35,
+    height*.5,
+    0,
+    width*.35,
+    height*.5,
+    width*.75
+  );
+
+  glow.addColorStop(0,"rgba(255,255,255,.045)");
+  glow.addColorStop(1,"rgba(0,0,0,0)");
+
+  ctx.fillStyle=glow;
+  ctx.fillRect(0,0,width,height);
+
+  drawAxes();
+  drawWire();
+  drawElectrons();
+  drawFieldMarkers();
+  drawCurrentDirection();
+}
+
+function formatNumber(value){
+  if(Math.abs(value)>=1000){
+    return value.toExponential(3);
+  }
+
+  if(Math.abs(value)>=100){
+    return value.toFixed(1);
+  }
+
+  if(Math.abs(value)>=10){
+    return value.toFixed(2);
+  }
+
+  return value.toFixed(4);
+}
+
+function updateReadouts(){
+  const resistance=getResistance();
+  const current=getCurrent();
+  const field=getElectricField();
+
+  $("voltageValue").textContent=`${voltage.toFixed(1)} V`;
+  $("lengthValue").textContent=`${length.toFixed(2)} m`;
+  $("areaValue").textContent=`${areaMm2.toFixed(2)} mm²`;
+  $("resistivityValue").textContent=
+    `${resistivityMicro.toFixed(2)} × 10⁻⁸ Ω·m`;
+
+  $("resistanceReadout").innerHTML=
+    `${formatNumber(resistance)}<span class="unit">Ω</span>`;
+
+  $("currentReadout").innerHTML=
+    `${formatNumber(current)}<span class="unit">A</span>`;
+
+  $("chargeReadout").innerHTML=
+    `${formatNumber(current)}<span class="unit">C/s</span>`;
+
+  $("fieldReadout").innerHTML=
+    `${formatNumber(field)}<span class="unit">V/m</span>`;
+}
+
+function refresh(){
+  updateReadouts();
+  drawScene();
+}
+
+$("voltageSlider").addEventListener("input",event=>{
+  voltage=Number(event.target.value);
+  refresh();
+});
+
+$("lengthSlider").addEventListener("input",event=>{
+  length=Number(event.target.value);
+  createElectrons();
+  refresh();
+});
+
+$("areaSlider").addEventListener("input",event=>{
+  areaMm2=Number(event.target.value);
+  createElectrons();
+  refresh();
+});
+
+$("resistivitySlider").addEventListener("input",event=>{
+  resistivityMicro=Number(event.target.value);
+  refresh();
+});
+
+$("electronsToggle").addEventListener("change",event=>{
+  showElectrons=event.target.checked;
+  refresh();
+});
+
+$("currentToggle").addEventListener("change",event=>{
+  showCurrent=event.target.checked;
+  refresh();
+});
+
+$("fieldToggle").addEventListener("change",event=>{
+  showField=event.target.checked;
+  refresh();
+});
+
+$("axesToggle").addEventListener("change",event=>{
+  showAxes=event.target.checked;
+  refresh();
+});
+
+$("shineToggle").addEventListener("change",event=>{
+  showShine=event.target.checked;
+  refresh();
+});
+
+$("pauseButton").addEventListener("click",()=>{
+  paused=!paused;
+  $("pauseButton").textContent=paused?"Resume":"Pause";
+});
+
+$("resetButton").addEventListener("click",()=>{
+  voltage=12;
+  length=1;
+  areaMm2=1;
+  resistivityMicro=1.68;
+
+  showElectrons=true;
+  showCurrent=true;
+  showField=true;
+  showAxes=true;
+  showShine=true;
+  paused=false;
+
+  yaw=-0.32;
+  pitch=0.20;
+  zoom=1;
+  panX=0;
+  panY=0;
+
+  $("voltageSlider").value=12;
+  $("lengthSlider").value=1;
+  $("areaSlider").value=1;
+  $("resistivitySlider").value=1.68;
+
+  $("electronsToggle").checked=true;
+  $("currentToggle").checked=true;
+  $("fieldToggle").checked=true;
+  $("axesToggle").checked=true;
+  $("shineToggle").checked=true;
+
+  $("pauseButton").textContent="Pause";
+
+  createElectrons();
+  refresh();
+});
+
+canvas.addEventListener("contextmenu",event=>{
+  event.preventDefault();
+});
+
+canvas.addEventListener("pointerdown",event=>{
+  pointerDown=true;
+  pointerMode=event.button===2?"pan":"rotate";
+
+  lastPointerX=event.clientX;
+  lastPointerY=event.clientY;
+
+  canvas.setPointerCapture(event.pointerId);
+});
+
+canvas.addEventListener("pointermove",event=>{
+  if(!pointerDown)return;
+
+  const deltaX=event.clientX-lastPointerX;
+  const deltaY=event.clientY-lastPointerY;
+
+  if(pointerMode==="pan"){
+    panX+=deltaX;
+    panY+=deltaY;
+  }else{
+    yaw+=deltaX*.006;
+
+    // Natural camera movement:
+    // dragging upward looks upward,
+    // dragging downward looks downward.
+    pitch-=deltaY*.006;
+
+    pitch=clamp(pitch,-1.25,1.25);
+  }
+
+  lastPointerX=event.clientX;
+  lastPointerY=event.clientY;
+
+  drawScene();
+});
+
+canvas.addEventListener("pointerup",event=>{
+  pointerDown=false;
+
+  if(canvas.hasPointerCapture(event.pointerId)){
+    canvas.releasePointerCapture(event.pointerId);
+  }
+});
+
+canvas.addEventListener("pointercancel",()=>{
+  pointerDown=false;
+});
+
+canvas.addEventListener("wheel",event=>{
+  event.preventDefault();
+
+  zoom*=Math.exp(-event.deltaY*.001);
+  zoom=clamp(zoom,.45,2.5);
+
+  drawScene();
+},{passive:false});
+
+window.addEventListener("resize",resize);
+
+function animate(timestamp){
+  const deltaTime=Math.min(
+    .04,
+    (timestamp-lastFrameTime)/1000||0
+  );
+
+  lastFrameTime=timestamp;
+
+  if(!paused){
+    updateElectrons(deltaTime);
+  }
+
+  drawScene();
+  requestAnimationFrame(animate);
+}
+
+resize();
+updateReadouts();
+requestAnimationFrame(animate);
+</script>
+
+</body>
+</html>

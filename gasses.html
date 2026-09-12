@@ -1,0 +1,1557 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ideal Gas Thermodynamics</title>
+
+  <style>
+    :root {
+      --background: #000;
+      --panel: rgba(12, 12, 12, 0.88);
+      --panel-solid: #0b0b0b;
+      --border: #292929;
+      --border-light: #3a3a3a;
+      --text: #ededed;
+      --muted: #8b8b8b;
+      --dim: #555;
+      --white: #f5f5f5;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: #000;
+      color: var(--text);
+      font-family:
+        Inter,
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+    }
+
+    body {
+      overflow-x: hidden;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button,
+    select,
+    input[type="range"] {
+      cursor: pointer;
+    }
+
+    button:focus-visible,
+    select:focus-visible,
+    input:focus-visible {
+      outline: 1px solid #aaa;
+      outline-offset: 3px;
+    }
+
+    .app {
+      min-height: 100vh;
+      background: #000;
+      padding: 20px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    .eyebrow {
+      color: #777;
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    .title {
+      margin-top: 5px;
+      color: #f0f0f0;
+      font-size: 18px;
+      font-weight: 500;
+      letter-spacing: -0.04em;
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .button {
+      border: 1px solid var(--border);
+      background: #090909;
+      color: #aaa;
+      padding: 9px 12px;
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      transition:
+        color 0.15s ease,
+        background 0.15s ease,
+        border-color 0.15s ease;
+    }
+
+    .button:hover {
+      color: #fff;
+      border-color: #555;
+    }
+
+    .button.primary {
+      color: #000;
+      background: #e8e8e8;
+      border-color: #e8e8e8;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 290px;
+      gap: 12px;
+    }
+
+    .simulation {
+      position: relative;
+      min-width: 0;
+      min-height: 570px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: #000;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      min-height: 570px;
+      touch-action: pan-y;
+    }
+
+    .scene-label {
+      position: absolute;
+      top: 15px;
+      left: 16px;
+      color: #777;
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      pointer-events: none;
+    }
+
+    .scene-status {
+      position: absolute;
+      top: 15px;
+      right: 16px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: #777;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      pointer-events: none;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #ddd;
+    }
+
+    .readout {
+      position: absolute;
+      left: 16px;
+      bottom: 16px;
+      width: 300px;
+      max-width: calc(100% - 32px);
+      padding: 14px;
+      border: 1px solid #292929;
+      background: rgba(5, 5, 5, 0.94);
+      pointer-events: none;
+    }
+
+    .readout-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px 18px;
+    }
+
+    .metric-label {
+      margin-bottom: 5px;
+      color: #777;
+      font-size: 9px;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+
+    .metric-value {
+      color: #f1f1f1;
+      font-size: 24px;
+      font-weight: 450;
+      letter-spacing: -0.05em;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .metric-unit {
+      margin-left: 4px;
+      color: #777;
+      font-size: 10px;
+      letter-spacing: 0;
+    }
+
+    .side-panel {
+      min-width: 0;
+      padding: 16px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      display: flex;
+      flex-direction: column;
+      gap: 19px;
+    }
+
+    .section {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .section-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      color: #d1d1d1;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .section-number {
+      color: #555;
+      font-size: 9px;
+      font-weight: 400;
+    }
+
+    .rule {
+      height: 1px;
+      background: #1b1b1b;
+    }
+
+    .process-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px;
+    }
+
+    .process-button {
+      min-height: 34px;
+      border: 1px solid #292929;
+      background: #090909;
+      color: #999;
+      padding: 8px;
+      font-size: 10px;
+      text-align: left;
+    }
+
+    .process-button:hover {
+      color: #fff;
+      border-color: #555;
+    }
+
+    .process-button.active {
+      color: #000;
+      background: #e8e8e8;
+      border-color: #e8e8e8;
+    }
+
+    .description {
+      color: #858585;
+      font-size: 11px;
+      line-height: 1.55;
+    }
+
+    .control-block {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .control-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+    }
+
+    .control-name {
+      color: #b9b9b9;
+      font-size: 11px;
+    }
+
+    .control-value {
+      color: #e9e9e9;
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .range {
+      width: 100%;
+      accent-color: #d8d8d8;
+    }
+
+    .range-ends {
+      display: flex;
+      justify-content: space-between;
+      color: #555;
+      font-size: 9px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    select {
+      width: 100%;
+      border: 1px solid #292929;
+      background: #090909;
+      color: #d5d5d5;
+      padding: 9px;
+      font-size: 11px;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      color: #aaa;
+      font-size: 11px;
+    }
+
+    .toggle {
+      width: 31px;
+      height: 18px;
+      padding: 2px;
+      border: 1px solid #444;
+      background: #111;
+    }
+
+    .toggle span {
+      display: block;
+      width: 12px;
+      height: 12px;
+      background: #555;
+      transition:
+        transform 0.15s ease,
+        background 0.15s ease;
+    }
+
+    .toggle.on span {
+      transform: translateX(11px);
+      background: #eee;
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .button-row.single {
+      grid-template-columns: 1fr;
+    }
+
+    .bottom-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .bottom-panel {
+      min-width: 0;
+      padding: 14px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+    }
+
+    .bottom-heading {
+      margin-bottom: 9px;
+      color: #777;
+      font-size: 9px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .formula {
+      color: #eee;
+      font-family:
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Consolas,
+        monospace;
+      font-size: 12px;
+    }
+
+    .bar {
+      height: 4px;
+      margin-top: 10px;
+      overflow: hidden;
+      background: #202020;
+    }
+
+    .bar-fill {
+      width: 50%;
+      height: 100%;
+      background: #d7d7d7;
+      transition: width 0.12s ease;
+    }
+
+    .footnote {
+      margin-top: 10px;
+      color: #555;
+      font-size: 9px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .side-panel {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        align-items: start;
+      }
+
+      .wide-section {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .app {
+        padding: 12px;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .simulation,
+      canvas {
+        min-height: 430px;
+      }
+
+      .side-panel {
+        display: flex;
+      }
+
+      .bottom-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .readout {
+        width: calc(100% - 32px);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">Thermodynamics / Molecular model</div>
+        <div class="title">Ideal gas in a sealed container</div>
+      </div>
+
+      <div class="top-actions">
+        <button class="button" id="pauseButton">Pause</button>
+        <button class="button" id="resetButton">Reset</button>
+      </div>
+    </header>
+
+    <section class="layout">
+      <div class="simulation">
+        <canvas id="gasCanvas" aria-label="Interactive gas molecule simulation"></canvas>
+
+        <div class="scene-label">Molecular chamber / 01</div>
+
+        <div class="scene-status">
+          <span class="status-dot"></span>
+          <span id="runStatus">Running</span>
+        </div>
+
+        <div class="readout">
+          <div class="readout-grid">
+            <div>
+              <div class="metric-label">Pressure</div>
+              <div class="metric-value">
+                <span id="pressureReadout">1.00</span>
+                <span class="metric-unit">atm</span>
+              </div>
+            </div>
+
+            <div>
+              <div class="metric-label">Temperature</div>
+              <div class="metric-value">
+                <span id="temperatureReadout">300</span>
+                <span class="metric-unit">K</span>
+              </div>
+            </div>
+
+            <div>
+              <div class="metric-label">Volume</div>
+              <div class="metric-value">
+                <span id="volumeReadout">1.00</span>
+                <span class="metric-unit">L</span>
+              </div>
+            </div>
+
+            <div>
+              <div class="metric-label">Mean speed</div>
+              <div class="metric-value">
+                <span id="speedReadout">447</span>
+                <span class="metric-unit">m/s</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="side-panel">
+        <section class="section wide-section">
+          <div class="section-heading">
+            <span>Thermodynamic process</span>
+            <span class="section-number">01</span>
+          </div>
+
+          <div class="process-grid" id="processButtons">
+            <button class="process-button active" data-process="free">
+              Free adjustment
+            </button>
+            <button class="process-button" data-process="isochoric">
+              Isochoric
+            </button>
+            <button class="process-button" data-process="isobaric">
+              Isobaric
+            </button>
+            <button class="process-button" data-process="isothermal">
+              Isothermal
+            </button>
+            <button class="process-button" data-process="adiabatic">
+              Adiabatic
+            </button>
+            <button class="process-button" data-process="isoentropic">
+              Isoentropic
+            </button>
+          </div>
+
+          <div class="description" id="processDescription">
+            Temperature, volume, and molecular speed can be changed independently.
+          </div>
+        </section>
+
+        <div class="rule"></div>
+
+        <section class="section">
+          <div class="section-heading">
+            <span>Gas composition</span>
+            <span class="section-number">02</span>
+          </div>
+
+          <select id="gasType">
+            <option value="helium">Helium — monatomic</option>
+            <option value="neon">Neon — monatomic</option>
+            <option value="argon">Argon — monatomic</option>
+            <option value="nitrogen" selected>Nitrogen — diatomic</option>
+            <option value="oxygen">Oxygen — diatomic</option>
+            <option value="co2">Carbon dioxide — polyatomic</option>
+          </select>
+
+          <div class="control-header">
+            <span class="control-name">Molecules</span>
+            <span class="control-value" id="moleculeCount">180</span>
+          </div>
+
+          <input
+            class="range"
+            id="moleculeSlider"
+            type="range"
+            min="60"
+            max="300"
+            step="10"
+            value="180"
+          />
+        </section>
+
+        <div class="rule"></div>
+
+        <section class="section">
+          <div class="section-heading">
+            <span>State variables</span>
+            <span class="section-number">03</span>
+          </div>
+
+          <div class="control-block">
+            <div class="control-header">
+              <span class="control-name">Reference temperature</span>
+              <span class="control-value">
+                <span id="temperatureValue">300</span> K
+              </span>
+            </div>
+
+            <input
+              class="range"
+              id="temperatureSlider"
+              type="range"
+              min="80"
+              max="900"
+              step="5"
+              value="300"
+            />
+
+            <div class="range-ends">
+              <span>80 K</span>
+              <span>900 K</span>
+            </div>
+          </div>
+
+          <div class="control-block">
+            <div class="control-header">
+              <span class="control-name">Volume</span>
+              <span class="control-value">
+                <span id="volumeValue">1.00</span> L
+              </span>
+            </div>
+
+            <input
+              class="range"
+              id="volumeSlider"
+              type="range"
+              min="0.45"
+              max="2.40"
+              step="0.01"
+              value="1"
+            />
+
+            <div class="range-ends">
+              <span>0.45 L</span>
+              <span>2.40 L</span>
+            </div>
+          </div>
+
+          <div class="control-block">
+            <div class="control-header">
+              <span class="control-name">Molecular speed</span>
+              <span class="control-value">
+                <span id="speedValue">100</span>%
+              </span>
+            </div>
+
+            <input
+              class="range"
+              id="speedSlider"
+              type="range"
+              min="20"
+              max="220"
+              step="1"
+              value="100"
+            />
+
+            <div class="range-ends">
+              <span>20%</span>
+              <span>220%</span>
+            </div>
+          </div>
+
+          <div class="control-header">
+            <span class="control-name">Particle mass</span>
+            <span class="control-value" id="massValue">28.0 u</span>
+          </div>
+        </section>
+
+        <div class="rule"></div>
+
+        <section class="section">
+          <div class="section-heading">
+            <span>Display</span>
+            <span class="section-number">04</span>
+          </div>
+
+          <div class="toggle-row">
+            <span>Velocity trails</span>
+            <button class="toggle on" id="trailsToggle">
+              <span></span>
+            </button>
+          </div>
+
+          <div class="toggle-row">
+            <span>Container grid</span>
+            <button class="toggle on" id="gridToggle">
+              <span></span>
+            </button>
+          </div>
+
+          <div class="toggle-row">
+            <span>Pressure impacts</span>
+            <button class="toggle on" id="impactToggle">
+              <span></span>
+            </button>
+          </div>
+        </section>
+
+        <div class="button-row">
+          <button class="button" id="randomizeButton">Randomize</button>
+          <button class="button" id="referenceButton">Set reference</button>
+        </div>
+      </aside>
+    </section>
+
+    <section class="bottom-grid">
+      <div class="bottom-panel">
+        <div class="bottom-heading">Equation of state</div>
+        <div class="formula">PV = nRT</div>
+        <div class="description" style="margin-top: 9px">
+          Pressure depends on the amount of gas, absolute temperature, and volume.
+        </div>
+      </div>
+
+      <div class="bottom-panel">
+        <div class="bottom-heading">Relative pressure</div>
+        <div class="formula">
+          <span id="pressureRatio">1.00</span> × reference
+        </div>
+        <div class="bar">
+          <div class="bar-fill" id="pressureBar"></div>
+        </div>
+        <div class="description" style="margin-top: 9px" id="pressureDescription">
+          The chamber is near the reference pressure.
+        </div>
+      </div>
+
+      <div class="bottom-panel">
+        <div class="bottom-heading">Process constraint</div>
+        <div class="formula" id="constraintFormula">P ∝ T / V</div>
+        <div class="description" style="margin-top: 9px" id="constraintDescription">
+          Both state variables are free.
+        </div>
+      </div>
+    </section>
+
+    <div class="footnote">
+      Idealized hard-sphere gas. The displayed pressure is calculated from the ideal-gas law.
+      Molecular impacts are visualized separately to make the microscopic interpretation intuitive.
+    </div>
+  </main>
+
+  <script>
+    const canvas = document.getElementById("gasCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const $ = (id) => document.getElementById(id);
+
+    const gases = {
+      helium: {
+        mass: 4.0,
+        gamma: 1.667,
+        color: "#d8d8d8"
+      },
+      neon: {
+        mass: 20.2,
+        gamma: 1.667,
+        color: "#c5c5c5"
+      },
+      argon: {
+        mass: 39.9,
+        gamma: 1.667,
+        color: "#b2b2b2"
+      },
+      nitrogen: {
+        mass: 28.0,
+        gamma: 1.400,
+        color: "#e2e2e2"
+      },
+      oxygen: {
+        mass: 32.0,
+        gamma: 1.400,
+        color: "#cfcfcf"
+      },
+      co2: {
+        mass: 44.0,
+        gamma: 1.289,
+        color: "#bdbdbd"
+      }
+    };
+
+    const state = {
+      process: "free",
+      gas: "nitrogen",
+      referenceTemperature: 300,
+      referenceVolume: 1,
+      referenceMolecules: 180,
+      temperature: 300,
+      volume: 1,
+      molecules: 180,
+      speedPercent: 100,
+      paused: false,
+      trails: true,
+      grid: true,
+      impacts: true
+    };
+
+    let width = 900;
+    let height = 600;
+    let dpr = 1;
+    let lastTime = performance.now();
+    let particles = [];
+    let impacts = [];
+
+    let cameraYaw = -0.45;
+    let cameraPitch = 0.28;
+    let cameraZoom = 1;
+    let dragStart = null;
+
+    const baseBox = {
+      width: 1.55,
+      height: 1.05,
+      depth: 1.55
+    };
+
+    const projection = {
+      scale: 260,
+      cx: 0,
+      cy: 0
+    };
+
+    function randomDirection() {
+      const theta = Math.random() * Math.PI * 2;
+      const z = Math.random() * 2 - 1;
+      const radius = Math.sqrt(Math.max(0, 1 - z * z));
+
+      return {
+        x: radius * Math.cos(theta),
+        y: radius * Math.sin(theta),
+        z
+      };
+    }
+
+    function createParticles() {
+      particles = [];
+
+      for (let i = 0; i < state.molecules; i++) {
+        const direction = randomDirection();
+        const speed = 0.55 + Math.random() * 0.55;
+
+        particles.push({
+          x: (Math.random() - 0.5) * baseBox.width * 0.86,
+          y: (Math.random() - 0.5) * baseBox.height * 0.86,
+          z: (Math.random() - 0.5) * baseBox.depth * 0.86,
+          vx: direction.x * speed,
+          vy: direction.y * speed,
+          vz: direction.z * speed,
+          radius: 0.018 + Math.random() * 0.006,
+          trail: []
+        });
+      }
+    }
+
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+
+      width = Math.max(320, rect.width);
+      height = Math.max(390, rect.height);
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      projection.scale = Math.min(width, height) * 0.38 / cameraZoom;
+      projection.cx = width * 0.52;
+      projection.cy = height * 0.49;
+    }
+
+    function project(x, y, z) {
+      const cosYaw = Math.cos(cameraYaw);
+      const sinYaw = Math.sin(cameraYaw);
+      const cosPitch = Math.cos(cameraPitch);
+      const sinPitch = Math.sin(cameraPitch);
+
+      const rotatedX = x * cosYaw - z * sinYaw;
+      const rotatedZ = x * sinYaw + z * cosYaw;
+      const rotatedY = y * cosPitch - rotatedZ * sinPitch;
+      const depth = y * sinPitch + rotatedZ * cosPitch;
+
+      return {
+        x: projection.cx + rotatedX * projection.scale,
+        y: projection.cy - rotatedY * projection.scale,
+        depth
+      };
+    }
+
+    function drawLine(a, b, color, lineWidth = 1) {
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = lineWidth;
+      ctx.stroke();
+    }
+
+    function effectiveTemperature() {
+      if (state.process === "adiabatic" || state.process === "isoentropic") {
+        const gamma = gases[state.gas].gamma;
+
+        return state.referenceTemperature *
+          Math.pow(state.referenceVolume / state.volume, gamma - 1);
+      }
+
+      if (state.process === "isothermal") {
+        return state.referenceTemperature;
+      }
+
+      return state.temperature;
+    }
+
+    function effectiveVolume() {
+      if (state.process === "isochoric") {
+        return state.referenceVolume;
+      }
+
+      return state.volume;
+    }
+
+    function effectiveMolecules() {
+      return state.molecules;
+    }
+
+    function idealPressure() {
+      const temperature = effectiveTemperature();
+      const volume = effectiveVolume();
+      const molecules = effectiveMolecules();
+
+      return (
+        molecules / state.referenceMolecules *
+        temperature / state.referenceTemperature /
+        volume
+      );
+    }
+
+    function actualSpeedFactor() {
+      const temperatureFactor = Math.sqrt(effectiveTemperature() / 300);
+      const userFactor = state.speedPercent / 100;
+
+      return temperatureFactor * userFactor;
+    }
+
+    function drawContainer() {
+      const scale = Math.cbrt(effectiveVolume());
+
+      const w = baseBox.width * scale;
+      const h = baseBox.height * scale;
+      const d = baseBox.depth * scale;
+
+      const corners = [
+        [-w / 2, -h / 2, -d / 2],
+        [ w / 2, -h / 2, -d / 2],
+        [ w / 2,  h / 2, -d / 2],
+        [-w / 2,  h / 2, -d / 2],
+        [-w / 2, -h / 2,  d / 2],
+        [ w / 2, -h / 2,  d / 2],
+        [ w / 2,  h / 2,  d / 2],
+        [-w / 2,  h / 2,  d / 2]
+      ].map((corner) => project(...corner));
+
+      if (state.grid) {
+        const count = 6;
+
+        for (let i = 1; i < count; i++) {
+          const t = i / count - 0.5;
+
+          drawLine(
+            project(t * w, -h / 2, -d / 2),
+            project(t * w, -h / 2, d / 2),
+            "#151515"
+          );
+
+          drawLine(
+            project(-w / 2, -h / 2, t * d),
+            project(w / 2, -h / 2, t * d),
+            "#151515"
+          );
+
+          drawLine(
+            project(-w / 2, t * h, -d / 2),
+            project(-w / 2, t * h, d / 2),
+            "#111111"
+          );
+        }
+      }
+
+      const edges = [
+        [0, 1],
+        [1, 2],
+        [2, 3],
+        [3, 0],
+        [4, 5],
+        [5, 6],
+        [6, 7],
+        [7, 4],
+        [0, 4],
+        [1, 5],
+        [2, 6],
+        [3, 7]
+      ];
+
+      for (const [a, b] of edges) {
+        drawLine(corners[a], corners[b], "#777777", 1);
+      }
+
+      ctx.fillStyle = "#777";
+      ctx.font = "10px ui-monospace, monospace";
+      ctx.fillText(
+        `${effectiveVolume().toFixed(2)} L`,
+        corners[0].x - 2,
+        corners[0].y + 18
+      );
+    }
+
+    function drawParticles(dt) {
+      const scale = Math.cbrt(effectiveVolume());
+      const halfWidth = baseBox.width * scale / 2;
+      const halfHeight = baseBox.height * scale / 2;
+      const halfDepth = baseBox.depth * scale / 2;
+
+      const speedFactor = actualSpeedFactor();
+      const movement = dt * 0.8 * speedFactor;
+      const projectedParticles = [];
+
+      for (const particle of particles) {
+        if (!state.paused) {
+          if (state.trails) {
+            particle.trail.push({
+              x: particle.x,
+              y: particle.y,
+              z: particle.z
+            });
+
+            if (particle.trail.length > 6) {
+              particle.trail.shift();
+            }
+          } else {
+            particle.trail.length = 0;
+          }
+
+          particle.x += particle.vx * movement;
+          particle.y += particle.vy * movement;
+          particle.z += particle.vz * movement;
+
+          let wallHit = false;
+
+          if (particle.x < -halfWidth || particle.x > halfWidth) {
+            particle.x = Math.max(
+              -halfWidth,
+              Math.min(halfWidth, particle.x)
+            );
+            particle.vx *= -1;
+            wallHit = true;
+          }
+
+          if (particle.y < -halfHeight || particle.y > halfHeight) {
+            particle.y = Math.max(
+              -halfHeight,
+              Math.min(halfHeight, particle.y)
+            );
+            particle.vy *= -1;
+            wallHit = true;
+          }
+
+          if (particle.z < -halfDepth || particle.z > halfDepth) {
+            particle.z = Math.max(
+              -halfDepth,
+              Math.min(halfDepth, particle.z)
+            );
+            particle.vz *= -1;
+            wallHit = true;
+          }
+
+          if (
+            wallHit &&
+            state.impacts &&
+            Math.random() < 0.24
+          ) {
+            impacts.push({
+              x: particle.x,
+              y: particle.y,
+              z: particle.z,
+              life: 1
+            });
+          }
+        }
+
+        const projected = project(
+          particle.x,
+          particle.y,
+          particle.z
+        );
+
+        projectedParticles.push({
+          particle,
+          projected
+        });
+      }
+
+      projectedParticles.sort(
+        (a, b) => a.projected.depth - b.projected.depth
+      );
+
+      for (const item of projectedParticles) {
+        const particle = item.particle;
+        const projected = item.projected;
+        const radius = Math.max(
+          1.7,
+          particle.radius *
+            projection.scale *
+            (1 + projected.depth * 0.12)
+        );
+
+        if (state.trails && particle.trail.length > 1) {
+          for (let i = 1; i < particle.trail.length; i++) {
+            const a = project(
+              particle.trail[i - 1].x,
+              particle.trail[i - 1].y,
+              particle.trail[i - 1].z
+            );
+
+            const b = project(
+              particle.trail[i].x,
+              particle.trail[i].y,
+              particle.trail[i].z
+            );
+
+            drawLine(
+              a,
+              b,
+              `rgba(190,190,190,${(i / particle.trail.length) * 0.22})`,
+              1
+            );
+          }
+        }
+
+        ctx.beginPath();
+        ctx.arc(projected.x, projected.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = gases[state.gas].color;
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(
+          projected.x - radius * 0.28,
+          projected.y - radius * 0.28,
+          radius * 0.27,
+          0,
+          Math.PI * 2
+        );
+        ctx.fillStyle = "rgba(255,255,255,.6)";
+        ctx.fill();
+      }
+
+      if (state.impacts) {
+        for (const impact of impacts) {
+          const projected = project(
+            impact.x,
+            impact.y,
+            impact.z
+          );
+
+          ctx.beginPath();
+          ctx.arc(
+            projected.x,
+            projected.y,
+            (1 - impact.life) * 9 + 2,
+            0,
+            Math.PI * 2
+          );
+
+          ctx.strokeStyle = `rgba(220,220,220,${impact.life * 0.5})`;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+
+          impact.life -= dt * 2.4;
+        }
+
+        impacts = impacts.filter((impact) => impact.life > 0);
+      }
+    }
+
+    function draw() {
+      const now = performance.now();
+      const dt = Math.min((now - lastTime) / 1000, 0.04);
+      lastTime = now;
+
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, width, height);
+
+      drawContainer();
+      drawParticles(dt);
+
+      if (state.paused) {
+        ctx.fillStyle = "#777";
+        ctx.font = "10px ui-monospace, monospace";
+        ctx.fillText(
+          "SIMULATION PAUSED",
+          projection.cx - 53,
+          height - 22
+        );
+      }
+
+      requestAnimationFrame(draw);
+    }
+
+    function updateProcessDescription() {
+      const descriptions = {
+        free:
+          "Temperature, volume, and molecular speed can be changed independently.",
+        isochoric:
+          "Volume is fixed. Heating increases pressure; cooling decreases it.",
+        isobaric:
+          "Volume follows temperature so pressure remains approximately constant.",
+        isothermal:
+          "Temperature is fixed. Compression raises pressure; expansion lowers it.",
+        adiabatic:
+          "No heat is exchanged. Compression raises effective temperature; expansion lowers it.",
+        isoentropic:
+          "A reversible adiabatic process. The effective temperature follows the gas-specific exponent."
+      };
+
+      $("processDescription").textContent =
+        descriptions[state.process];
+    }
+
+    function updateConstraintReadout() {
+      const formulas = {
+        free: ["P ∝ T / V", "Both state variables are free."],
+        isochoric: ["P / T = constant", "Volume remains fixed."],
+        isobaric: ["V / T = constant", "Pressure remains approximately fixed."],
+        isothermal: ["PV = constant", "Temperature remains fixed."],
+        adiabatic: ["PVᵞ = constant", "Heat exchange is suppressed."],
+        isoentropic: ["TVᵞ⁻¹ = constant", "Entropy remains constant in the idealization."]
+      };
+
+      $("constraintFormula").textContent =
+        formulas[state.process][0];
+
+      $("constraintDescription").textContent =
+        formulas[state.process][1];
+    }
+
+    function updateReadouts() {
+      const temperature = effectiveTemperature();
+      const volume = effectiveVolume();
+      const pressure = idealPressure();
+      const meanSpeed = 447 *
+        Math.sqrt(temperature / 300) *
+        state.speedPercent / 100;
+
+      $("pressureReadout").textContent = pressure.toFixed(2);
+      $("temperatureReadout").textContent = Math.round(temperature);
+      $("volumeReadout").textContent = volume.toFixed(2);
+      $("speedReadout").textContent = Math.round(meanSpeed);
+
+      $("temperatureValue").textContent =
+        Math.round(state.temperature);
+
+      $("volumeValue").textContent =
+        state.volume.toFixed(2);
+
+      $("speedValue").textContent =
+        Math.round(state.speedPercent);
+
+      $("moleculeCount").textContent =
+        state.molecules;
+
+      $("massValue").textContent =
+        gases[state.gas].mass.toFixed(1) + " u";
+
+      $("pressureRatio").textContent =
+        pressure.toFixed(2);
+
+      $("pressureBar").style.width =
+        Math.min(100, pressure * 50) + "%";
+
+      $("pressureDescription").textContent =
+        pressure > 1.08
+          ? "Higher pressure: molecular impacts are more frequent or stronger."
+          : pressure < 0.92
+            ? "Lower pressure: fewer impacts occur per unit area."
+            : "The chamber is near the reference pressure.";
+
+      $("runStatus").textContent =
+        state.paused ? "Paused" : "Running";
+
+      $("pauseButton").textContent =
+        state.paused ? "Resume" : "Pause";
+
+      updateProcessDescription();
+      updateConstraintReadout();
+    }
+
+    function syncControls() {
+      $("temperatureSlider").value = state.temperature;
+      $("volumeSlider").value = state.volume;
+      $("speedSlider").value = state.speedPercent;
+      $("moleculeSlider").value = state.molecules;
+      $("gasType").value = state.gas;
+
+      document
+        .querySelectorAll("[data-process]")
+        .forEach((button) => {
+          button.classList.toggle(
+            "active",
+            button.dataset.process === state.process
+          );
+        });
+
+      $("trailsToggle").classList.toggle(
+        "on",
+        state.trails
+      );
+
+      $("gridToggle").classList.toggle(
+        "on",
+        state.grid
+      );
+
+      $("impactToggle").classList.toggle(
+        "on",
+        state.impacts
+      );
+    }
+
+    function setReference() {
+      state.referenceTemperature = state.temperature;
+      state.referenceVolume = state.volume;
+      state.referenceMolecules = state.molecules;
+      updateReadouts();
+    }
+
+    document
+      .getElementById("processButtons")
+      .addEventListener("click", (event) => {
+        const button = event.target.closest("[data-process]");
+        if (!button) return;
+
+        state.process = button.dataset.process;
+        setReference();
+        syncControls();
+        updateReadouts();
+      });
+
+    $("temperatureSlider").addEventListener("input", (event) => {
+      state.temperature = Number(event.target.value);
+
+      /*
+       * The temperature slider now always remains usable.
+       * For adiabatic and isoentropic processes, it sets the
+       * reference temperature rather than being overwritten.
+       */
+      if (
+        state.process === "adiabatic" ||
+        state.process === "isoentropic"
+      ) {
+        state.referenceTemperature = state.temperature;
+      }
+
+      updateReadouts();
+    });
+
+    $("volumeSlider").addEventListener("input", (event) => {
+      state.volume = Number(event.target.value);
+
+      if (state.process === "isochoric") {
+        state.volume = state.referenceVolume;
+      }
+
+      if (state.process === "isobaric") {
+        state.volume =
+          state.referenceVolume *
+          state.temperature /
+          state.referenceTemperature;
+
+        state.volume = Math.max(
+          0.45,
+          Math.min(2.4, state.volume)
+        );
+      }
+
+      updateReadouts();
+      syncControls();
+    });
+
+    $("speedSlider").addEventListener("input", (event) => {
+      state.speedPercent = Number(event.target.value);
+      updateReadouts();
+    });
+
+    $("moleculeSlider").addEventListener("input", (event) => {
+      state.molecules = Number(event.target.value);
+      createParticles();
+      updateReadouts();
+    });
+
+    $("gasType").addEventListener("change", (event) => {
+      state.gas = event.target.value;
+      updateReadouts();
+    });
+
+    $("pauseButton").addEventListener("click", () => {
+      state.paused = !state.paused;
+      updateReadouts();
+    });
+
+    $("resetButton").addEventListener("click", () => {
+      state.process = "free";
+      state.gas = "nitrogen";
+      state.referenceTemperature = 300;
+      state.referenceVolume = 1;
+      state.referenceMolecules = 180;
+      state.temperature = 300;
+      state.volume = 1;
+      state.molecules = 180;
+      state.speedPercent = 100;
+      state.paused = false;
+      state.trails = true;
+      state.grid = true;
+      state.impacts = true;
+      impacts = [];
+
+      createParticles();
+      syncControls();
+      updateReadouts();
+    });
+
+    $("randomizeButton").addEventListener("click", () => {
+      state.temperature =
+        Math.round((120 + Math.random() * 700) / 5) * 5;
+
+      state.volume =
+        Math.round((0.55 + Math.random() * 1.65) * 100) / 100;
+
+      state.molecules =
+        Math.round((80 + Math.random() * 200) / 10) * 10;
+
+      state.speedPercent =
+        Math.round(40 + Math.random() * 160);
+
+      setReference();
+      createParticles();
+      syncControls();
+      updateReadouts();
+    });
+
+    $("referenceButton").addEventListener("click", () => {
+      setReference();
+    });
+
+    $("trailsToggle").addEventListener("click", () => {
+      state.trails = !state.trails;
+      syncControls();
+    });
+
+    $("gridToggle").addEventListener("click", () => {
+      state.grid = !state.grid;
+      syncControls();
+    });
+
+    $("impactToggle").addEventListener("click", () => {
+      state.impacts = !state.impacts;
+
+      if (!state.impacts) {
+        impacts = [];
+      }
+
+      syncControls();
+    });
+
+    canvas.addEventListener("pointerdown", (event) => {
+      dragStart = {
+        x: event.clientX,
+        y: event.clientY,
+        yaw: cameraYaw,
+        pitch: cameraPitch
+      };
+
+      canvas.setPointerCapture(event.pointerId);
+    });
+
+    canvas.addEventListener("pointermove", (event) => {
+      if (!dragStart) return;
+
+      const dx = event.clientX - dragStart.x;
+      const dy = event.clientY - dragStart.y;
+
+      cameraYaw = dragStart.yaw + dx * 0.008;
+      cameraPitch = Math.max(
+        -1.1,
+        Math.min(1.1, dragStart.pitch + dy * 0.006)
+      );
+    });
+
+    canvas.addEventListener("pointerup", () => {
+      dragStart = null;
+    });
+
+    canvas.addEventListener("pointercancel", () => {
+      dragStart = null;
+    });
+
+    canvas.addEventListener(
+      "wheel",
+      (event) => {
+        event.preventDefault();
+
+        cameraZoom = Math.max(
+          0.65,
+          Math.min(1.5, cameraZoom + event.deltaY * 0.001)
+        );
+
+        projection.scale =
+          Math.min(width, height) * 0.38 / cameraZoom;
+      },
+      { passive: false }
+    );
+
+    const resizeObserver = new ResizeObserver(resize);
+    resizeObserver.observe(canvas);
+
+    createParticles();
+    resize();
+    syncControls();
+    updateReadouts();
+    requestAnimationFrame(draw);
+  </script>
+</body>
+</html>

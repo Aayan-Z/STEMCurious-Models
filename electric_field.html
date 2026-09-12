@@ -1,0 +1,3688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Electric Field / Potential</title>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <style>
+    :root {
+      --black: #000000;
+      --glass: rgba(16, 16, 16, 0.72);
+      --glass-strong: rgba(12, 12, 12, 0.88);
+
+      --line: rgba(255, 255, 255, 0.105);
+      --line-strong: rgba(255, 255, 255, 0.17);
+
+      --white: #f2f2f2;
+      --text: #d5d5d5;
+      --muted: #777;
+      --dim: #4b4b4b;
+
+      --positive: #e8a06d;
+      --negative: #9cb9c9;
+      --probe: #b7d4bd;
+
+      --panel-radius: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #000;
+      color: var(--text);
+
+      font-family:
+        Inter,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Helvetica,
+        Arial,
+        sans-serif;
+    }
+
+    body {
+      background: #000;
+    }
+
+    #app {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      background: #000;
+    }
+
+    #scene {
+      position: absolute;
+      inset: 0;
+      background: #000;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      outline: none;
+    }
+
+    /* =========================================================
+       GLASS
+       ========================================================= */
+
+    .glass {
+      background: var(--glass);
+
+      border: 1px solid var(--line);
+
+      box-shadow:
+        0 12px 40px rgba(0, 0, 0, 0.55);
+
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+
+    /* =========================================================
+       TOP BAR
+       ========================================================= */
+
+    .topbar {
+      position: absolute;
+
+      top: 18px;
+      left: 18px;
+      right: 18px;
+
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      pointer-events: none;
+    }
+
+    .brand {
+      pointer-events: auto;
+
+      display: flex;
+      align-items: center;
+
+      height: 48px;
+
+      padding: 0 16px;
+
+      border-radius: var(--panel-radius);
+    }
+
+    .brand-title {
+      color: #ededed;
+
+      font-size: 12px;
+      font-weight: 600;
+
+      letter-spacing: 0.015em;
+    }
+
+    .brand-subtitle {
+      margin-top: 3px;
+
+      color: #666;
+
+      font-size: 9px;
+      letter-spacing: 0.08em;
+
+      text-transform: uppercase;
+    }
+
+    .brand-rule {
+      width: 1px;
+      height: 21px;
+
+      margin: 0 14px;
+
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .status {
+      color: #666;
+
+      font-size: 9px;
+      letter-spacing: 0.08em;
+
+      text-transform: uppercase;
+    }
+
+    .top-actions {
+      pointer-events: auto;
+
+      display: flex;
+      gap: 6px;
+    }
+
+    button {
+      border: 1px solid var(--line);
+
+      background: rgba(255, 255, 255, 0.035);
+
+      color: #bdbdbd;
+
+      border-radius: 10px;
+
+      padding: 9px 12px;
+
+      font-size: 10px;
+
+      cursor: pointer;
+
+      transition:
+        background 150ms ease,
+        border-color 150ms ease,
+        color 150ms ease;
+    }
+
+    button:hover {
+      background: rgba(255, 255, 255, 0.07);
+
+      border-color: var(--line-strong);
+
+      color: #eee;
+    }
+
+    button.active {
+      background: rgba(255, 255, 255, 0.095);
+
+      border-color: rgba(255, 255, 255, 0.23);
+
+      color: #f1f1f1;
+    }
+
+    /* =========================================================
+       LEFT CONTROL PANEL
+       ========================================================= */
+
+    .control-panel {
+      position: absolute;
+
+      top: 84px;
+      left: 18px;
+      bottom: 18px;
+
+      width: 274px;
+
+      padding: 15px;
+
+      border-radius: var(--panel-radius);
+
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    .control-panel::-webkit-scrollbar {
+      width: 3px;
+    }
+
+    .control-panel::-webkit-scrollbar-thumb {
+      background: #292929;
+      border-radius: 99px;
+    }
+
+    .section {
+      padding-bottom: 15px;
+      margin-bottom: 15px;
+
+      border-bottom: 1px solid rgba(255, 255, 255, 0.065);
+    }
+
+    .section:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+    }
+
+    .section-heading {
+      margin-bottom: 11px;
+
+      color: #666;
+
+      font-size: 8px;
+      font-weight: 600;
+
+      letter-spacing: 0.14em;
+
+      text-transform: uppercase;
+    }
+
+    .mode-grid {
+      display: grid;
+
+      grid-template-columns: 1fr 1fr;
+
+      gap: 5px;
+    }
+
+    .mode-grid button {
+      padding: 9px 5px;
+
+      font-size: 9px;
+    }
+
+    /* =========================================================
+       TOGGLE ROWS
+       ========================================================= */
+
+    .toggle-row {
+      display: flex;
+
+      align-items: center;
+      justify-content: space-between;
+
+      height: 30px;
+    }
+
+    .toggle-label {
+      color: #a0a0a0;
+
+      font-size: 10px;
+    }
+
+    .toggle {
+      position: relative;
+
+      width: 28px;
+      height: 15px;
+
+      appearance: none;
+      -webkit-appearance: none;
+
+      border-radius: 99px;
+
+      background: #1b1b1b;
+
+      border: 1px solid #303030;
+
+      cursor: pointer;
+
+      transition: 150ms ease;
+    }
+
+    .toggle::after {
+      content: "";
+
+      position: absolute;
+
+      top: 2px;
+      left: 2px;
+
+      width: 9px;
+      height: 9px;
+
+      border-radius: 50%;
+
+      background: #666;
+
+      transition: 150ms ease;
+    }
+
+    .toggle:checked {
+      background: #303030;
+    }
+
+    .toggle:checked::after {
+      left: 15px;
+
+      background: #ddd;
+    }
+
+    /* =========================================================
+       CHARGE LIST
+       ========================================================= */
+
+    .charge-list {
+      display: grid;
+      gap: 4px;
+    }
+
+    .charge-item {
+      width: 100%;
+
+      display: grid;
+
+      grid-template-columns: 24px 1fr auto;
+
+      align-items: center;
+
+      gap: 8px;
+
+      padding: 8px;
+
+      text-align: left;
+
+      border-radius: 9px;
+
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .charge-symbol {
+      width: 21px;
+      height: 21px;
+
+      display: grid;
+      place-items: center;
+
+      border-radius: 50%;
+
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .positive {
+      background: rgba(232, 160, 109, 0.12);
+      color: var(--positive);
+
+      border: 1px solid rgba(232, 160, 109, 0.22);
+    }
+
+    .negative {
+      background: rgba(156, 185, 201, 0.12);
+      color: var(--negative);
+
+      border: 1px solid rgba(156, 185, 201, 0.22);
+    }
+
+    .charge-name {
+      color: #bdbdbd;
+
+      font-size: 10px;
+    }
+
+    .charge-meta {
+      margin-top: 2px;
+
+      color: #595959;
+
+      font-size: 8px;
+    }
+
+    .charge-select {
+      color: #4f4f4f;
+
+      font-size: 8px;
+    }
+
+    /* =========================================================
+       SLIDERS
+       ========================================================= */
+
+    .slider-row {
+      margin-top: 12px;
+    }
+
+    .slider-header {
+      display: flex;
+
+      justify-content: space-between;
+
+      margin-bottom: 7px;
+    }
+
+    .slider-label {
+      color: #858585;
+
+      font-size: 9px;
+    }
+
+    .slider-value {
+      color: #a7a7a7;
+
+      font-size: 9px;
+
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="range"] {
+      width: 100%;
+
+      height: 2px;
+
+      margin: 0;
+
+      appearance: none;
+      -webkit-appearance: none;
+
+      background: #303030;
+
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      -webkit-appearance: none;
+
+      width: 9px;
+      height: 9px;
+
+      border-radius: 50%;
+
+      background: #d0d0d0;
+
+      border: none;
+
+      cursor: pointer;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 9px;
+      height: 9px;
+
+      border-radius: 50%;
+
+      background: #d0d0d0;
+
+      border: none;
+
+      cursor: pointer;
+    }
+
+    /* =========================================================
+       BOTTOM RIGHT READOUT
+       ========================================================= */
+
+    .readout {
+      position: absolute;
+
+      right: 18px;
+      bottom: 18px;
+
+      width: 350px;
+
+      padding: 15px 16px;
+
+      border-radius: var(--panel-radius);
+    }
+
+    .readout-header {
+      display: flex;
+
+      justify-content: space-between;
+      align-items: center;
+
+      padding-bottom: 11px;
+
+      border-bottom: 1px solid rgba(255, 255, 255, 0.065);
+    }
+
+    .readout-title {
+      color: #777;
+
+      font-size: 8px;
+      font-weight: 600;
+
+      letter-spacing: 0.14em;
+
+      text-transform: uppercase;
+    }
+
+    .probe-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+
+      color: #666;
+
+      font-size: 8px;
+    }
+
+    .probe-status-dot {
+      width: 5px;
+      height: 5px;
+
+      border-radius: 50%;
+
+      background: var(--probe);
+    }
+
+    .readout-grid {
+      display: grid;
+
+      grid-template-columns: 1fr 1fr;
+
+      gap: 13px 25px;
+
+      padding-top: 13px;
+    }
+
+    .readout-cell-label {
+      margin-bottom: 4px;
+
+      color: #555;
+
+      font-size: 8px;
+
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .readout-cell-value {
+      color: #d2d2d2;
+
+      font-size: 17px;
+
+      font-weight: 500;
+
+      letter-spacing: -0.025em;
+
+      font-variant-numeric: tabular-nums;
+    }
+
+    .readout-unit {
+      color: #555;
+
+      font-size: 8px;
+
+      margin-left: 3px;
+    }
+
+    .readout-note {
+      padding-top: 12px;
+      margin-top: 12px;
+
+      border-top: 1px solid rgba(255, 255, 255, 0.055);
+
+      color: #5e5e5e;
+
+      font-size: 9px;
+
+      line-height: 1.5;
+    }
+
+    /* =========================================================
+       SCENE LABEL
+       ========================================================= */
+
+    .scene-label {
+      position: absolute;
+
+      left: 50%;
+      top: 84px;
+
+      transform: translateX(-50%);
+
+      color: #414141;
+
+      font-size: 8px;
+
+      letter-spacing: 0.15em;
+
+      text-transform: uppercase;
+
+      pointer-events: none;
+    }
+
+    /* =========================================================
+       AXIS LEGEND
+       ========================================================= */
+
+    .legend {
+      position: absolute;
+
+      right: 18px;
+      top: 84px;
+
+      display: flex;
+      align-items: center;
+
+      gap: 13px;
+
+      color: #4d4d4d;
+
+      font-size: 8px;
+
+      pointer-events: none;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .legend-dot {
+      width: 5px;
+      height: 5px;
+
+      border-radius: 50%;
+    }
+
+    /* =========================================================
+       MOBILE
+       ========================================================= */
+
+    @media (max-width: 800px) {
+      .control-panel {
+        width: 250px;
+
+        left: 10px;
+        top: 70px;
+        bottom: 10px;
+      }
+
+      .topbar {
+        top: 10px;
+        left: 10px;
+        right: 10px;
+      }
+
+      .brand-subtitle,
+      .status {
+        display: none;
+      }
+
+      .readout {
+        right: 10px;
+        bottom: 10px;
+
+        width: 290px;
+      }
+
+      .scene-label,
+      .legend {
+        display: none;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .top-actions button {
+        padding: 8px 9px;
+      }
+
+      .control-panel {
+        width: 225px;
+      }
+
+      .readout {
+        width: 225px;
+      }
+
+      .readout-grid {
+        grid-template-columns: 1fr;
+        gap: 9px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="app">
+
+  <div id="scene"></div>
+
+  <!-- =======================================================
+       TOP BAR
+       ======================================================= -->
+
+  <header class="topbar">
+
+    <div class="brand glass">
+
+      <div>
+        <div class="brand-title">
+          Electric Field / Potential
+        </div>
+
+        <div class="brand-subtitle">
+          Interactive field model
+        </div>
+      </div>
+
+      <div class="brand-rule"></div>
+
+      <div class="status">
+        2D electrostatic space
+      </div>
+
+    </div>
+
+    <div class="top-actions">
+
+      <button id="resetView">
+        Reset view
+      </button>
+
+      <button id="resetModel">
+        Reset model
+      </button>
+
+      <button id="pauseButton">
+        Pause
+      </button>
+
+    </div>
+
+  </header>
+
+
+  <!-- =======================================================
+       LEFT CONTROL PANEL
+       ======================================================= -->
+
+  <aside class="control-panel glass">
+
+    <section class="section">
+
+      <div class="section-heading">
+        Representation
+      </div>
+
+      <div class="mode-grid">
+
+        <button id="fieldMode" class="active">
+          Field
+        </button>
+
+        <button id="potentialMode">
+          Potential
+        </button>
+
+        <button id="combinedMode">
+          Combined
+        </button>
+
+        <button id="minimalMode">
+          Minimal
+        </button>
+
+      </div>
+
+    </section>
+
+
+    <section class="section">
+
+      <div class="section-heading">
+        Field display
+      </div>
+
+      <div class="toggle-row">
+        <span class="toggle-label">
+          Field lines
+        </span>
+
+        <input
+          id="fieldLinesToggle"
+          class="toggle"
+          type="checkbox"
+          checked
+        />
+      </div>
+
+      <div class="toggle-row">
+        <span class="toggle-label">
+          Vector field
+        </span>
+
+        <input
+          id="vectorsToggle"
+          class="toggle"
+          type="checkbox"
+          checked
+        />
+      </div>
+
+      <div class="toggle-row">
+        <span class="toggle-label">
+          Equipotential
+        </span>
+
+        <input
+          id="equipotentialToggle"
+          class="toggle"
+          type="checkbox"
+          checked
+        />
+      </div>
+
+      <div class="toggle-row">
+        <span class="toggle-label">
+          Probe motion
+        </span>
+
+        <input
+          id="probeToggle"
+          class="toggle"
+          type="checkbox"
+          checked
+        />
+      </div>
+
+    </section>
+
+
+    <section class="section">
+
+      <div class="section-heading">
+        Sources
+      </div>
+
+      <div id="chargeList" class="charge-list"></div>
+
+      <button
+        id="addCharge"
+        style="width:100%; margin-top:6px;"
+      >
+        Add source
+      </button>
+
+    </section>
+
+
+    <section class="section">
+
+      <div class="section-heading">
+        Probe
+      </div>
+
+      <div class="slider-row">
+
+        <div class="slider-header">
+
+          <span class="slider-label">
+            Charge
+          </span>
+
+          <span
+            class="slider-value"
+            id="probeChargeValue"
+          >
+            +1.0 μC
+          </span>
+
+        </div>
+
+        <input
+          id="probeCharge"
+          type="range"
+          min="-3"
+          max="3"
+          step="0.1"
+          value="1"
+        />
+
+      </div>
+
+
+      <div class="slider-row">
+
+        <div class="slider-header">
+
+          <span class="slider-label">
+            Motion
+          </span>
+
+          <span
+            class="slider-value"
+            id="probeSpeedValue"
+          >
+            0.35
+          </span>
+
+        </div>
+
+        <input
+          id="probeSpeed"
+          type="range"
+          min="0"
+          max="1.5"
+          step="0.05"
+          value="0.35"
+        />
+
+      </div>
+
+    </section>
+
+
+    <section class="section">
+
+      <div class="section-heading">
+        Scale
+      </div>
+
+      <div class="slider-row">
+
+        <div class="slider-header">
+
+          <span class="slider-label">
+            Field vectors
+          </span>
+
+          <span
+            class="slider-value"
+            id="fieldScaleValue"
+          >
+            1.00×
+          </span>
+
+        </div>
+
+        <input
+          id="fieldScale"
+          type="range"
+          min="0.25"
+          max="3"
+          step="0.05"
+          value="1"
+        />
+
+      </div>
+
+
+      <div class="slider-row">
+
+        <div class="slider-header">
+
+          <span class="slider-label">
+            Potential
+          </span>
+
+          <span
+            class="slider-value"
+            id="potentialScaleValue"
+          >
+            1.00×
+          </span>
+
+        </div>
+
+        <input
+          id="potentialScale"
+          type="range"
+          min="0.25"
+          max="3"
+          step="0.05"
+          value="1"
+        />
+
+      </div>
+
+    </section>
+
+  </aside>
+
+
+  <!-- =======================================================
+       SCENE LABEL
+       ======================================================= -->
+
+  <div class="scene-label">
+    Electrostatic space
+  </div>
+
+
+  <!-- =======================================================
+       LEGEND
+       ======================================================= -->
+
+  <div class="legend">
+
+    <div class="legend-item">
+      <div
+        class="legend-dot"
+        style="background: var(--positive)"
+      ></div>
+      Positive
+    </div>
+
+    <div class="legend-item">
+      <div
+        class="legend-dot"
+        style="background: var(--negative)"
+      ></div>
+      Negative
+    </div>
+
+    <div class="legend-item">
+      <div
+        class="legend-dot"
+        style="background: var(--probe)"
+      ></div>
+      Probe
+    </div>
+
+  </div>
+
+
+  <!-- =======================================================
+       PROBE READOUT
+       ======================================================= -->
+
+  <section class="readout glass">
+
+    <div class="readout-header">
+
+      <div class="readout-title">
+        Probe state
+      </div>
+
+      <div class="probe-status">
+
+        <div class="probe-status-dot"></div>
+
+        Active
+
+      </div>
+
+    </div>
+
+
+    <div class="readout-grid">
+
+      <div>
+
+        <div class="readout-cell-label">
+          Electric field
+        </div>
+
+        <div class="readout-cell-value">
+
+          <span id="fieldReadout">
+            0.00
+          </span>
+
+          <span class="readout-unit">
+            N/C
+          </span>
+
+        </div>
+
+      </div>
+
+
+      <div>
+
+        <div class="readout-cell-label">
+          Potential
+        </div>
+
+        <div class="readout-cell-value">
+
+          <span id="potentialReadout">
+            0.00
+          </span>
+
+          <span class="readout-unit">
+            V
+          </span>
+
+        </div>
+
+      </div>
+
+
+      <div>
+
+        <div class="readout-cell-label">
+          Potential energy
+        </div>
+
+        <div class="readout-cell-value">
+
+          <span id="energyReadout">
+            0.00
+          </span>
+
+          <span class="readout-unit">
+            μJ
+          </span>
+
+        </div>
+
+      </div>
+
+
+      <div>
+
+        <div class="readout-cell-label">
+          Radius
+        </div>
+
+        <div class="readout-cell-value">
+
+          <span id="distanceReadout">
+            0.00
+          </span>
+
+          <span class="readout-unit">
+            m
+          </span>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div
+      id="readoutDescription"
+      class="readout-note"
+    >
+      Move the probe through the field to examine how
+      electric field, potential, and potential energy vary.
+    </div>
+
+  </section>
+
+</div>
+
+
+<script type="module">
+
+  import * as THREE from "three";
+  import { OrbitControls }
+    from "three/addons/controls/OrbitControls.js";
+
+
+  /* =========================================================
+     CONSTANTS
+     ========================================================= */
+
+  const K = 8.9875517923e9;
+
+  const WORLD_LIMIT = 12;
+
+
+  /* =========================================================
+     SCENE
+     ========================================================= */
+
+  const sceneHost =
+    document.getElementById("scene");
+
+  const scene =
+    new THREE.Scene();
+
+  scene.background =
+    new THREE.Color(0x000000);
+
+
+  /* =========================================================
+     CAMERA
+     ========================================================= */
+
+  const camera =
+    new THREE.PerspectiveCamera(
+      42,
+      window.innerWidth / window.innerHeight,
+      0.01,
+      300
+    );
+
+  camera.position.set(
+    0,
+    14,
+    23
+  );
+
+
+  /* =========================================================
+     RENDERER
+     ========================================================= */
+
+  const renderer =
+    new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: false,
+      powerPreference: "high-performance"
+    });
+
+  renderer.setPixelRatio(
+    Math.min(window.devicePixelRatio, 2)
+  );
+
+  renderer.setSize(
+    window.innerWidth,
+    window.innerHeight
+  );
+
+  renderer.outputColorSpace =
+    THREE.SRGBColorSpace;
+
+  renderer.toneMapping =
+    THREE.ACESFilmicToneMapping;
+
+  renderer.toneMappingExposure = 1;
+
+  sceneHost.appendChild(
+    renderer.domElement
+  );
+
+
+  /* =========================================================
+     CONTROLS
+     ========================================================= */
+
+  const controls =
+    new OrbitControls(
+      camera,
+      renderer.domElement
+    );
+
+  controls.enableDamping = true;
+
+  controls.dampingFactor = 0.065;
+
+  controls.rotateSpeed = 0.55;
+
+  controls.zoomSpeed = 0.75;
+
+  controls.panSpeed = 0.7;
+
+  controls.minDistance = 2;
+
+  controls.maxDistance = 80;
+
+  controls.target.set(
+    0,
+    0,
+    0
+  );
+
+
+  /* =========================================================
+     LIGHTING
+     
+     Intentionally neutral.
+     No blue ambient glow.
+     ========================================================= */
+
+  const ambient =
+    new THREE.AmbientLight(
+      0xffffff,
+      0.55
+    );
+
+  scene.add(ambient);
+
+
+  const keyLight =
+    new THREE.DirectionalLight(
+      0xffffff,
+      1.35
+    );
+
+  keyLight.position.set(
+    6,
+    13,
+    8
+  );
+
+  scene.add(keyLight);
+
+
+  const fillLight =
+    new THREE.DirectionalLight(
+      0xffffff,
+      0.35
+    );
+
+  fillLight.position.set(
+    -8,
+    5,
+    -10
+  );
+
+  scene.add(fillLight);
+
+
+  /* =========================================================
+     GROUPS
+     ========================================================= */
+
+  const world =
+    new THREE.Group();
+
+  scene.add(world);
+
+
+  const fieldGroup =
+    new THREE.Group();
+
+  const potentialGroup =
+    new THREE.Group();
+
+  const chargeGroup =
+    new THREE.Group();
+
+  const probeGroup =
+    new THREE.Group();
+
+
+  world.add(fieldGroup);
+  world.add(potentialGroup);
+  world.add(chargeGroup);
+  world.add(probeGroup);
+
+
+  /* =========================================================
+     FLOOR / REFERENCE PLANE
+     ========================================================= */
+
+  const grid =
+    new THREE.GridHelper(
+      40,
+      40,
+      0x252525,
+      0x111111
+    );
+
+  grid.position.y = -0.05;
+
+  grid.material.transparent = true;
+
+  grid.material.opacity = 0.42;
+
+  world.add(grid);
+
+
+  /* =========================================================
+     CHARGES
+     ========================================================= */
+
+  const charges = [
+
+    {
+      id: 1,
+
+      q: 2.0,
+
+      position:
+        new THREE.Vector3(
+          -3.4,
+          0.3,
+          0
+        ),
+
+      color: 0xe8a06d,
+
+      mesh: null
+    },
+
+    {
+      id: 2,
+
+      q: -1.4,
+
+      position:
+        new THREE.Vector3(
+          3.1,
+          0.3,
+          0.3
+        ),
+
+      color: 0x9cb9c9,
+
+      mesh: null
+    }
+
+  ];
+
+
+  let nextChargeId = 3;
+
+
+  /* =========================================================
+     PROBE
+     ========================================================= */
+
+  const probe = {
+
+    q: 1,
+
+    position:
+      new THREE.Vector3(
+        0,
+        0.45,
+        4.2
+      ),
+
+    velocity:
+      new THREE.Vector3(),
+
+    mesh: null
+
+  };
+
+
+  /* =========================================================
+     STATE
+     ========================================================= */
+
+  let selectedChargeId = 1;
+
+  let visualizationMode = "field";
+
+  let paused = false;
+
+  let fieldLinesVisible = true;
+
+  let vectorsVisible = true;
+
+  let equipotentialVisible = true;
+
+  let probeMovementEnabled = true;
+
+  let fieldScale = 1;
+
+  let potentialScale = 1;
+
+  let probeSpeed = 0.35;
+
+  let draggingObject = null;
+
+  let pointerDown = null;
+
+
+  /* =========================================================
+     MATERIALS
+     ========================================================= */
+
+  const fieldMaterial =
+    new THREE.LineBasicMaterial({
+      color: 0xb8b8b8,
+      transparent: true,
+      opacity: 0.48
+    });
+
+
+  const equipotentialMaterial =
+    new THREE.LineBasicMaterial({
+      color: 0x777777,
+      transparent: true,
+      opacity: 0.30
+    });
+
+
+  const vectorMaterial =
+    new THREE.LineBasicMaterial({
+      color: 0x9a9a9a,
+      transparent: true,
+      opacity: 0.40
+    });
+
+
+  const probeMaterial =
+    new THREE.MeshStandardMaterial({
+      color: 0xb7d4bd,
+      emissive: 0x101510,
+      emissiveIntensity: 0.25,
+      roughness: 0.34,
+      metalness: 0.05
+    });
+
+
+  /* =========================================================
+     CREATE CHARGE
+     ========================================================= */
+
+  function createChargeMesh(charge) {
+
+    const geometry =
+      new THREE.SphereGeometry(
+        0.43,
+        32,
+        24
+      );
+
+
+    const material =
+      new THREE.MeshStandardMaterial({
+
+        color:
+          charge.q >= 0
+            ? 0xe8a06d
+            : 0x9cb9c9,
+
+        roughness: 0.3,
+
+        metalness: 0.05
+
+      });
+
+
+    const mesh =
+      new THREE.Mesh(
+        geometry,
+        material
+      );
+
+
+    mesh.position.copy(
+      charge.position
+    );
+
+
+    mesh.userData.type =
+      "charge";
+
+    mesh.userData.id =
+      charge.id;
+
+
+    const ring =
+      new THREE.Mesh(
+
+        new THREE.RingGeometry(
+          0.54,
+          0.56,
+          64
+        ),
+
+        new THREE.MeshBasicMaterial({
+          color:
+            charge.q >= 0
+              ? 0xe8a06d
+              : 0x9cb9c9,
+
+          transparent: true,
+
+          opacity: 0.35,
+
+          side: THREE.DoubleSide
+        })
+
+      );
+
+
+    ring.rotation.x =
+      Math.PI / 2;
+
+
+    mesh.add(ring);
+
+
+    chargeGroup.add(mesh);
+
+    charge.mesh = mesh;
+
+    return mesh;
+  }
+
+
+  /* =========================================================
+     CREATE PROBE
+     ========================================================= */
+
+  function createProbe() {
+
+    const geometry =
+      new THREE.SphereGeometry(
+        0.24,
+        28,
+        20
+      );
+
+
+    probe.mesh =
+      new THREE.Mesh(
+        geometry,
+        probeMaterial
+      );
+
+
+    probe.mesh.position.copy(
+      probe.position
+    );
+
+
+    probe.mesh.userData.type =
+      "probe";
+
+
+    probeGroup.add(
+      probe.mesh
+    );
+
+
+    const ring =
+      new THREE.Mesh(
+
+        new THREE.RingGeometry(
+          0.40,
+          0.43,
+          64
+        ),
+
+        new THREE.MeshBasicMaterial({
+          color: 0xb7d4bd,
+
+          transparent: true,
+
+          opacity: 0.62,
+
+          side: THREE.DoubleSide
+        })
+
+      );
+
+
+    ring.rotation.x =
+      Math.PI / 2;
+
+
+    probe.mesh.add(
+      ring
+    );
+  }
+
+
+  /* =========================================================
+     CHARGE MESHES
+     ========================================================= */
+
+  function rebuildChargeMeshes() {
+
+    while (
+      chargeGroup.children.length
+    ) {
+
+      const object =
+        chargeGroup.children.pop();
+
+      object.traverse(
+        child => {
+
+          if (child.geometry)
+            child.geometry.dispose();
+
+          if (child.material)
+            child.material.dispose();
+
+        }
+      );
+    }
+
+
+    for (
+      const charge of charges
+    ) {
+
+      createChargeMesh(
+        charge
+      );
+
+    }
+  }
+
+
+  /* =========================================================
+     CLEAR GROUP
+     ========================================================= */
+
+  function clearGroup(group) {
+
+    while (
+      group.children.length
+    ) {
+
+      const object =
+        group.children.pop();
+
+      object.traverse(
+        child => {
+
+          if (child.geometry)
+            child.geometry.dispose();
+
+          if (child.material)
+            child.material.dispose();
+
+        }
+      );
+    }
+  }
+
+
+  /* =========================================================
+     ELECTRIC FIELD
+     ========================================================= */
+
+  function electricFieldAt(
+    position
+  ) {
+
+    const field =
+      new THREE.Vector3();
+
+
+    for (
+      const charge of charges
+    ) {
+
+      const displacement =
+        new THREE.Vector3()
+          .subVectors(
+            position,
+            charge.position
+          );
+
+
+      const distanceSquared =
+        Math.max(
+          displacement.lengthSq(),
+          0.035
+        );
+
+
+      const distance =
+        Math.sqrt(
+          distanceSquared
+        );
+
+
+      displacement.normalize();
+
+
+      const magnitude =
+        K *
+        charge.q *
+        1e-6 /
+        distanceSquared;
+
+
+      field.addScaledVector(
+        displacement,
+        magnitude
+      );
+
+    }
+
+
+    return field;
+  }
+
+
+  /* =========================================================
+     ELECTRIC POTENTIAL
+     ========================================================= */
+
+  function electricPotentialAt(
+    position
+  ) {
+
+    let potential = 0;
+
+
+    for (
+      const charge of charges
+    ) {
+
+      const distance =
+        Math.max(
+          position.distanceTo(
+            charge.position
+          ),
+          0.18
+        );
+
+
+      potential +=
+        K *
+        charge.q *
+        1e-6 /
+        distance;
+
+    }
+
+
+    return potential;
+  }
+
+
+  /* =========================================================
+     VECTOR FIELD
+     ========================================================= */
+
+  function makeArrow(
+    start,
+    direction,
+    length
+  ) {
+
+    const group =
+      new THREE.Group();
+
+
+    const shaft =
+      new THREE.Mesh(
+
+        new THREE.CylinderGeometry(
+          0.009,
+          0.009,
+          length,
+          5
+        ),
+
+        vectorMaterial
+
+      );
+
+
+    shaft.position.copy(
+      start
+    );
+
+
+    shaft.position.addScaledVector(
+      direction,
+      length / 2
+    );
+
+
+    shaft.quaternion.setFromUnitVectors(
+
+      new THREE.Vector3(
+        0,
+        1,
+        0
+      ),
+
+      direction
+
+    );
+
+
+    const head =
+      new THREE.Mesh(
+
+        new THREE.ConeGeometry(
+          0.035,
+          0.10,
+          5
+        ),
+
+        vectorMaterial
+
+      );
+
+
+    head.position.copy(
+      start
+    );
+
+
+    head.position.addScaledVector(
+      direction,
+      length
+    );
+
+
+    head.quaternion.setFromUnitVectors(
+
+      new THREE.Vector3(
+        0,
+        1,
+        0
+      ),
+
+      direction
+
+    );
+
+
+    group.add(
+      shaft,
+      head
+    );
+
+
+    return group;
+  }
+
+
+  function buildVectorField() {
+
+    if (!vectorsVisible)
+      return;
+
+
+    const spacing = 1.0;
+
+
+    for (
+      let x = -9;
+      x <= 9;
+      x += spacing
+    ) {
+
+      for (
+        let z = -8;
+        z <= 8;
+        z += spacing
+      ) {
+
+        const point =
+          new THREE.Vector3(
+            x,
+            0.04,
+            z
+          );
+
+
+        let tooClose = false;
+
+
+        for (
+          const charge of charges
+        ) {
+
+          if (
+            point.distanceTo(
+              charge.position
+            ) < 0.65
+          ) {
+
+            tooClose = true;
+
+            break;
+
+          }
+
+        }
+
+
+        if (tooClose)
+          continue;
+
+
+        const field =
+          electricFieldAt(
+            point
+          );
+
+
+        const magnitude =
+          field.length();
+
+
+        if (
+          magnitude < 0.00001
+        )
+          continue;
+
+
+        field.normalize();
+
+
+        const length =
+          (
+            0.14 +
+            Math.log10(
+              1 + magnitude
+            ) * 0.15
+          ) *
+          fieldScale;
+
+
+        fieldGroup.add(
+
+          makeArrow(
+            point,
+            field,
+            Math.min(
+              length,
+              0.58
+            )
+          )
+
+        );
+
+      }
+
+    }
+  }
+
+
+  /* =========================================================
+     FIELD LINES
+     ========================================================= */
+
+  function traceFieldLine(
+    start,
+    sign
+  ) {
+
+    const points = [];
+
+    const point =
+      start.clone();
+
+
+    for (
+      let i = 0;
+      i < 160;
+      i++
+    ) {
+
+      if (
+        Math.abs(point.x) >
+          WORLD_LIMIT ||
+
+        Math.abs(point.z) >
+          WORLD_LIMIT
+      )
+        break;
+
+
+      let nearCharge = false;
+
+
+      for (
+        const charge of charges
+      ) {
+
+        if (
+          point.distanceTo(
+            charge.position
+          ) < 0.28
+        ) {
+
+          nearCharge = true;
+
+          break;
+
+        }
+
+      }
+
+
+      if (nearCharge)
+        break;
+
+
+      points.push(
+        point.clone()
+      );
+
+
+      const field =
+        electricFieldAt(
+          point
+        );
+
+
+      if (
+        field.length() <
+        0.00001
+      )
+        break;
+
+
+      field.normalize();
+
+      field.multiplyScalar(
+        sign
+      );
+
+
+      point.addScaledVector(
+        field,
+        0.12
+      );
+
+    }
+
+
+    return points;
+  }
+
+
+  function buildFieldLines() {
+
+    if (!fieldLinesVisible)
+      return;
+
+
+    for (
+      const charge of charges
+    ) {
+
+      const count =
+        charge.q > 0
+          ? 20
+          : 14;
+
+
+      for (
+        let i = 0;
+        i < count;
+        i++
+      ) {
+
+        const angle =
+          (i / count) *
+          Math.PI *
+          2;
+
+
+        const start =
+          new THREE.Vector3(
+
+            charge.position.x +
+              Math.cos(angle) *
+              0.63,
+
+            0.04,
+
+            charge.position.z +
+              Math.sin(angle) *
+              0.63
+
+          );
+
+
+        const direction =
+          charge.q > 0
+            ? 1
+            : -1;
+
+
+        const points =
+          traceFieldLine(
+            start,
+            direction
+          );
+
+
+        if (
+          points.length < 2
+        )
+          continue;
+
+
+        const geometry =
+          new THREE.BufferGeometry()
+            .setFromPoints(
+              points
+            );
+
+
+        const line =
+          new THREE.Line(
+            geometry,
+            fieldMaterial
+          );
+
+
+        fieldGroup.add(
+          line
+        );
+
+      }
+
+    }
+  }
+
+
+  /* =========================================================
+     EQUIPOTENTIALS
+     ========================================================= */
+
+  function buildEquipotential() {
+
+    if (!equipotentialVisible)
+      return;
+
+
+    const levels = [
+      -120,
+      -80,
+      -40,
+      40,
+      80,
+      120
+    ];
+
+
+    for (
+      const level of levels
+    ) {
+
+      const points = [];
+
+      const radius =
+        (
+          0.4 +
+          Math.sqrt(
+            Math.abs(level)
+          ) *
+          0.18
+        ) *
+        potentialScale;
+
+
+      for (
+        let i = 0;
+        i <= 180;
+        i++
+      ) {
+
+        const angle =
+          (i / 180) *
+          Math.PI *
+          2;
+
+
+        const point =
+          new THREE.Vector3(
+
+            Math.cos(angle) *
+              radius,
+
+            0.025,
+
+            Math.sin(angle) *
+              radius
+
+          );
+
+
+        let valid = true;
+
+
+        for (
+          const charge of charges
+        ) {
+
+          if (
+            point.distanceTo(
+              charge.position
+            ) < 0.45
+          ) {
+
+            valid = false;
+
+            break;
+
+          }
+
+        }
+
+
+        if (valid)
+          points.push(
+            point
+          );
+
+      }
+
+
+      if (
+        points.length < 3
+      )
+        continue;
+
+
+      const geometry =
+        new THREE.BufferGeometry()
+          .setFromPoints(
+            points
+          );
+
+
+      const material =
+        equipotentialMaterial.clone();
+
+
+      const line =
+        new THREE.LineLoop(
+          geometry,
+          material
+        );
+
+
+      potentialGroup.add(
+        line
+      );
+
+    }
+  }
+
+
+  /* =========================================================
+     REBUILD VISUALS
+     ========================================================= */
+
+  function rebuildVisualizations() {
+
+    clearGroup(
+      fieldGroup
+    );
+
+    clearGroup(
+      potentialGroup
+    );
+
+
+    if (
+      visualizationMode ===
+        "field" ||
+
+      visualizationMode ===
+        "combined"
+    ) {
+
+      buildVectorField();
+
+      buildFieldLines();
+
+    }
+
+
+    if (
+      visualizationMode ===
+        "potential" ||
+
+      visualizationMode ===
+        "combined"
+    ) {
+
+      buildEquipotential();
+
+    }
+
+
+    fieldGroup.visible =
+      visualizationMode ===
+        "field" ||
+
+      visualizationMode ===
+        "combined";
+
+
+    potentialGroup.visible =
+      visualizationMode ===
+        "potential" ||
+
+      visualizationMode ===
+        "combined";
+
+  }
+
+
+  /* =========================================================
+     CHARGE LIST
+     ========================================================= */
+
+  function updateChargeList() {
+
+    const list =
+      document.getElementById(
+        "chargeList"
+      );
+
+
+    list.innerHTML = "";
+
+
+    for (
+      const charge of charges
+    ) {
+
+      const button =
+        document.createElement(
+          "button"
+        );
+
+
+      button.className =
+        "charge-item";
+
+
+      if (
+        charge.id ===
+        selectedChargeId
+      ) {
+
+        button.classList.add(
+          "active"
+        );
+
+      }
+
+
+      const positive =
+        charge.q >= 0;
+
+
+      button.innerHTML = `
+
+        <span
+          class="charge-symbol ${
+            positive
+              ? "positive"
+              : "negative"
+          }"
+        >
+          ${positive ? "+" : "−"}
+        </span>
+
+        <span>
+
+          <div class="charge-name">
+            Source ${charge.id}
+          </div>
+
+          <div class="charge-meta">
+            ${charge.q.toFixed(1)} μC
+          </div>
+
+        </span>
+
+        <span class="charge-select">
+          Select
+        </span>
+
+      `;
+
+
+      button.addEventListener(
+        "click",
+        () => {
+
+          selectedChargeId =
+            charge.id;
+
+          updateChargeList();
+
+        }
+      );
+
+
+      list.appendChild(
+        button
+      );
+
+    }
+  }
+
+
+  /* =========================================================
+     CHARGE VISUAL UPDATE
+     ========================================================= */
+
+  function updateChargeVisuals() {
+
+    for (
+      const charge of charges
+    ) {
+
+      if (!charge.mesh)
+        continue;
+
+
+      charge.mesh.position.copy(
+        charge.position
+      );
+
+
+      const positive =
+        charge.q >= 0;
+
+
+      charge.mesh.material.color.setHex(
+        positive
+          ? 0xe8a06d
+          : 0x9cb9c9
+      );
+
+
+      if (
+        charge.mesh.children[0]
+      ) {
+
+        charge.mesh.children[0]
+          .material.color.setHex(
+            positive
+              ? 0xe8a06d
+              : 0x9cb9c9
+          );
+
+      }
+
+    }
+  }
+
+
+  /* =========================================================
+     PROBE PHYSICS
+     ========================================================= */
+
+  function updateProbe(delta) {
+
+    if (
+      paused ||
+      !probeMovementEnabled
+    )
+      return;
+
+
+    const field =
+      electricFieldAt(
+        probe.position
+      );
+
+
+    const magnitude =
+      field.length();
+
+
+    if (
+      magnitude < 0.00001
+    )
+      return;
+
+
+    field.normalize();
+
+
+    const sign =
+      Math.sign(
+        probe.q
+      ) || 1;
+
+
+    const acceleration =
+      field.multiplyScalar(
+        sign *
+        probeSpeed *
+        0.35
+      );
+
+
+    probe.velocity
+      .addScaledVector(
+        acceleration,
+        delta
+      );
+
+
+    probe.velocity.multiplyScalar(
+      0.985
+    );
+
+
+    probe.position
+      .addScaledVector(
+        probe.velocity,
+        delta
+      );
+
+
+    probe.position.y =
+      0.45;
+
+
+    if (
+      Math.abs(
+        probe.position.x
+      ) > 11
+    ) {
+
+      probe.position.x =
+        Math.sign(
+          probe.position.x
+        ) * 11;
+
+      probe.velocity.x *= -0.65;
+
+    }
+
+
+    if (
+      Math.abs(
+        probe.position.z
+      ) > 10
+    ) {
+
+      probe.position.z =
+        Math.sign(
+          probe.position.z
+        ) * 10;
+
+      probe.velocity.z *= -0.65;
+
+    }
+
+  }
+
+
+  function updateProbeVisual() {
+
+    if (!probe.mesh)
+      return;
+
+
+    probe.mesh.position.copy(
+      probe.position
+    );
+
+
+    probe.mesh.scale.setScalar(
+      0.8 +
+      Math.abs(probe.q) *
+      0.06
+    );
+
+  }
+
+
+  /* =========================================================
+     READOUT
+     ========================================================= */
+
+  function updateReadout() {
+
+    const field =
+      electricFieldAt(
+        probe.position
+      );
+
+
+    const fieldMagnitude =
+      field.length();
+
+
+    const potential =
+      electricPotentialAt(
+        probe.position
+      );
+
+
+    const energy =
+      probe.q *
+      1e-6 *
+      potential;
+
+
+    const radius =
+      Math.sqrt(
+        probe.position.x *
+          probe.position.x +
+
+        probe.position.z *
+          probe.position.z
+      );
+
+
+    document.getElementById(
+      "fieldReadout"
+    ).textContent =
+      fieldMagnitude.toFixed(2);
+
+
+    document.getElementById(
+      "potentialReadout"
+    ).textContent =
+      potential.toFixed(2);
+
+
+    document.getElementById(
+      "energyReadout"
+    ).textContent =
+      (energy * 1e6)
+        .toFixed(3);
+
+
+    document.getElementById(
+      "distanceReadout"
+    ).textContent =
+      radius.toFixed(2);
+
+
+    let description =
+      "The electric field gives the force per unit positive charge. Potential gives electric potential energy per unit charge.";
+
+
+    if (
+      probe.q > 0.01
+    ) {
+
+      description =
+        "Positive probe: electric force acts in the direction of the local electric field.";
+
+    }
+    else if (
+      probe.q < -0.01
+    ) {
+
+      description =
+        "Negative probe: electric force acts opposite to the local electric field.";
+
+    }
+    else {
+
+      description =
+        "The probe charge is approximately zero and therefore experiences negligible electric force.";
+
+    }
+
+
+    document.getElementById(
+      "readoutDescription"
+    ).textContent =
+      description;
+
+  }
+
+
+  /* =========================================================
+     OBJECT PICKING
+     ========================================================= */
+
+  function intersectObject(
+    event
+  ) {
+
+    const rect =
+      renderer.domElement
+        .getBoundingClientRect();
+
+
+    const pointer =
+      new THREE.Vector2(
+
+        (
+          event.clientX -
+          rect.left
+        ) /
+          rect.width *
+          2 -
+          1,
+
+        -(
+          (
+            event.clientY -
+            rect.top
+          ) /
+            rect.height
+        ) *
+          2 +
+          1
+
+      );
+
+
+    const raycaster =
+      new THREE.Raycaster();
+
+
+    raycaster.setFromCamera(
+      pointer,
+      camera
+    );
+
+
+    const objects = [
+
+      ...charges
+        .map(
+          c => c.mesh
+        ),
+
+      probe.mesh
+
+    ].filter(Boolean);
+
+
+    const hits =
+      raycaster.intersectObjects(
+        objects,
+        true
+      );
+
+
+    if (
+      !hits.length
+    )
+      return null;
+
+
+    let object =
+      hits[0].object;
+
+
+    while (
+      object &&
+      !object.userData.type
+    ) {
+
+      object =
+        object.parent;
+
+    }
+
+
+    return object || null;
+  }
+
+
+  /* =========================================================
+     DRAG OBJECT
+     ========================================================= */
+
+  function moveObject(
+    object,
+    event
+  ) {
+
+    const rect =
+      renderer.domElement
+        .getBoundingClientRect();
+
+
+    const pointer =
+      new THREE.Vector2(
+
+        (
+          event.clientX -
+          rect.left
+        ) /
+          rect.width *
+          2 -
+          1,
+
+        -(
+          (
+            event.clientY -
+            rect.top
+          ) /
+            rect.height
+        ) *
+          2 +
+          1
+
+      );
+
+
+    const raycaster =
+      new THREE.Raycaster();
+
+
+    raycaster.setFromCamera(
+      pointer,
+      camera
+    );
+
+
+    const plane =
+      new THREE.Plane(
+        new THREE.Vector3(
+          0,
+          1,
+          0
+        ),
+        -0.4
+      );
+
+
+    const intersection =
+      new THREE.Vector3();
+
+
+    if (
+      !raycaster.ray.intersectPlane(
+        plane,
+        intersection
+      )
+    )
+      return;
+
+
+    if (
+      object.userData.type ===
+      "probe"
+    ) {
+
+      probe.position.set(
+        intersection.x,
+        0.45,
+        intersection.z
+      );
+
+      probe.velocity.set(
+        0,
+        0,
+        0
+      );
+
+    }
+
+
+    if (
+      object.userData.type ===
+      "charge"
+    ) {
+
+      const charge =
+        charges.find(
+          c =>
+            c.id ===
+            object.userData.id
+        );
+
+
+      if (!charge)
+        return;
+
+
+      charge.position.set(
+        intersection.x,
+        0.3,
+        intersection.z
+      );
+
+
+      selectedChargeId =
+        charge.id;
+
+
+      rebuildVisualizations();
+
+      updateChargeList();
+
+    }
+
+  }
+
+
+  /* =========================================================
+     POINTER EVENTS
+     ========================================================= */
+
+  renderer.domElement
+    .addEventListener(
+      "pointerdown",
+      event => {
+
+        pointerDown = {
+          x: event.clientX,
+          y: event.clientY
+        };
+
+
+        draggingObject =
+          intersectObject(
+            event
+          );
+
+
+        if (
+          draggingObject
+        ) {
+
+          controls.enabled =
+            false;
+
+          renderer.domElement
+            .setPointerCapture(
+              event.pointerId
+            );
+
+        }
+
+      }
+    );
+
+
+  renderer.domElement
+    .addEventListener(
+      "pointermove",
+      event => {
+
+        if (
+          !draggingObject
+        )
+          return;
+
+
+        moveObject(
+          draggingObject,
+          event
+        );
+
+      }
+    );
+
+
+  renderer.domElement
+    .addEventListener(
+      "pointerup",
+      event => {
+
+        controls.enabled =
+          true;
+
+
+        if (
+          draggingObject
+        ) {
+
+          draggingObject = null;
+
+        }
+
+
+        pointerDown = null;
+
+      }
+    );
+
+
+  /* =========================================================
+     MODE BUTTONS
+     ========================================================= */
+
+  const modeButtons = {
+
+    fieldMode: "field",
+
+    potentialMode:
+      "potential",
+
+    combinedMode:
+      "combined",
+
+    minimalMode:
+      "minimal"
+
+  };
+
+
+  function updateModeButtons() {
+
+    for (
+      const [
+        id,
+        mode
+      ] of Object.entries(
+        modeButtons
+      )
+    ) {
+
+      document
+        .getElementById(id)
+        .classList.toggle(
+          "active",
+          visualizationMode ===
+            mode
+        );
+
+    }
+
+  }
+
+
+  for (
+    const [
+      id,
+      mode
+    ] of Object.entries(
+      modeButtons
+    )
+  ) {
+
+    document
+      .getElementById(id)
+      .addEventListener(
+        "click",
+        () => {
+
+          visualizationMode =
+            mode;
+
+          updateModeButtons();
+
+          rebuildVisualizations();
+
+        }
+      );
+
+  }
+
+
+  /* =========================================================
+     TOGGLES
+     ========================================================= */
+
+  document
+    .getElementById(
+      "fieldLinesToggle"
+    )
+    .addEventListener(
+      "change",
+      event => {
+
+        fieldLinesVisible =
+          event.target.checked;
+
+        rebuildVisualizations();
+
+      }
+    );
+
+
+  document
+    .getElementById(
+      "vectorsToggle"
+    )
+    .addEventListener(
+      "change",
+      event => {
+
+        vectorsVisible =
+          event.target.checked;
+
+        rebuildVisualizations();
+
+      }
+    );
+
+
+  document
+    .getElementById(
+      "equipotentialToggle"
+    )
+    .addEventListener(
+      "change",
+      event => {
+
+        equipotentialVisible =
+          event.target.checked;
+
+        rebuildVisualizations();
+
+      }
+    );
+
+
+  document
+    .getElementById(
+      "probeToggle"
+    )
+    .addEventListener(
+      "change",
+      event => {
+
+        probeMovementEnabled =
+          event.target.checked;
+
+      }
+    );
+
+
+  /* =========================================================
+     PROBE CHARGE
+     ========================================================= */
+
+  document
+    .getElementById(
+      "probeCharge"
+    )
+    .addEventListener(
+      "input",
+      event => {
+
+        probe.q =
+          Number(
+            event.target.value
+          );
+
+
+        const sign =
+          probe.q >= 0
+            ? "+"
+            : "";
+
+
+        document.getElementById(
+          "probeChargeValue"
+        ).textContent =
+
+          `${sign}${probe.q.toFixed(
+            1
+          )} μC`;
+
+
+        updateReadout();
+
+      }
+    );
+
+
+  /* =========================================================
+     PROBE SPEED
+     ========================================================= */
+
+  document
+    .getElementById(
+      "probeSpeed"
+    )
+    .addEventListener(
+      "input",
+      event => {
+
+        probeSpeed =
+          Number(
+            event.target.value
+          );
+
+
+        document.getElementById(
+          "probeSpeedValue"
+        ).textContent =
+
+          probeSpeed.toFixed(
+            2
+          );
+
+      }
+    );
+
+
+  /* =========================================================
+     FIELD SCALE
+     ========================================================= */
+
+  document
+    .getElementById(
+      "fieldScale"
+    )
+    .addEventListener(
+      "input",
+      event => {
+
+        fieldScale =
+          Number(
+            event.target.value
+          );
+
+
+        document.getElementById(
+          "fieldScaleValue"
+        ).textContent =
+
+          `${fieldScale.toFixed(
+            2
+          )}×`;
+
+
+        rebuildVisualizations();
+
+      }
+    );
+
+
+  /* =========================================================
+     POTENTIAL SCALE
+     ========================================================= */
+
+  document
+    .getElementById(
+      "potentialScale"
+    )
+    .addEventListener(
+      "input",
+      event => {
+
+        potentialScale =
+          Number(
+            event.target.value
+          );
+
+
+        document.getElementById(
+          "potentialScaleValue"
+        ).textContent =
+
+          `${potentialScale.toFixed(
+            2
+          )}×`;
+
+
+        rebuildVisualizations();
+
+      }
+    );
+
+
+  /* =========================================================
+     ADD CHARGE
+     ========================================================= */
+
+  document
+    .getElementById(
+      "addCharge"
+    )
+    .addEventListener(
+      "click",
+      () => {
+
+        const sign =
+          charges.length % 2 === 0
+            ? -1
+            : 1;
+
+
+        charges.push({
+
+          id:
+            nextChargeId++,
+
+          q:
+            sign * 1,
+
+          position:
+            new THREE.Vector3(
+
+              (
+                Math.random() -
+                0.5
+              ) * 7,
+
+              0.3,
+
+              (
+                Math.random() -
+                0.5
+              ) * 6
+
+            ),
+
+          color:
+            sign > 0
+              ? 0xe8a06d
+              : 0x9cb9c9,
+
+          mesh: null
+
+        });
+
+
+        selectedChargeId =
+          charges[
+            charges.length - 1
+          ].id;
+
+
+        rebuildChargeMeshes();
+
+        updateChargeList();
+
+        rebuildVisualizations();
+
+      }
+    );
+
+
+  /* =========================================================
+     RESET MODEL
+     ========================================================= */
+
+  document
+    .getElementById(
+      "resetModel"
+    )
+    .addEventListener(
+      "click",
+      () => {
+
+        charges.splice(
+          0,
+          charges.length,
+
+          {
+            id: 1,
+
+            q: 2,
+
+            position:
+              new THREE.Vector3(
+                -3.4,
+                0.3,
+                0
+              ),
+
+            color: 0xe8a06d,
+
+            mesh: null
+          },
+
+          {
+            id: 2,
+
+            q: -1.4,
+
+            position:
+              new THREE.Vector3(
+                3.1,
+                0.3,
+                0.3
+              ),
+
+            color: 0x9cb9c9,
+
+            mesh: null
+          }
+
+        );
+
+
+        nextChargeId = 3;
+
+        selectedChargeId = 1;
+
+
+        probe.q = 1;
+
+        probe.position.set(
+          0,
+          0.45,
+          4.2
+        );
+
+        probe.velocity.set(
+          0,
+          0,
+          0
+        );
+
+
+        document.getElementById(
+          "probeCharge"
+        ).value = 1;
+
+
+        document.getElementById(
+          "probeChargeValue"
+        ).textContent =
+          "+1.0 μC";
+
+
+        rebuildChargeMeshes();
+
+        updateChargeList();
+
+        rebuildVisualizations();
+
+        updateReadout();
+
+      }
+    );
+
+
+  /* =========================================================
+     RESET CAMERA
+     ========================================================= */
+
+  document
+    .getElementById(
+      "resetView"
+    )
+    .addEventListener(
+      "click",
+      () => {
+
+        camera.position.set(
+          0,
+          14,
+          23
+        );
+
+
+        controls.target.set(
+          0,
+          0,
+          0
+        );
+
+
+        controls.update();
+
+      }
+    );
+
+
+  /* =========================================================
+     PAUSE
+     ========================================================= */
+
+  document
+    .getElementById(
+      "pauseButton"
+    )
+    .addEventListener(
+      "click",
+      () => {
+
+        paused =
+          !paused;
+
+
+        document.getElementById(
+          "pauseButton"
+        ).textContent =
+
+          paused
+            ? "Resume"
+            : "Pause";
+
+      }
+    );
+
+
+  /* =========================================================
+     RESIZE
+     ========================================================= */
+
+  window.addEventListener(
+    "resize",
+    () => {
+
+      camera.aspect =
+        window.innerWidth /
+        window.innerHeight;
+
+
+      camera.updateProjectionMatrix();
+
+
+      renderer.setSize(
+        window.innerWidth,
+        window.innerHeight
+      );
+
+    }
+  );
+
+
+  /* =========================================================
+     INITIALIZE
+     ========================================================= */
+
+  rebuildChargeMeshes();
+
+  createProbe();
+
+  updateChargeList();
+
+  rebuildVisualizations();
+
+  updateReadout();
+
+
+  /* =========================================================
+     ANIMATION
+     ========================================================= */
+
+  const clock =
+    new THREE.Clock();
+
+
+  function animate() {
+
+    requestAnimationFrame(
+      animate
+    );
+
+
+    const delta =
+      Math.min(
+        clock.getDelta(),
+        0.04
+      );
+
+
+    updateProbe(
+      delta
+    );
+
+
+    updateProbeVisual();
+
+    updateChargeVisuals();
+
+    updateReadout();
+
+    controls.update();
+
+    renderer.render(
+      scene,
+      camera
+    );
+
+  }
+
+
+  animate();
+
+</script>
+
+</body>
+</html>
