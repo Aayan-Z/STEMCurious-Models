@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Photoelectric Effect Explorer</title>
+<style>
+  *{box-sizing:border-box;}
+  html,body{ margin:0; padding:0; width:100%; height:100%; background:#000; color:#fff;
+    font-family:'Times New Roman', Times, serif; overflow:hidden; }
+  #canvas-wrap{ position:fixed; inset:0; background:#000; }
+  canvas{ display:block; }
+
+  #panel{
+    position:fixed; top:16px; left:16px; width:280px;
+    background:rgba(255,255,255,0.08);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    backdrop-filter: blur(32px) saturate(180%);
+    border:1px solid rgba(255,255,255,0.24);
+    border-radius:26px;
+    padding:22px 22px 18px 22px; z-index:6;
+    box-shadow: 0 12px 36px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.3);
+  }
+  .panel-label{ font-size:13px; color:rgba(255,255,255,0.55); margin-bottom:9px; font-style:italic; }
+  .metal-row{ display:flex; flex-wrap:wrap; gap:7px; margin-bottom:18px; }
+  .metal-btn{
+    background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.14); color:#fff;
+    font-family:'Times New Roman', Times, serif; font-size:13px; padding:7px 11px;
+    border-radius:12px; cursor:pointer; transition: background .15s ease;
+  }
+  .metal-btn:hover{ background:rgba(255,255,255,0.14); }
+  .metal-btn.active{ background:rgba(255,255,255,0.24); font-weight:700; }
+
+  .slider-block{ margin-bottom:16px; }
+  .slider-block:last-child{ margin-bottom:0; }
+  .slider-label{ font-size:12.5px; color:rgba(255,255,255,0.55); margin-bottom:4px; display:flex; justify-content:space-between; }
+  .slider-label b{ color:rgba(255,255,255,0.85); font-weight:700; }
+  input[type=range]{ -webkit-appearance:none; appearance:none; width:100%; height:22px; background:transparent; }
+  input[type=range]::-webkit-slider-runnable-track{ height:5px; border-radius:3px;
+    background:linear-gradient(90deg, rgba(255,255,255,0.5), rgba(255,255,255,0.12)); }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:19px; height:19px; border-radius:50%;
+    background:radial-gradient(circle at 32% 28%, #fff 0%, #d8d8de 100%);
+    box-shadow:0 2px 6px rgba(0,0,0,0.5); margin-top:-7px; cursor:pointer; }
+
+  #hint{ position:fixed; top:24px; right:28px; font-size:14px; color:#fff; text-align:right;
+    line-height:1.9; z-index:6; pointer-events:none; font-family:'Times New Roman', Times, serif; }
+
+  #info{ position:fixed; left:16px; bottom:22px; max-width:420px; z-index:6; pointer-events:none;
+    color:rgba(255,255,255,0.62); font-family:'Times New Roman', Times, serif; }
+  #info .name{ font-size:24px; margin:0 0 6px 0; color:rgba(255,255,255,0.85); }
+  #info .qn{ font-size:14px; margin-bottom:8px; line-height:1.75; color:rgba(255,255,255,0.55); }
+  #info .qn b{ color:rgba(255,255,255,0.88); font-weight:700; }
+  #info .verdict{ font-size:15px; margin-bottom:8px; font-weight:700; }
+  #info .desc{ font-size:13.5px; line-height:1.5; color:rgba(255,255,255,0.55); max-width:400px; }
+
+  #graphWrap{
+    position:fixed; right:26px; bottom:26px; z-index:6;
+    background:rgba(255,255,255,0.07);
+    -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+    border:1px solid rgba(255,255,255,0.2); border-radius:18px; padding:14px 16px 10px 16px;
+  }
+  #graphTitle{ font-size:12.5px; color:rgba(255,255,255,0.55); margin-bottom:6px; font-style:italic; }
+
+  @media (max-width: 900px){
+    #panel{ width:220px; padding:16px; } #hint{ display:none; }
+    #info{ max-width:230px; } #info .name{ font-size:19px; }
+    #graphWrap{ display:none; }
+  }
+</style>
+</head>
+<body>
+
+<div id="canvas-wrap"></div>
+
+<div id="panel">
+  <div class="panel-label">Metal Surface</div>
+  <div class="metal-row" id="metalRow"></div>
+
+  <div class="slider-block">
+    <div class="slider-label"><span>Photon Wavelength</span><b id="wlRead">400 nm</b></div>
+    <input type="range" id="wlSlider" min="120" max="900" step="1" value="400">
+  </div>
+  <div class="slider-block">
+    <div class="slider-label"><span>Light Intensity</span><b id="intRead">50%</b></div>
+    <input type="range" id="intSlider" min="0" max="100" step="1" value="50">
+  </div>
+</div>
+
+<div id="hint">
+  Drag to rotate<br>
+  Scroll to zoom<br>
+  Right-click to pan
+</div>
+
+<div id="info">
+  <div class="name">Photoelectric Effect</div>
+  <div class="verdict" id="verdict"></div>
+  <div class="qn" id="stats"></div>
+  <div class="desc" id="desc">Each photon carries a fixed energy E = hf, set entirely by its color (frequency) &mdash; not its brightness. An electron is only knocked loose if a <i>single</i> photon's energy exceeds the metal's work function. Turning up the intensity slider fires more photons per second (more current, if any electrons are emitted at all), but it can never make a single too-weak photon eject an electron &mdash; a fact classical wave theory could not explain, and one of the reasons Einstein proposed that light itself is quantized.</div>
+</div>
+
+<div id="graphWrap">
+  <div id="graphTitle">Max Electron Energy vs. Photon Energy</div>
+  <canvas id="graphCanvas" width="240" height="160"></canvas>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   PHYSICS
+   E_photon (eV) = 1239.84 / wavelength(nm)     [E = hc/lambda]
+   KE_max (eV)   = E_photon - workFunction       [Einstein 1905]
+   No emission at all if E_photon <= workFunction, regardless
+   of intensity -- intensity only sets how many photons per
+   second arrive (i.e. potential current), never their energy.
+   ============================================================ */
+
+var HC_EV_NM = 1239.84;
+
+var METALS = [
+  { name:"Cesium",   phi:2.10, color:0xd8c98a },
+  { name:"Sodium",   phi:2.28, color:0xc7cdd6 },
+  { name:"Zinc",     phi:4.30, color:0x9aa3ad },
+  { name:"Copper",   phi:4.70, color:0xd08a5a },
+  { name:"Platinum", phi:6.35, color:0xe4e6ea }
+];
+
+var state = { metal: METALS[0], wavelength: 400, intensity: 50 };
+
+function photonEnergyEV(wl){ return HC_EV_NM/wl; }
+function maxKineticEV(){
+  var E = photonEnergyEV(state.wavelength);
+  return E - state.metal.phi;
+}
+function willEmit(){ return maxKineticEV() > 0; }
+
+/* ---------- wavelength to RGB (standard visible-spectrum approximation) ---------- */
+
+function wavelengthToRGB(wl){
+  if(wl < 380) return [0.62,0.32,1.0];      // ultraviolet -> violet/white glow
+  if(wl > 750) return [0.55,0.08,0.06];     // infrared -> dim red glow
+  var r,g,b;
+  if(wl<440){ r=-(wl-440)/(440-380); g=0; b=1; }
+  else if(wl<490){ r=0; g=(wl-440)/(490-440); b=1; }
+  else if(wl<510){ r=0; g=1; b=-(wl-510)/(510-490); }
+  else if(wl<580){ r=(wl-510)/(580-510); g=1; b=0; }
+  else if(wl<645){ r=1; g=-(wl-645)/(645-580); b=0; }
+  else { r=1; g=0; b=0; }
+  var factor=1;
+  if(wl<420) factor=0.35+0.65*(wl-380)/(420-380);
+  else if(wl>645) factor=0.35+0.65*(750-wl)/(750-645);
+  return [r*factor, g*factor, b*factor];
+}
+
+/* ============================================================
+   SCENE SETUP
+   ============================================================ */
+
+var wrap = document.getElementById('canvas-wrap');
+var scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000000);
+
+var camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.05, 300);
+camera.position.set(3, 3.2, 9);
+
+var renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+wrap.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.rotateSpeed = 0.6;
+controls.zoomSpeed = 0.8;
+controls.minDistance = 1.5;
+controls.maxDistance = 40;
+controls.target.set(0,0,0);
+
+window.addEventListener('resize', function(){
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+var keyLight = new THREE.DirectionalLight(0xffffff, 0.85);
+keyLight.position.set(5,8,6);
+scene.add(keyLight);
+var fillLight = new THREE.DirectionalLight(0xaeccff, 0.3);
+fillLight.position.set(-5,-3,-4);
+scene.add(fillLight);
+
+/* ---------- light source (lamp) and metal plate ---------- */
+
+var LAMP_X = -6.5, PLATE_X = 0;
+
+var lampMat = new THREE.MeshBasicMaterial({ color:0xfff6d8 });
+var lamp = new THREE.Mesh(new THREE.SphereGeometry(0.32,20,16), lampMat);
+lamp.position.set(LAMP_X,0,0);
+scene.add(lamp);
+var lampGlow = new THREE.PointLight(0xfff6d8, 0.4, 6);
+lamp.add(lampGlow);
+
+var plateMat = new THREE.MeshStandardMaterial({ color:METALS[0].color, metalness:0.75, roughness:0.3 });
+var plate = new THREE.Mesh(new THREE.BoxGeometry(0.3,4.2,4.2), plateMat);
+plate.position.set(PLATE_X,0,0);
+scene.add(plate);
+
+function updatePlateColor(){ plateMat.color.setHex(state.metal.color); }
+updatePlateColor();
+
+/* ============================================================
+   PARTICLES: photons in, electrons (or absorption flashes) out
+   ============================================================ */
+
+var photons = [];
+var electrons = [];
+var flashes = [];
+
+var PHOTON_SPEED = 5.5;
+
+function spawnPhoton(){
+  var wl = state.wavelength;
+  var col = wavelengthToRGB(wl);
+  var geo = new THREE.SphereGeometry(0.09, 12, 10);
+  var mat = new THREE.MeshBasicMaterial({ color:new THREE.Color(col[0],col[1],col[2]) });
+  var mesh = new THREE.Mesh(geo, mat);
+  var y = (Math.random()-0.5)*3.2, z = (Math.random()-0.5)*3.2;
+  mesh.position.set(LAMP_X+0.4, y, z);
+  scene.add(mesh);
+  photons.push({ mesh:mesh, y:y, z:z });
+}
+
+function handlePhotonHit(p){
+  scene.remove(p.mesh); p.mesh.geometry.dispose(); p.mesh.material.dispose();
+  if(willEmit()){
+    var ke = maxKineticEV();
+    var speed = 1.2 + Math.sqrt(ke)*2.0;
+    var dir = new THREE.Vector3(-1, (Math.random()-0.5)*1.4, (Math.random()-0.5)*1.4).normalize();
+    var geo = new THREE.SphereGeometry(0.075, 12, 10);
+    var mat = new THREE.MeshStandardMaterial({ color:0x5ad8ff, emissive:0x2a90c0, metalness:0.2, roughness:0.3 });
+    var mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(PLATE_X-0.2, p.y, p.z);
+    scene.add(mesh);
+    electrons.push({ mesh:mesh, dir:dir, speed:speed, life:0 });
+  } else {
+    var fgeo = new THREE.SphereGeometry(0.16, 12, 10);
+    var fmat = new THREE.MeshBasicMaterial({ color:0x888888, transparent:true, opacity:0.6 });
+    var fmesh = new THREE.Mesh(fgeo, fmat);
+    fmesh.position.set(PLATE_X-0.16, p.y, p.z);
+    scene.add(fmesh);
+    flashes.push({ mesh:fmesh, life:0 });
+  }
+}
+
+function updateParticles(dt){
+  for(var i=photons.length-1;i>=0;i--){
+    var p = photons[i];
+    p.mesh.position.x += PHOTON_SPEED*dt;
+    if(p.mesh.position.x >= PLATE_X-0.15){
+      handlePhotonHit(p);
+      photons.splice(i,1);
+    }
+  }
+  for(var j=electrons.length-1;j>=0;j--){
+    var e = electrons[j];
+    e.mesh.position.addScaledVector(e.dir, e.speed*dt);
+    e.life += dt;
+    if(e.life>1.6){
+      scene.remove(e.mesh); e.mesh.geometry.dispose(); e.mesh.material.dispose();
+      electrons.splice(j,1);
+    }
+  }
+  for(var k=flashes.length-1;k>=0;k--){
+    var f = flashes[k];
+    f.life += dt;
+    var s = 1+f.life*2.2;
+    f.mesh.scale.set(s,s,s);
+    f.mesh.material.opacity = Math.max(0, 0.6-f.life*1.2);
+    if(f.life>0.5){
+      scene.remove(f.mesh); f.mesh.geometry.dispose(); f.mesh.material.dispose();
+      flashes.splice(k,1);
+    }
+  }
+}
+
+var spawnAccumulator = 0;
+function maybeSpawnPhotons(dt){
+  var rate = 0.6 + (state.intensity/100)*13; // photons per second
+  spawnAccumulator += dt*rate;
+  while(spawnAccumulator >= 1){
+    spawnPhoton();
+    spawnAccumulator -= 1;
+  }
+}
+
+/* ============================================================
+   GRAPH (KE_max vs photon energy)
+   ============================================================ */
+
+var gCanvas = document.getElementById('graphCanvas');
+var gCtx = gCanvas.getContext('2d');
+var GW = gCanvas.width, GH = gCanvas.height;
+var PAD = 26;
+
+function drawGraph(){
+  gCtx.clearRect(0,0,GW,GH);
+  var maxE = 8; // eV, x-axis range
+  var maxKE = 6; // eV, y-axis range
+  function xPix(e){ return PAD + (e/maxE)*(GW-PAD-10); }
+  function yPix(ke){ return (GH-PAD) - (ke/maxKE)*(GH-PAD-10); }
+
+  gCtx.strokeStyle='rgba(255,255,255,0.35)'; gCtx.lineWidth=1;
+  gCtx.beginPath(); gCtx.moveTo(PAD,10); gCtx.lineTo(PAD,GH-PAD); gCtx.lineTo(GW-10,GH-PAD); gCtx.stroke();
+  gCtx.fillStyle='rgba(255,255,255,0.4)'; gCtx.font='10px Times New Roman';
+  gCtx.fillText('E\u2091 (eV)', GW-42, GH-PAD+14);
+  gCtx.save(); gCtx.translate(10,20); gCtx.fillText('KE (eV)',0,0); gCtx.restore();
+
+  var phi = state.metal.phi;
+  gCtx.strokeStyle='rgba(255,255,255,0.75)'; gCtx.lineWidth=1.6;
+  gCtx.beginPath();
+  var started=false;
+  for(var e=phi; e<=maxE; e+=0.05){
+    var ke = e-phi;
+    var px=xPix(e), py=yPix(Math.min(ke,maxKE));
+    if(!started){ gCtx.moveTo(px,py); started=true; } else gCtx.lineTo(px,py);
+  }
+  gCtx.stroke();
+
+  gCtx.strokeStyle='rgba(255,255,255,0.25)'; gCtx.setLineDash([3,3]);
+  gCtx.beginPath(); gCtx.moveTo(xPix(phi),GH-PAD); gCtx.lineTo(xPix(phi),10); gCtx.stroke();
+  gCtx.setLineDash([]);
+  gCtx.fillStyle='rgba(255,255,255,0.5)'; gCtx.font='9.5px Times New Roman';
+  gCtx.fillText('\u03C6',xPix(phi)-3,GH-PAD+12);
+
+  var curE = photonEnergyEV(state.wavelength);
+  var curKE = Math.max(0, curE-phi);
+  var mx = xPix(Math.min(curE,maxE)), my = yPix(Math.min(curKE,maxKE));
+  gCtx.fillStyle = willEmit() ? '#5ad8ff' : '#ff5a5a';
+  gCtx.beginPath(); gCtx.arc(mx,my,4,0,Math.PI*2); gCtx.fill();
+}
+
+/* ============================================================
+   UI
+   ============================================================ */
+
+var metalButtons = {};
+function buildMetalButtons(){
+  var row = document.getElementById('metalRow');
+  METALS.forEach(function(m){
+    var btn=document.createElement('button');
+    btn.className='metal-btn';
+    btn.textContent=m.name;
+    btn.addEventListener('click', function(){
+      state.metal = m;
+      updatePlateColor();
+      Object.keys(metalButtons).forEach(function(k){ metalButtons[k].classList.toggle('active', k===m.name); });
+      updateInfo(); drawGraph();
+    });
+    row.appendChild(btn);
+    metalButtons[m.name]=btn;
+  });
+  metalButtons[state.metal.name].classList.add('active');
+}
+
+var wlSlider = document.getElementById('wlSlider');
+var intSlider = document.getElementById('intSlider');
+wlSlider.addEventListener('input', function(){
+  state.wavelength = parseFloat(wlSlider.value);
+  document.getElementById('wlRead').textContent = state.wavelength.toFixed(0)+' nm';
+  updateInfo(); drawGraph();
+});
+intSlider.addEventListener('input', function(){
+  state.intensity = parseFloat(intSlider.value);
+  document.getElementById('intRead').textContent = state.intensity.toFixed(0)+'%';
+});
+
+function updateInfo(){
+  var E = photonEnergyEV(state.wavelength);
+  var ke = maxKineticEV();
+  var emits = willEmit();
+  document.getElementById('verdict').innerHTML = emits
+    ? '<span style="color:#5ad8ff;">Electrons ARE ejected</span>'
+    : '<span style="color:#ff5a5a;">No electrons ejected</span>';
+  document.getElementById('stats').innerHTML =
+    'Photon energy: <b>'+E.toFixed(2)+' eV</b><br>'+
+    'Work function ('+state.metal.name+'): <b>'+state.metal.phi.toFixed(2)+' eV</b><br>'+
+    (emits ? 'Max electron kinetic energy: <b>'+ke.toFixed(2)+' eV</b><br>Stopping voltage: <b>'+ke.toFixed(2)+' V</b>'
+            : 'Photon energy is below the work function \u2014 raising intensity will not help.');
+}
+
+/* ============================================================
+   RENDER LOOP
+   ============================================================ */
+
+var lastNow = performance.now();
+function animate(now){
+  requestAnimationFrame(animate);
+  var dt = Math.min((now-lastNow)/1000, 0.05);
+  lastNow = now;
+
+  maybeSpawnPhotons(dt);
+  updateParticles(dt);
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+buildMetalButtons();
+updateInfo();
+drawGraph();
+lastNow = performance.now();
+requestAnimationFrame(animate);
+
+})();
+</script>
+</body>
+</html>

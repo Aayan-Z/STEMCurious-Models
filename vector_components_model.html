@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Interactive Force Vector Components</title>
+<style>
+:root{color-scheme:dark;--bg:#050505;--panel:rgba(255,255,255,.075);--line:rgba(255,255,255,.16);--text:#e9e5dc;--muted:#aaa59c;--accent:#d8b477;--x:#e78b68;--y:#79b9ee}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Georgia,'Times New Roman',serif;min-height:100vh;padding:24px}main{max-width:1120px;margin:auto;display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:22px;backdrop-filter:blur(18px);padding:20px;box-shadow:0 18px 60px #0005}h1{font-size:clamp(24px,4vw,40px);font-weight:400;margin:0 0 8px}p{color:var(--muted);line-height:1.5;margin:0 0 18px}.stage{position:relative;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#080a0d}.stage canvas{display:block;width:100%;height:auto;touch-action:none;cursor:crosshair}.hint{font-size:14px;color:var(--muted);margin-top:10px}.readout{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}.metric{border:1px solid var(--line);border-radius:14px;padding:13px;background:#ffffff08}.metric span{display:block;color:var(--muted);font-size:13px;margin-bottom:5px}.metric strong{font-size:23px;font-weight:400}.wide{grid-column:1/-1}.formula{font-size:18px;line-height:1.8}.key{display:flex;align-items:center;gap:8px;margin:8px 0;color:var(--muted);font-size:14px}.swatch{width:12px;height:12px;border-radius:50%}.button{font:inherit;color:var(--text);background:#ffffff0d;border:1px solid var(--line);border-radius:999px;padding:10px 16px;cursor:pointer}.button:hover{background:#ffffff18}.controls{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}.small{font-size:14px;color:var(--muted)}@media(max-width:800px){body{padding:12px}main{grid-template-columns:1fr}.panel{padding:15px}}
+</style>
+</head>
+<body>
+<main>
+<section class="panel">
+<h1>Force vector laboratory</h1>
+<p>Click and drag from one point to another. The starting point fixes the tail of the force; the release point fixes the arrowhead and direction.</p>
+<div class="stage"><canvas id="canvas" width="820" height="560" aria-label="Interactive coordinate plane. Drag to draw a force vector."></canvas></div>
+<div class="hint">Mouse or touch: drag to draw · Release to keep the vector · Click “Reset” to begin again</div>
+<div class="controls"><button class="button" id="reset">Reset vector</button><button class="button" id="snap">Snap to axes</button></div>
+<div class="readout">
+<div class="metric"><span>Horizontal component Fₓ</span><strong id="fx">0.00 N</strong></div>
+<div class="metric"><span>Vertical component Fᵧ</span><strong id="fy">0.00 N</strong></div>
+<div class="metric"><span>Magnitude |F|</span><strong id="mag">0.00 N</strong></div>
+<div class="metric"><span>Direction θ</span><strong id="angle">0.00°</strong></div>
+</div>
+</section>
+<aside class="panel">
+<h1 style="font-size:28px">Components</h1>
+<p>The vector is resolved into perpendicular horizontal and vertical forces.</p>
+<div class="formula">Fₓ = F cos θ<br>Fᵧ = F sin θ</div>
+<div class="key"><i class="swatch" style="background:var(--accent)"></i>Resultant force F</div>
+<div class="key"><i class="swatch" style="background:var(--x)"></i>Horizontal component Fₓ</div>
+<div class="key"><i class="swatch" style="background:var(--y)"></i>Vertical component Fᵧ</div>
+<hr style="border:0;border-top:1px solid var(--line);margin:22px 0">
+<div class="small">Scale</div>
+<p style="margin-top:5px">One grid square represents 1 N. Positive x points right; positive y points upward.</p>
+<div class="small">Sign convention</div>
+<p style="margin-top:5px">A leftward or downward component is negative. The angle is measured counterclockwise from the positive x-axis.</p>
+</aside>
+</main>
+<script>
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+const fxEl=document.getElementById('fx'),fyEl=document.getElementById('fy'),magEl=document.getElementById('mag'),angleEl=document.getElementById('angle');
+const state={start:null,end:null,dragging:false,snap:false};
+const W=canvas.width,H=canvas.height,origin={x:W/2,y:H/2},scale=32;
+function point(e){const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height}}
+function vector(){if(!state.start||!state.end)return null;return{dx:(state.end.x-state.start.x)/scale,dy:(state.start.y-state.end.y)/scale}}
+function arrow(x1,y1,x2,y2,color,width=3){ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();const a=Math.atan2(y2-y1,x2-x1),s=14;ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-s*Math.cos(a-.45),y2-s*Math.sin(a-.45));ctx.lineTo(x2-s*Math.cos(a+.45),y2-s*Math.sin(a+.45));ctx.closePath();ctx.fill()}
+function draw(){ctx.clearRect(0,0,W,H);ctx.fillStyle='#080a0d';ctx.fillRect(0,0,W,H);ctx.strokeStyle='#ffffff12';ctx.lineWidth=1;for(let x=origin.x%scale;x<W;x+=scale){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}for(let y=origin.y%scale;y<H;y+=scale){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}ctx.strokeStyle='#ffffff55';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(0,origin.y);ctx.lineTo(W,origin.y);ctx.moveTo(origin.x,0);ctx.lineTo(origin.x,H);ctx.stroke();ctx.fillStyle='#aaa59c';ctx.font='15px Georgia';ctx.fillText('+x',W-35,origin.y-10);ctx.fillText('+y',origin.x+10,20);
+if(!state.start||!state.end)return;const v=vector(),sx=state.start.x,sy=state.start.y,ex=state.end.x,ey=state.end.y;const cx=ex,cy=sy;ctx.setLineDash([6,6]);arrow(sx,sy,cx,cy,'#e78b68',2);arrow(cx,cy,ex,ey,'#79b9ee',2);ctx.setLineDash([]);arrow(sx,sy,ex,ey,'#d8b477',4);ctx.fillStyle='#d8b477';ctx.beginPath();ctx.arc(sx,sy,5,0,Math.PI*2);ctx.fill();ctx.fillStyle='#e9e5dc';ctx.font='16px Georgia';ctx.fillText('tail',sx+10,sy-10);ctx.fillText('head',ex+10,ey-10);fxEl.textContent=v.dx.toFixed(2)+' N';fyEl.textContent=v.dy.toFixed(2)+' N';magEl.textContent=Math.hypot(v.dx,v.dy).toFixed(2)+' N';angleEl.textContent=(Math.atan2(v.dy,v.dx)*180/Math.PI).toFixed(2)+'°'}
+function updateEnd(e){if(!state.dragging)return;state.end=point(e);if(state.snap){const dx=state.end.x-state.start.x,dy=state.end.y-state.start.y;if(Math.abs(dx)>Math.abs(dy))state.end.y=state.start.y;else state.end.x=state.start.x}draw()}
+canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);state.start=point(e);state.end={...state.start};state.dragging=true;draw()});canvas.addEventListener('pointermove',updateEnd);canvas.addEventListener('pointerup',e=>{updateEnd(e);state.dragging=false;draw()});canvas.addEventListener('pointercancel',()=>{state.dragging=false});
+document.getElementById('reset').onclick=()=>{state.start=state.end=null;state.dragging=false;draw();fxEl.textContent=fyEl.textContent=magEl.textContent=angleEl.textContent='0.00 N';angleEl.textContent='0.00°'};document.getElementById('snap').onclick=()=>{state.snap=!state.snap;document.getElementById('snap').textContent=state.snap?'Free angle':'Snap to axes'};draw();
+</script>
+</body></html>

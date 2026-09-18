@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galton Board & Normal Distribution</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: #050507;
+            color: #ffffff;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* --- LIQUID GLASS UI PANEL --- */
+        .sidebar {
+            width: 340px;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.025);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border-right: 1px solid rgba(255, 255, 255, 0.06);
+            display: flex;
+            flex-direction: column;
+            padding: 30px;
+            z-index: 10;
+            box-shadow: 20px 0 50px rgba(0, 0, 0, 0.8), inset -1px 0 0 rgba(255, 255, 255, 0.05);
+        }
+
+        .sidebar h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+            color: #f5f5f7;
+        }
+
+        .sidebar p {
+            font-size: 0.85rem;
+            color: #86868b;
+            line-height: 1.5;
+            margin-bottom: 25px;
+        }
+
+        .control-group {
+            margin-bottom: 22px;
+        }
+
+        .control-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #a1a1a6;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .control-group label span {
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        /* Glass Trackbars */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 3px;
+            outline: none;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+            transition: background 0.2s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ffffff, #c7c7cc);
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 12px rgba(255, 255, 255, 0.4);
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6), 0 0 18px rgba(255, 255, 255, 0.7);
+        }
+
+        /* Glass Buttons */
+        .btn-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.04);
+            color: #ffffff;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            transition: all 0.2s ease;
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.09);
+            border-color: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button.primary {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
+            color: #000000;
+            border-color: rgba(255, 255, 255, 0.8);
+            font-weight: 600;
+            box-shadow: 0 4px 20px rgba(255, 255, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+        }
+
+        button.primary:hover {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0.85));
+        }
+
+        /* Glass Stats Panel */
+        .stats-box {
+            margin-top: auto;
+            background: rgba(255, 255, 255, 0.015);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 14px;
+            padding: 16px;
+            font-size: 0.8rem;
+            backdrop-filter: blur(10px);
+            box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.05);
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            color: #86868b;
+        }
+
+        .stat-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .stat-row span {
+            color: #ffffff;
+            font-family: monospace;
+        }
+
+        /* --- MAIN CANVAS VIEWPORT --- */
+        .viewport {
+            flex: 1;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            background: radial-gradient(circle at center, #111118 0%, #030305 75%);
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- LEFT HAND LIQUID GLASS PANEL -->
+    <div class="sidebar">
+        <h1>Galton Board</h1>
+        <p>A deterministic probability matrix. A closed system funnels a set cohort of balls to cleanly generate a standard bell curve.</p>
+
+        <div class="control-group">
+            <label>Total Ball Count <span id="countVal">300</span></label>
+            <input type="range" id="countRange" min="100" max="800" step="50" value="300">
+        </div>
+
+        <div class="control-group">
+            <label>Drop Speed <span id="speedVal">25</span></label>
+            <input type="range" id="speedRange" min="5" max="50" value="25">
+        </div>
+
+        <div class="control-group">
+            <label>Peg Rows <span id="rowsVal">11</span></label>
+            <input type="range" id="rowsRange" min="8" max="14" value="11">
+        </div>
+
+        <div class="btn-container">
+            <button id="resetBtn">Reset</button>
+            <button class="primary" id="startBtn">Start Drop</button>
+        </div>
+
+        <div class="stats-box">
+            <div class="stat-row">Active/Total: <span id="droppedCount">0 / 300</span></div>
+            <div class="stat-row">Status: <span id="simStatus">Ready</span></div>
+        </div>
+    </div>
+
+    <!-- CANVAS VIEWPORT -->
+    <div class="viewport">
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // UI Element mappings
+        const countRange = document.getElementById('countRange');
+        const countVal = document.getElementById('countVal');
+        const speedRange = document.getElementById('speedRange');
+        const speedVal = document.getElementById('speedVal');
+        const rowsRange = document.getElementById('rowsRange');
+        const rowsVal = document.getElementById('rowsVal');
+        const resetBtn = document.getElementById('resetBtn');
+        const startBtn = document.getElementById('startBtn');
+        const droppedCountEl = document.getElementById('droppedCount');
+        const simStatusEl = document.getElementById('simStatus');
+
+        let isRunning = false;
+        let totalCount = parseInt(countRange.value);
+        let dropSpeed = parseInt(speedRange.value);
+        let numRows = parseInt(rowsRange.value);
+        
+        let ballsReleased = 0;
+        let dropTimer = 0;
+        let allFinished = false;
+
+        let ballRadius = 4;
+        let pegRadius = 3.5;
+        
+        let balls = [];
+        let pegs = [];
+        let bins = [];
+        let leftFunnel = [];
+        let rightFunnel = [];
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+            setupBoard();
+        }
+
+        function setupBoard() {
+            pegs = [];
+            bins = [];
+            leftFunnel = [];
+            rightFunnel = [];
+            
+            const centerX = canvas.width / 2;
+            
+            const availableHeight = canvas.height * 0.88;
+            const startY = canvas.height * 0.10;
+            const rowHeight = Math.min(38, (availableHeight * 0.52) / numRows);
+            const colSpacing = Math.min(34, (canvas.width * 0.42) / numRows);
+
+            ballRadius = Math.max(3, Math.min(4.5, colSpacing * 0.14));
+            pegRadius = Math.max(2.5, ballRadius * 0.85);
+
+            // 1. Generate triangular peg layout
+            for (let r = 0; r < numRows; r++) {
+                const pegsInRow = r + 1;
+                const rowWidth = (pegsInRow - 1) * colSpacing;
+                const startX = centerX - rowWidth / 2;
+
+                for (let c = 0; c < pegsInRow; c++) {
+                    pegs.push({
+                        x: startX + c * colSpacing,
+                        y: startY + r * rowHeight
+                    });
+                }
+            }
+
+            // 2. Generate bins
+            const lastRowY = startY + (numRows - 1) * rowHeight;
+            const binTopY = lastRowY + Math.max(35, rowHeight * 1.1);
+            const binHeight = canvas.height - binTopY - 35;
+            const numBins = numRows + 2; 
+            const totalBinWidth = numBins * colSpacing;
+            const startBinX = centerX - totalBinWidth / 2;
+
+            for (let b = 0; b < numBins; b++) {
+                bins.push({
+                    x: startBinX + b * colSpacing,
+                    y: binTopY,
+                    width: colSpacing,
+                    height: binHeight,
+                    count: 0
+                });
+            }
+
+            // 3. Funnel layout
+            let topApexX = centerX;
+            let topApexY = startY - 35;
+            let entryLeftX = bins[0].x;                    
+            let entryRightX = bins[bins.length - 1].x + colSpacing; 
+
+            leftFunnel = { x1: topApexX - 10, y1: topApexY, x2: entryLeftX, y2: binTopY };
+            rightFunnel = { x1: topApexX + 10, y1: topApexY, x2: entryRightX, y2: binTopY };
+        }
+
+        class Ball {
+            constructor() {
+                const centerX = canvas.width / 2;
+                this.x = centerX + (Math.random() - 0.5) * 2;
+                this.y = canvas.height * 0.03;
+                this.vx = 0;
+                this.vy = 0;
+                this.active = true;
+                this.color = `hsl(${200 + Math.random() * 45}, 100%, 78%)`;
+            }
+
+            update() {
+                if (!this.active) return;
+
+                this.vy += 0.32;
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vx *= 0.92;
+
+                // Funnel wall reflections
+                let lw = leftFunnel;
+                let ldx = lw.x2 - lw.x1, ldy = lw.y2 - lw.y1;
+                let lt = ((this.x - lw.x1) * ldx + (this.y - lw.y1) * ldy) / (ldx * ldx + ldy * ldy);
+                lt = Math.max(0, Math.min(1, lt));
+                let lProjX = lw.x1 + lt * ldx;
+                if (this.x - ballRadius < lProjX) {
+                    this.x = lProjX + ballRadius;
+                    this.vx = Math.abs(this.vx) * 0.4 + 0.8;
+                }
+
+                let rw = rightFunnel;
+                let rdx = rw.x2 - rw.x1, rdy = rw.y2 - rw.y1;
+                let rt = ((this.x - rw.x1) * rdx + (this.y - rw.y1) * rdy) / (rdx * rdx + rdy * rdy);
+                rt = Math.max(0, Math.min(1, rt));
+                let rProjX = rw.x1 + rt * rdx;
+                if (this.x + ballRadius > rProjX) {
+                    this.x = rProjX - ballRadius;
+                    this.vx = -Math.abs(this.vx) * 0.4 - 0.8;
+                }
+
+                // Peg collision mechanics
+                for (let peg of pegs) {
+                    let dx = this.x - peg.x;
+                    let dy = this.y - peg.y;
+                    let dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < ballRadius + pegRadius) {
+                        let overlap = (ballRadius + pegRadius) - dist;
+                        let nx = dx / (dist || 1);
+                        let ny = dy / (dist || 1);
+                        
+                        this.x += nx * overlap;
+                        this.y += ny * overlap;
+
+                        let sideBias = (this.x < peg.x) ? -1 : 1;
+                        let structuralKick = sideBias * (1.2 + Math.random() * 0.5);
+                        
+                        this.vx = (nx * 0.5) + structuralKick;
+                        this.vy = -this.vy * 0.1;
+                    }
+                }
+
+                // Bin entry check
+                if (bins.length > 0) {
+                    let targetBinY = bins[0].y;
+                    if (this.y >= targetBinY) {
+                        let placed = false;
+                        for (let bin of bins) {
+                            if (this.x >= bin.x && this.x < bin.x + bin.width) {
+                                bin.count++;
+                                placed = true;
+                                break;
+                            }
+                        }
+                        if (!placed) {
+                            if (this.x < bins[0].x) bins[0].count++;
+                            else bins[bins.length - 1].count++;
+                        }
+                        this.active = false;
+                    }
+                }
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, ballRadius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.shadowColor = this.color;
+                ctx.shadowBlur = 4;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        // UI Event Listeners
+        countRange.addEventListener('input', (e) => {
+            totalCount = parseInt(e.target.value);
+            countVal.textContent = totalCount;
+            resetSimulation();
+        });
+
+        speedRange.addEventListener('input', (e) => {
+            dropSpeed = parseInt(e.target.value);
+            speedVal.textContent = dropSpeed;
+        });
+
+        rowsRange.addEventListener('input', (e) => {
+            numRows = parseInt(e.target.value);
+            rowsVal.textContent = numRows;
+            resetSimulation();
+        });
+
+        startBtn.addEventListener('click', () => {
+            if (allFinished) {
+                resetSimulation();
+            }
+            isRunning = !isRunning;
+            startBtn.textContent = isRunning ? "Pause" : "Resume";
+            startBtn.classList.toggle('primary', isRunning);
+            simStatusEl.textContent = isRunning ? "Dropping..." : "Paused";
+        });
+
+        resetBtn.addEventListener('click', resetSimulation);
+
+        function resetSimulation() {
+            isRunning = false;
+            allFinished = false;
+            balls = [];
+            ballsReleased = 0;
+            dropTimer = 0;
+            startBtn.textContent = "Start Drop";
+            startBtn.classList.add('primary');
+            simStatusEl.textContent = "Ready";
+            droppedCountEl.textContent = `0 / ${totalCount}`;
+            setupBoard();
+        }
+
+        // PROPER BELL CURve: Clean Gaussian Distribution mapped directly to peak bar height without flat ceilings
+        function drawNormalCurve() {
+            let nBins = bins.length;
+            let sumCounts = bins.reduce((acc, b) => acc + b.count, 0);
+            if (sumCounts === 0) return;
+
+            // 1. Calculate Mean ($\mu$)
+            let meanIndex = 0;
+            for (let i = 0; i < nBins; i++) {
+                meanIndex += i * bins[i].count;
+            }
+            meanIndex /= sumCounts;
+
+            // 2. Calculate Standard Deviation ($\sigma$)
+            let variance = 0;
+            for (let i = 0; i < nBins; i++) {
+                variance += bins[i].count * Math.pow(i - meanIndex, 2);
+            }
+            variance /= sumCounts;
+            let stdDev = Math.sqrt(variance) || 1;
+
+            let binWidth = bins[0].width;
+            let maxHeightPx = bins[0].height - 25;
+            let maxBinCount = Math.max(...bins.map(b => b.count), 1);
+
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+            ctx.lineWidth = 3;
+            ctx.shadowColor = 'rgba(255, 255, 255, 0.7)';
+            ctx.shadowBlur = 12;
+
+            let step = 0.05;
+            for (let xPos = 0; xPos <= nBins - 1; xPos += step) {
+                // Unscaled exponential Gaussian profile (peak is naturally 1.0 at meanIndex)
+                let exponent = -0.5 * Math.pow((xPos - meanIndex) / stdDev, 2);
+                let pdfVal = Math.exp(exponent); 
+
+                // Scale smoothly against the actual tallest histogram bar height
+                let targetHeightPx = pdfVal * maxBinCount * (maxHeightPx / maxBinCount);
+                
+                let screenX = bins[0].x + xPos * binWidth;
+                let screenY = (bins[0].y + bins[0].height) - targetHeightPx;
+                
+                // Keep bounds strictly inside the bin region vertically
+                screenY = Math.max(bins[0].y, Math.min(bins[0].y + bins[0].height, screenY));
+
+                if (xPos === 0) {
+                    ctx.moveTo(screenX, screenY);
+                } else {
+                    ctx.lineTo(screenX, screenY);
+                }
+            }
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+
+        // Master Animation Loop
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (isRunning && !allFinished) {
+                dropTimer++;
+                let releaseFrequency = Math.max(1, Math.floor(52 - dropSpeed));
+                
+                if (dropTimer % releaseFrequency === 0 && ballsReleased < totalCount) {
+                    balls.push(new Ball());
+                    ballsReleased++;
+                }
+
+                let totalAccumulated = bins.reduce((acc, b) => acc + b.count, 0);
+                droppedCountEl.textContent = `${totalAccumulated} / ${totalCount}`;
+
+                if (ballsReleased >= totalCount && balls.length === 0) {
+                    allFinished = true;
+                    isRunning = false;
+                    startBtn.textContent = "Restart Curve";
+                    startBtn.classList.remove('primary');
+                    simStatusEl.textContent = "Completed Curve";
+                }
+            }
+
+            // Update & draw active balls
+            for (let i = balls.length - 1; i >= 0; i--) {
+                balls[i].update();
+                balls[i].draw();
+                if (!balls[i].active) {
+                    balls.splice(i, 1);
+                }
+            }
+
+            // Render Peg Matrix
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            for (let peg of pegs) {
+                ctx.beginPath();
+                ctx.arc(peg.x, peg.y, pegRadius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Render Funnel Walls
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.moveTo(leftFunnel.x1, leftFunnel.y1);
+            ctx.lineTo(leftFunnel.x2, leftFunnel.y2);
+            ctx.moveTo(rightFunnel.x1, rightFunnel.y1);
+            ctx.lineTo(rightFunnel.x2, rightFunnel.y2);
+            ctx.stroke();
+
+            // Render Bins & Fill Histogram Bars + Full Partition Lines
+            let maxBinCount = Math.max(...bins.map(b => b.count), 1);
+            for (let i = 0; i < bins.length; i++) {
+                let bin = bins[i];
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+                ctx.fillRect(bin.x, bin.y, 1, bin.height);
+
+                if (bin.count > 0) {
+                    let barHeightFactor = bin.count / maxBinCount;
+                    let dynamicHeight = barHeightFactor * (bin.height - 18);
+                    
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+                    ctx.fillRect(bin.x + 2, (bin.y + bin.height) - dynamicHeight, bin.width - 4, dynamicHeight);
+                }
+            }
+            if (bins.length > 0) {
+                let lastBin = bins[bins.length - 1];
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+                ctx.fillRect(lastBin.x + lastBin.width, lastBin.y, 1, lastBin.height);
+            }
+
+            // Draw Best-Fit Normal Distribution Graph Curve
+            let currentTotalLogged = bins.reduce((acc, b) => acc + b.count, 0);
+            if (allFinished || (ballsReleased >= totalCount && balls.length === 0 && currentTotalLogged > 0)) {
+                drawNormalCurve();
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        animate();
+    </script>
+</body>
+</html>

@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wave Interference Explorer</title>
+<style>
+  *{box-sizing:border-box;}
+  html,body{ margin:0; padding:0; width:100%; height:100%; background:#000; color:#fff;
+    font-family:'Times New Roman', Times, serif; overflow:hidden; }
+  #canvas-wrap{ position:fixed; inset:0; background:#000; }
+  canvas{ display:block; }
+
+  #panel{
+    position:fixed; top:16px; left:16px; width:280px;
+    background:rgba(255,255,255,0.08);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    backdrop-filter: blur(32px) saturate(180%);
+    border:1px solid rgba(255,255,255,0.24);
+    border-radius:26px;
+    padding:22px 22px 18px 22px; z-index:6;
+    box-shadow: 0 12px 36px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.3);
+  }
+  .src-title{ font-size:15px; color:rgba(255,255,255,0.88); margin-bottom:10px; display:flex; align-items:center; gap:8px; }
+  .src-dot{ width:11px; height:11px; border-radius:50%; box-shadow:0 0 8px currentColor; }
+  .slider-block{ margin-bottom:14px; }
+  .slider-block:last-child{ margin-bottom:0; }
+  .slider-label{ font-size:12.5px; color:rgba(255,255,255,0.55); margin-bottom:4px; display:flex; justify-content:space-between; }
+  .slider-label b{ color:rgba(255,255,255,0.85); font-weight:700; }
+  input[type=range]{ -webkit-appearance:none; appearance:none; width:100%; height:22px; background:transparent; }
+  input[type=range]::-webkit-slider-runnable-track{ height:5px; border-radius:3px;
+    background:linear-gradient(90deg, rgba(255,255,255,0.5), rgba(255,255,255,0.12)); }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:19px; height:19px; border-radius:50%;
+    background:radial-gradient(circle at 32% 28%, #fff 0%, #d8d8de 100%);
+    box-shadow:0 2px 6px rgba(0,0,0,0.5); margin-top:-7px; cursor:pointer; }
+  .divider{ height:1px; margin:16px 0; background:linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.22), rgba(255,255,255,0)); }
+
+  #hint{ position:fixed; top:24px; right:28px; font-size:14px; color:#fff; text-align:right;
+    line-height:1.9; z-index:6; pointer-events:none; font-family:'Times New Roman', Times, serif; }
+
+  #info{ position:fixed; left:16px; bottom:22px; max-width:460px; z-index:6; pointer-events:none;
+    color:rgba(255,255,255,0.62); font-family:'Times New Roman', Times, serif; }
+  #info .name{ font-size:24px; margin:0 0 6px 0; color:rgba(255,255,255,0.85); }
+  #info .desc{ font-size:14px; line-height:1.55; color:rgba(255,255,255,0.58); max-width:440px; }
+
+  #legend{
+    position:fixed; right:26px; bottom:26px; z-index:6;
+    display:flex; align-items:stretch; gap:10px;
+    background:rgba(255,255,255,0.07);
+    -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+    border:1px solid rgba(255,255,255,0.2); border-radius:16px; padding:12px 14px;
+  }
+  #legendBar{ width:16px; height:120px; border-radius:8px;
+    background:linear-gradient(to top, #1a3fd8 0%, #0a1030 48%, #050508 52%, #b01a1a 100%); }
+  #legendLabels{ display:flex; flex-direction:column; justify-content:space-between; font-size:12px; color:rgba(255,255,255,0.6); }
+
+  @media (max-width: 820px){
+    #panel{ width:220px; padding:16px; } #hint{ display:none; }
+    #info{ max-width:240px; } #info .name{ font-size:19px; }
+    #legendBar{ height:90px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="canvas-wrap"></div>
+
+<div id="panel">
+  <div class="src-title"><span class="src-dot" style="background:#4ad8ff;color:#4ad8ff;"></span>Source 1</div>
+  <div class="slider-block">
+    <div class="slider-label"><span>Frequency</span><b id="f1Read">0.40 Hz</b></div>
+    <input type="range" id="f1Slider" min="0.15" max="1.2" step="0.01" value="0.4">
+  </div>
+  <div class="slider-block">
+    <div class="slider-label"><span>Phase</span><b id="p1Read">0&deg;</b></div>
+    <input type="range" id="p1Slider" min="0" max="360" step="1" value="0">
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="src-title"><span class="src-dot" style="background:#ff4ad0;color:#ff4ad0;"></span>Source 2</div>
+  <div class="slider-block">
+    <div class="slider-label"><span>Frequency</span><b id="f2Read">0.40 Hz</b></div>
+    <input type="range" id="f2Slider" min="0.15" max="1.2" step="0.01" value="0.4">
+  </div>
+  <div class="slider-block">
+    <div class="slider-label"><span>Phase</span><b id="p2Read">0&deg;</b></div>
+    <input type="range" id="p2Slider" min="0" max="360" step="1" value="0">
+  </div>
+</div>
+
+<div id="hint">
+  Drag to rotate<br>
+  Scroll to zoom<br>
+  Right-click to pan
+</div>
+
+<div id="info">
+  <div class="name">Two-Source Wave Interference</div>
+  <div class="desc">Each source radiates a real circular wave, y = (A/&radic;r)&middot;cos(kr &minus; &omega;t + &phi;), and the total displacement at every point is the exact sum of both waves (the superposition principle) &mdash; nothing here is faked or pre-drawn. Where two crests (or two troughs) arrive together, they add up into <b>constructive interference</b> (bright bands); where a crest meets a trough, they cancel into <b>destructive interference</b> (calm, dark bands). Try setting both sources to the same frequency with a 180&deg; phase difference to flip every bright band into a dark one, or use different frequencies to watch the pattern drift as the sources fall in and out of step.</div>
+</div>
+
+<div id="legend">
+  <div id="legendBar"></div>
+  <div id="legendLabels"><span>Crest</span><span>0</span><span>Trough</span></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   PHYSICS
+
+   Each source i emits a real, energy-conserving circular wave:
+       y_i(r,t) = (A0 / sqrt(r)) * cos(k_i*r - omega_i*t + phi_i)
+   with k_i = 2*pi*f_i / v  (wave speed v is fixed, a property of
+   the medium) and omega_i = 2*pi*f_i, so wavelength lambda_i =
+   v/f_i follows correctly from frequency, exactly as in reality.
+
+   Total displacement is the exact sum (superposition principle):
+       y_total = y_1 + y_2
+   This single equation is the entire, unmodified source of every
+   constructive/destructive fringe seen below -- nothing is drawn
+   or scripted separately.
+   ============================================================ */
+
+var V_WAVE = 3.2;      // wave speed, simulation units/second
+var A0 = 1.0;          // source amplitude
+var R_MIN = 0.35;       // softening radius to avoid the 1/sqrt(r) singularity
+var SEP = 2.2;          // half-separation between the two sources
+
+var source1 = { x:-SEP, z:0, freq:0.4, phase:0 };
+var source2 = { x: SEP, z:0, freq:0.4, phase:0 };
+
+function waveAt(src, x, z, t){
+  var dx=x-src.x, dz=z-src.z;
+  var r = Math.max(Math.sqrt(dx*dx+dz*dz), R_MIN);
+  var k = 2*Math.PI*src.freq/V_WAVE;
+  var omega = 2*Math.PI*src.freq;
+  return (A0/Math.sqrt(r)) * Math.cos(k*r - omega*t + src.phase);
+}
+
+/* ============================================================
+   SCENE SETUP
+   ============================================================ */
+
+var wrap = document.getElementById('canvas-wrap');
+var scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000000);
+
+var camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.05, 300);
+camera.position.set(0, 12, 15);
+
+var renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.7));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+wrap.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.rotateSpeed = 0.6;
+controls.zoomSpeed = 0.8;
+controls.minDistance = 2;
+controls.maxDistance = 60;
+controls.target.set(0,0,0);
+
+window.addEventListener('resize', function(){
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+var keyLight = new THREE.DirectionalLight(0xffffff, 0.7);
+keyLight.position.set(5,10,6);
+scene.add(keyLight);
+var fillLight = new THREE.DirectionalLight(0xaeccff, 0.3);
+fillLight.position.set(-6,-3,-5);
+scene.add(fillLight);
+
+/* ---------- interference surface grid ---------- */
+
+var HALF = 9, N = 140;
+var nu = N+1;
+var positions = new Float32Array(nu*nu*3);
+var colors = new Float32Array(nu*nu*3);
+var indices = [];
+
+for(var i=0;i<nu;i++){
+  var x = -HALF + (2*HALF)*(i/N);
+  for(var j=0;j<nu;j++){
+    var z = -HALF + (2*HALF)*(j/N);
+    var idx = i*nu+j;
+    positions[idx*3]=x; positions[idx*3+1]=0; positions[idx*3+2]=z;
+  }
+}
+for(var i2=0;i2<N;i2++){
+  for(var j2=0;j2<N;j2++){
+    var a=i2*nu+j2, b=(i2+1)*nu+j2, c=(i2+1)*nu+(j2+1), d=i2*nu+(j2+1);
+    indices.push(a,b,d, b,c,d);
+  }
+}
+
+var geo = new THREE.BufferGeometry();
+geo.setAttribute('position', new THREE.BufferAttribute(positions,3));
+geo.setAttribute('color', new THREE.BufferAttribute(colors,3));
+geo.setIndex(indices);
+geo.computeVertexNormals();
+
+var mat = new THREE.MeshStandardMaterial({ vertexColors:true, metalness:0.1, roughness:0.55, side:THREE.DoubleSide });
+var surface = new THREE.Mesh(geo, mat);
+scene.add(surface);
+
+var HEIGHT_SCALE = 0.55;
+var MAX_DISP = 3.0;
+
+var CREST = [176,26,26], MID=[8,8,12], TROUGH=[26,63,216];
+function dispColor(t){ // t in [-1,1]
+  t = Math.max(-1, Math.min(1,t));
+  var a = t>=0 ? MID : TROUGH, b = t>=0 ? CREST : MID;
+  var lt = t>=0 ? t : (t+1);
+  return [
+    (a[0]+(b[0]-a[0])*lt)/255,
+    (a[1]+(b[1]-a[1])*lt)/255,
+    (a[2]+(b[2]-a[2])*lt)/255
+  ];
+}
+
+function updateSurface(t){
+  var posAttr = geo.getAttribute('position');
+  var colAttr = geo.getAttribute('color');
+  for(var i=0;i<nu;i++){
+    var x = -HALF + (2*HALF)*(i/N);
+    for(var j=0;j<nu;j++){
+      var z = -HALF + (2*HALF)*(j/N);
+      var idx = i*nu+j;
+      var y = waveAt(source1,x,z,t) + waveAt(source2,x,z,t);
+      y = Math.max(-MAX_DISP, Math.min(MAX_DISP, y));
+      posAttr.setY(idx, y*HEIGHT_SCALE);
+      var col = dispColor(y/MAX_DISP);
+      colAttr.setXYZ(idx, col[0], col[1], col[2]);
+    }
+  }
+  posAttr.needsUpdate = true;
+  colAttr.needsUpdate = true;
+  geo.computeVertexNormals();
+}
+
+/* ---------- source markers ---------- */
+
+function makeSourceMarker(x, color){
+  var geoS = new THREE.SphereGeometry(0.22, 24, 20);
+  var matS = new THREE.MeshStandardMaterial({ color:color, emissive:new THREE.Color(color).multiplyScalar(0.6), metalness:0.3, roughness:0.3 });
+  var mesh = new THREE.Mesh(geoS, matS);
+  mesh.position.set(x, 0.4, 0);
+  scene.add(mesh);
+  return mesh;
+}
+var marker1 = makeSourceMarker(-SEP, 0x4ad8ff);
+var marker2 = makeSourceMarker(SEP, 0xff4ad0);
+
+/* ============================================================
+   UI
+   ============================================================ */
+
+function bindSlider(id, readId, target, prop, isPhaseDeg){
+  var el = document.getElementById(id), read = document.getElementById(readId);
+  el.addEventListener('input', function(){
+    var v = parseFloat(el.value);
+    if(isPhaseDeg){
+      target[prop] = v*Math.PI/180;
+      read.textContent = v.toFixed(0)+'\u00B0';
+    } else {
+      target[prop] = v;
+      read.textContent = v.toFixed(2)+' Hz';
+    }
+  });
+}
+bindSlider('f1Slider','f1Read', source1, 'freq', false);
+bindSlider('p1Slider','p1Read', source1, 'phase', true);
+bindSlider('f2Slider','f2Read', source2, 'freq', false);
+bindSlider('p2Slider','p2Read', source2, 'phase', true);
+
+/* ============================================================
+   RENDER LOOP
+   ============================================================ */
+
+var simTime = 0;
+var lastNow = performance.now();
+
+function animate(now){
+  requestAnimationFrame(animate);
+  var dt = Math.min((now-lastNow)/1000, 0.05);
+  lastNow = now;
+  simTime += dt;
+
+  updateSurface(simTime);
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+lastNow = performance.now();
+requestAnimationFrame(animate);
+
+})();
+</script>
+</body>
+</html>

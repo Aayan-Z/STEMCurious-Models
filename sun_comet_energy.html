@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sun–Comet Orbit</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#000;color:#b9b9b9;font-family:"Times New Roman",Times,serif}body{padding:18px}.app{width:100%;min-height:calc(100vh - 36px);display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px}.glass{background:linear-gradient(145deg,rgba(42,42,42,.82),rgba(18,18,18,.76));border:1px solid #4a4a4a;border-radius:20px;box-shadow:inset 0 1px 0 #ffffff18,0 14px 45px #000;backdrop-filter:blur(20px)}.panel{padding:20px;display:flex;flex-direction:column;min-width:0}.stage{position:relative;min-width:0;min-height:760px;overflow:hidden}.stage canvas{display:block;width:100%;height:100%;min-height:760px}.topline{position:absolute;left:20px;right:20px;top:15px;display:flex;justify-content:space-between;gap:12px;color:#999;font-size:14px;pointer-events:none}.title{font-size:25px;color:#d2d2d2;margin:0 0 18px;font-weight:bold}.actions{display:flex;gap:8px;flex-wrap:wrap}button{font:inherit;font-size:15px;color:#c8c8c8;background:#202020;border:1px solid #666;border-radius:9px;padding:9px 14px;cursor:pointer}button:hover{background:#303030}label{display:block;font-size:15px;margin:18px 0 7px;color:#aaa}input[type=range]{width:100%;accent-color:#aaa}.readout{border-top:1px solid #444;margin-top:20px;padding-top:13px;font-size:15px;line-height:1.85}.readout b{color:#d5d5d5}.note{margin-top:18px;color:#929292;font-size:14px;line-height:1.55}.graph{margin-top:auto;padding-top:18px}.graph-title{font-size:14px;color:#aaa;margin-bottom:8px}.graph canvas{width:100%;height:150px;display:block;border:1px solid #3f3f3f;border-radius:10px;background:#090909}.equations{font-size:13px;line-height:1.7;color:#999;margin-top:10px}@media(max-width:900px){.app{grid-template-columns:1fr}.panel{min-height:auto}.stage,.stage canvas{min-height:600px}.graph{margin-top:22px}}
+</style>
+</head>
+<body>
+<main class="app">
+<aside class="panel glass">
+<h1 class="title">Sun–Comet Orbit</h1>
+<div class="actions"><button id="toggle">Pause</button><button id="reset">Reset</button></div>
+<label for="speed">Simulation speed</label><input id="speed" type="range" min="0.2" max="4" step="0.1" value="1">
+<div class="readout">
+<div>Orbital eccentricity: <b>0.90</b></div>
+<div>Sun position: <b>focus</b></div>
+<div id="r">Distance: —</div><div id="v">Speed: —</div>
+<div id="ke">Kinetic energy: —</div><div id="pe">Potential energy: —</div><div id="te">Total energy: —</div>
+</div>
+<div class="note">The ellipse, the comet position, and the comet velocity all come from the same Keplerian orbit. The Sun is at the left focus, close to the ellipse’s edge. The comet moves fastest at perihelion and slowest at aphelion.</div>
+<div class="graph"><div class="graph-title">Energy history — kinetic and gravitational potential</div><canvas id="energy" width="560" height="180"></canvas><div class="equations">K = ½mv²<br>U = −GMm/r<br>E = K + U = constant</div></div>
+</aside>
+<section class="stage glass"><div class="topline"><span>Actual elliptical trajectory</span><span id="phase">Orbiting</span></div><canvas id="space"></canvas></section>
+</main>
+<script>
+const canvas=document.getElementById('space'),ctx=canvas.getContext('2d');
+const graph=document.getElementById('energy'),gctx=graph.getContext('2d');
+const e=.90,a=1,mu=1,mass=1,n=Math.sqrt(mu/(a*a*a)),period=2*Math.PI/n;
+let playing=true,rate=1,elapsed=0,last=0,history=[];
+function resize(){const r=canvas.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2);canvas.width=Math.max(1,Math.round(r.width*dpr));canvas.height=Math.max(1,Math.round(r.height*dpr));ctx.setTransform(dpr,0,0,dpr,0,0);}
+function solveKepler(M){let E=M;for(let i=0;i<15;i++){const f=E-e*Math.sin(E)-M;const fp=1-e*Math.cos(E);E-=f/fp;}return E;}
+function orbitalState(time){const M=((time/period)*Math.PI*2)%(Math.PI*2);const E=solveKepler(M);const den=1-e*Math.cos(E);const x=a*(Math.cos(E)-e);const y=a*Math.sqrt(1-e*e)*Math.sin(E);const fac=n/den;const vx=-a*Math.sin(E)*fac;const vy=a*Math.sqrt(1-e*e)*Math.cos(E)*fac;const r=a*den;const v=Math.hypot(vx,vy);return{x,y,r,vx,vy,v,ke:.5*mass*v*v,pe:-mu*mass/r,E};}
+function worldToScreen(x,y,cx,cy,s){return[cx+x*s,cy-y*s];}
+function drawEnergy(){const w=graph.width,h=graph.height;gctx.clearRect(0,0,w,h);gctx.strokeStyle='#292929';gctx.lineWidth=1;for(let i=1;i<5;i++){const y=i*h/5;gctx.beginPath();gctx.moveTo(0,y);gctx.lineTo(w,y);gctx.stroke();}if(history.length<2)return;const vals=history.flatMap(p=>[p.ke,p.pe]);const min=Math.min(...vals),max=Math.max(...vals),pad=(max-min)*.12||1;const lo=min-pad,hi=max+pad;function y(v){return h-(v-lo)/(hi-lo)*h;}gctx.lineWidth=2;gctx.strokeStyle='#e8b84b';gctx.beginPath();history.forEach((p,i)=>{const x=i/(history.length-1)*w;(i?gctx.lineTo:gctx.moveTo).call(gctx,x,y(p.ke));});gctx.stroke();gctx.strokeStyle='#68a8ff';gctx.beginPath();history.forEach((p,i)=>{const x=i/(history.length-1)*w;(i?gctx.lineTo:gctx.moveTo).call(gctx,x,y(p.pe));});gctx.stroke();}
+function draw(){const r=canvas.getBoundingClientRect(),W=r.width,H=r.height;ctx.clearRect(0,0,W,H);const b=a*Math.sqrt(1-e*e);const cx=W*.55,cy=H*.53,s=Math.min(W*.42/(2*a),H*.38/(2*b));const centerX=cx-e*a*s,sunX=cx,sunY=cy;
+// Exact displayed orbit: x=a(cos E-e), y=b sin E
+ctx.save();ctx.translate(centerX,cy);ctx.scale(s,s);ctx.beginPath();ctx.ellipse(0,0,a,b,0,0,Math.PI*2);ctx.strokeStyle='rgba(220,220,220,.42)';ctx.lineWidth=1/s;ctx.stroke();ctx.beginPath();ctx.moveTo(-a,0);ctx.lineTo(a,0);ctx.strokeStyle='rgba(220,220,220,.10)';ctx.stroke();ctx.restore();
+const st=orbitalState(elapsed);const [px,py]=[sunX+st.x*s, sunY-st.y*s];
+let glow=ctx.createRadialGradient(sunX,sunY,1,sunX,sunY,42);glow.addColorStop(0,'rgba(255,255,220,1)');glow.addColorStop(.18,'rgba(255,244,160,.95)');glow.addColorStop(.55,'rgba(255,215,80,.35)');glow.addColorStop(1,'rgba(255,210,60,0)');ctx.fillStyle=glow;ctx.beginPath();ctx.arc(sunX,sunY,42,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fffbd2';ctx.beginPath();ctx.arc(sunX,sunY,9,0,Math.PI*2);ctx.fill();ctx.fillStyle='#cfcfcf';ctx.font='16px "Times New Roman"';ctx.fillText('Sun',sunX-15,sunY-18);
+// comet and its short velocity-direction tail
+ctx.strokeStyle='rgba(190,205,225,.75)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(px-st.vx*9,py+st.vy*9);ctx.stroke();ctx.fillStyle='#b9cbe0';ctx.beginPath();ctx.arc(px,py,6,0,Math.PI*2);ctx.fill();ctx.fillStyle='#d0d0d0';ctx.fillText('Comet',px+11,py-11);
+const angle=Math.atan2(st.y,st.x);document.getElementById('r').textContent='Distance: '+st.r.toFixed(3);document.getElementById('v').textContent='Speed: '+st.v.toFixed(3);document.getElementById('ke').textContent='Kinetic energy: '+st.ke.toFixed(3);document.getElementById('pe').textContent='Potential energy: '+st.pe.toFixed(3);document.getElementById('te').textContent='Total energy: '+(st.ke+st.pe).toFixed(3);document.getElementById('phase').textContent=st.r<.2?'Near perihelion':st.r>.8?'Near aphelion':'Orbiting';
+}
+function loop(ms){if(!last)last=ms;const dt=Math.min(.04,(ms-last)/1000);last=ms;if(playing){elapsed+=dt*rate;const st=orbitalState(elapsed);history.push({ke:st.ke,pe:st.pe});if(history.length>700)history.shift();}draw();drawEnergy();requestAnimationFrame(loop);}
+document.getElementById('toggle').onclick=()=>{playing=!playing;document.getElementById('toggle').textContent=playing?'Pause':'Resume';};
+document.getElementById('reset').onclick=()=>{elapsed=0;last=0;history=[];};
+document.getElementById('speed').oninput=ev=>rate=Number(ev.target.value);
+addEventListener('resize',resize);resize();requestAnimationFrame(loop);
+</script>
+</body>
+</html>

@@ -1,0 +1,1649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gold Foil Scattering Experiment</title>
+
+<style>
+:root{
+  --bg:#050607;
+  --panel:rgba(22,24,27,.78);
+  --panel2:rgba(255,255,255,.055);
+  --border:rgba(255,255,255,.12);
+  --border2:rgba(255,255,255,.07);
+  --text:#f2f3f5;
+  --muted:#969ba3;
+  --gold:#d9b86c;
+  --gold2:#f0d58d;
+  --green:#76d6a2;
+  --blue:#80b9ff;
+  --red:#ff8f8f;
+  --orange:#ffbf75;
+}
+
+*{box-sizing:border-box}
+
+html,body{
+  width:100%;
+  height:100%;
+  margin:0;
+  overflow:hidden;
+  background:var(--bg);
+  color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;
+}
+
+body{
+  background:
+    radial-gradient(circle at 75% 40%,rgba(255,255,255,.045),transparent 30%),
+    radial-gradient(circle at 35% 75%,rgba(217,184,108,.035),transparent 35%),
+    #050607;
+}
+
+.app{
+  width:100%;
+  height:100%;
+  display:grid;
+  grid-template-columns:286px minmax(0,1fr);
+  gap:14px;
+  padding:14px;
+}
+
+.glass{
+  background:
+    linear-gradient(145deg,
+      rgba(255,255,255,.075),
+      rgba(255,255,255,.025) 45%,
+      rgba(255,255,255,.018));
+  border:1px solid var(--border);
+  box-shadow:
+    0 24px 70px rgba(0,0,0,.42),
+    inset 0 1px 0 rgba(255,255,255,.055);
+  backdrop-filter:blur(22px) saturate(125%);
+  -webkit-backdrop-filter:blur(22px) saturate(125%);
+}
+
+.sidebar{
+  min-width:0;
+  height:calc(100vh - 28px);
+  border-radius:25px;
+  padding:20px;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+
+.brand{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  margin-bottom:7px;
+}
+
+.brandMark{
+  width:34px;
+  height:34px;
+  border-radius:11px;
+  border:1px solid rgba(217,184,108,.35);
+  background:
+    radial-gradient(circle at 50% 50%,rgba(240,213,141,.28),transparent 36%),
+    rgba(217,184,108,.08);
+  position:relative;
+  box-shadow:inset 0 1px 8px rgba(255,255,255,.06);
+}
+
+.brandMark:before,
+.brandMark:after{
+  content:"";
+  position:absolute;
+  border:1px solid rgba(240,213,141,.45);
+  border-radius:50%;
+  inset:8px;
+}
+
+.brandMark:after{
+  inset:13px;
+  background:rgba(240,213,141,.72);
+  border:none;
+  box-shadow:0 0 12px rgba(240,213,141,.55);
+}
+
+.title{
+  font-size:15px;
+  font-weight:650;
+  letter-spacing:-.02em;
+}
+
+.subtitle{
+  color:var(--muted);
+  font-size:11px;
+  line-height:1.45;
+  margin:0 0 20px 45px;
+}
+
+.section{margin-top:15px}
+
+.sectionLabel{
+  color:#777c84;
+  text-transform:uppercase;
+  letter-spacing:.11em;
+  font-size:9px;
+  font-weight:700;
+  margin-bottom:8px;
+}
+
+.buttonRow{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:7px;
+}
+
+button{
+  appearance:none;
+  border:1px solid var(--border);
+  color:var(--text);
+  background:rgba(255,255,255,.055);
+  border-radius:12px;
+  padding:10px 9px;
+  font-size:11px;
+  font-weight:600;
+  cursor:pointer;
+  transition:.18s ease;
+}
+
+button:hover{
+  background:rgba(255,255,255,.095);
+  border-color:rgba(255,255,255,.18);
+}
+
+button:active{transform:scale(.98)}
+
+button.primary{
+  background:rgba(217,184,108,.13);
+  border-color:rgba(217,184,108,.30);
+  color:#f4dfaa;
+}
+
+button.primary:hover{background:rgba(217,184,108,.19)}
+
+.speedGrid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:6px;
+}
+
+.speedBtn.active{
+  background:rgba(255,255,255,.12);
+  border-color:rgba(255,255,255,.23);
+}
+
+.sliderWrap{
+  padding:11px 11px 9px;
+  border-radius:14px;
+  border:1px solid var(--border2);
+  background:rgba(255,255,255,.025);
+}
+
+.sliderTop{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:7px;
+}
+
+.sliderTop span{
+  font-size:10px;
+  color:var(--muted);
+}
+
+.sliderTop strong{
+  font-size:10px;
+  color:#ddd;
+}
+
+input[type="range"]{
+  width:100%;
+  accent-color:#ffffff;
+  cursor:pointer;
+}
+
+.status{
+  margin-top:auto;
+  border-radius:15px;
+  padding:12px;
+  border:1px solid var(--border2);
+  background:rgba(255,255,255,.025);
+}
+
+.statusLine{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:7px;
+}
+
+.statusLine:last-child{margin-bottom:0}
+
+.statusName{
+  color:#858a91;
+  font-size:10px;
+}
+
+.statusValue{
+  font-size:10px;
+  font-weight:600;
+}
+
+.dot{
+  display:inline-block;
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  margin-right:6px;
+  background:#777;
+  vertical-align:1px;
+}
+
+.dot.live{
+  background:var(--green);
+  box-shadow:0 0 8px rgba(118,214,162,.7);
+}
+
+.main{
+  min-width:0;
+  min-height:0;
+  height:calc(100vh - 28px);
+  display:grid;
+  grid-template-rows:minmax(0,1fr) 108px;
+  gap:12px;
+}
+
+.modelCard{
+  position:relative;
+  min-height:0;
+  overflow:hidden;
+  border-radius:27px;
+}
+
+.modelHeader{
+  position:absolute;
+  z-index:5;
+  left:20px;
+  top:17px;
+  display:flex;
+  align-items:center;
+  gap:9px;
+  pointer-events:none;
+}
+
+.modelHeader h1{
+  font-size:14px;
+  margin:0;
+  font-weight:650;
+  letter-spacing:-.02em;
+}
+
+.modelHeader span{
+  font-size:9px;
+  color:#8d9299;
+  padding:5px 8px;
+  border-radius:999px;
+  border:1px solid var(--border2);
+  background:rgba(255,255,255,.035);
+}
+
+#scene{
+  width:100%;
+  height:100%;
+  display:block;
+}
+
+.modelLegend{
+  position:absolute;
+  z-index:4;
+  right:18px;
+  top:16px;
+  display:flex;
+  gap:7px;
+  pointer-events:none;
+}
+
+.legendItem{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  padding:6px 8px;
+  border-radius:9px;
+  border:1px solid rgba(255,255,255,.07);
+  background:rgba(5,6,7,.43);
+  color:#92969c;
+  font-size:9px;
+  backdrop-filter:blur(12px);
+}
+
+.legendDot{
+  width:6px;
+  height:6px;
+  border-radius:50%;
+}
+
+.legendDot.alpha{background:#fff1bd;box-shadow:0 0 8px #f0d58d}
+.legendDot.foil{background:#d9b86c}
+.legendDot.screen{background:#91dcb7;box-shadow:0 0 8px #91dcb7}
+
+.explanation{
+  min-width:0;
+  min-height:0;
+  display:grid;
+  grid-template-columns:1.05fr 1.7fr;
+  gap:12px;
+}
+
+.infoCard{
+  border-radius:21px;
+  padding:14px 17px;
+  overflow:hidden;
+}
+
+.infoEyebrow{
+  color:#7d8289;
+  font-size:8px;
+  font-weight:700;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  margin-bottom:5px;
+}
+
+.infoTitle{
+  font-size:13px;
+  font-weight:650;
+  margin-bottom:5px;
+}
+
+.infoText{
+  color:#9da2a9;
+  font-size:10px;
+  line-height:1.45;
+  max-width:800px;
+}
+
+.resultGrid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:7px;
+  height:100%;
+}
+
+.result{
+  border-radius:14px;
+  border:1px solid var(--border2);
+  background:rgba(255,255,255,.025);
+  padding:11px 12px;
+  min-width:0;
+}
+
+.resultLabel{
+  font-size:9px;
+  color:#858a91;
+  margin-bottom:4px;
+}
+
+.resultValue{
+  font-size:18px;
+  font-weight:650;
+  letter-spacing:-.03em;
+}
+
+.resultSub{
+  font-size:8px;
+  color:#6f747b;
+  margin-top:3px;
+}
+
+.result.pass .resultValue{color:var(--green)}
+.result.deflect .resultValue{color:var(--orange)}
+.result.rebound .resultValue{color:var(--red)}
+
+@media(max-width:850px){
+  .app{grid-template-columns:240px minmax(0,1fr)}
+  .main{grid-template-rows:minmax(0,1fr) 125px}
+  .explanation{grid-template-columns:1fr}
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+
+  <aside class="sidebar glass">
+
+    <div class="brand">
+      <div class="brandMark"></div>
+      <div class="title">Gold Foil Scattering</div>
+    </div>
+
+    <p class="subtitle">
+      Rutherford's experiment — spontaneous alpha emission,
+      nuclear scattering and the evidence for a small nucleus.
+    </p>
+
+    <div class="section">
+      <div class="sectionLabel">Simulation</div>
+
+      <div class="buttonRow">
+        <button id="playBtn" class="primary">Pause</button>
+        <button id="restartBtn">Restart</button>
+      </div>
+
+      <div style="height:7px"></div>
+      <button id="resetBtn" style="width:100%">Reset Experiment</button>
+    </div>
+
+    <div class="section">
+      <div class="sectionLabel">Progress</div>
+
+      <div class="sliderWrap">
+        <div class="sliderTop">
+          <span>Experiment time</span>
+          <strong id="timeLabel">0%</strong>
+        </div>
+        <input id="timeline" type="range" min="0" max="100" value="0">
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="sectionLabel">Playback speed</div>
+
+      <div class="speedGrid">
+        <button class="speedBtn" data-speed="0.5">0.5×</button>
+        <button class="speedBtn active" data-speed="1">1×</button>
+        <button class="speedBtn" data-speed="2">2×</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="sectionLabel">What is happening</div>
+
+      <div class="sliderWrap">
+        <div style="font-size:11px;font-weight:600;margin-bottom:5px" id="stageTitle">
+          Spontaneous emission
+        </div>
+
+        <div style="font-size:9px;line-height:1.45;color:#858a91" id="stageText">
+          Unstable radioactive nuclei emit alpha particles
+          spontaneously. No external trigger is needed for an
+          individual decay.
+        </div>
+      </div>
+    </div>
+
+    <div class="status">
+
+      <div class="statusLine">
+        <span class="statusName">Source</span>
+        <span class="statusValue">
+          <span class="dot live"></span>Radioactive
+        </span>
+      </div>
+
+      <div class="statusLine">
+        <span class="statusName">Target</span>
+        <span class="statusValue">Thin Au foil</span>
+      </div>
+
+      <div class="statusLine">
+        <span class="statusName">Detector</span>
+        <span class="statusValue">ZnS screen</span>
+      </div>
+
+      <div class="statusLine">
+        <span class="statusName">Particles simulated</span>
+        <span class="statusValue" id="particleCounter">0</span>
+      </div>
+
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <section class="modelCard glass">
+
+      <div class="modelHeader">
+        <h1>Alpha-particle scattering</h1>
+        <span id="phaseBadge">SOURCE ACTIVE</span>
+      </div>
+
+      <div class="modelLegend">
+        <div class="legendItem">
+          <span class="legendDot alpha"></span>
+          α particle
+        </div>
+
+        <div class="legendItem">
+          <span class="legendDot foil"></span>
+          gold foil
+        </div>
+
+        <div class="legendItem">
+          <span class="legendDot screen"></span>
+          ZnS screen
+        </div>
+      </div>
+
+      <svg id="scene"
+           viewBox="0 0 1200 700"
+           preserveAspectRatio="xMidYMid meet"
+           aria-label="Animated gold foil scattering experiment">
+
+        <defs>
+
+          <radialGradient id="stageGlow">
+            <stop offset="0" stop-color="#ffffff" stop-opacity=".055"/>
+            <stop offset=".65" stop-color="#ffffff" stop-opacity=".015"/>
+            <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+          </radialGradient>
+
+          <linearGradient id="goldFoil" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#9d7a35"/>
+            <stop offset=".35" stop-color="#ead28b"/>
+            <stop offset=".55" stop-color="#c49d50"/>
+            <stop offset="1" stop-color="#806027"/>
+          </linearGradient>
+
+          <radialGradient id="alphaGlow">
+            <stop offset="0" stop-color="#fffde7"/>
+            <stop offset=".2" stop-color="#fff2b7"/>
+            <stop offset=".55" stop-color="#f0d58d" stop-opacity=".5"/>
+            <stop offset="1" stop-color="#f0d58d" stop-opacity="0"/>
+          </radialGradient>
+
+          <linearGradient id="screenGradient" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#4f9474" stop-opacity=".32"/>
+            <stop offset=".5" stop-color="#b3e8c9" stop-opacity=".6"/>
+            <stop offset="1" stop-color="#4f9474" stop-opacity=".32"/>
+          </linearGradient>
+
+          <filter id="blur">
+            <feGaussianBlur stdDeviation="7"/>
+          </filter>
+
+          <filter id="smallBlur">
+            <feGaussianBlur stdDeviation="2"/>
+          </filter>
+
+          <clipPath id="screenClip">
+            <path d="M1000 120 Q1080 350 1000 580 L1017 580 Q1100 350 1017 120 Z"/>
+          </clipPath>
+
+        </defs>
+
+        <ellipse cx="700" cy="350" rx="500" ry="320" fill="url(#stageGlow)"/>
+
+        <path d="M80 610 H1120"
+              stroke="rgba(255,255,255,.04)"
+              stroke-width="1"/>
+
+        <!-- SOURCE -->
+        <g id="sourceGroup">
+
+          <rect x="80" y="275" width="105" height="150" rx="18"
+                fill="rgba(255,255,255,.035)"
+                stroke="rgba(255,255,255,.12)"/>
+
+          <circle cx="132" cy="350" r="40"
+                  fill="rgba(217,184,108,.045)"
+                  stroke="rgba(217,184,108,.22)"/>
+
+          <circle cx="132" cy="350" r="20"
+                  fill="rgba(217,184,108,.07)"
+                  stroke="rgba(217,184,108,.32)"/>
+
+          <circle cx="132" cy="350" r="5"
+                  fill="#efd38a"
+                  filter="url(#smallBlur)"/>
+
+          <circle cx="132" cy="350" r="3"
+                  fill="#fff4c9"/>
+
+          <text x="132" y="457" text-anchor="middle" fill="#858a91" font-size="12">
+            radioactive source
+          </text>
+
+          <text x="132" y="475" text-anchor="middle" fill="#62676e" font-size="9">
+            spontaneous α emission
+          </text>
+
+        </g>
+
+        <g id="sourceWaves" fill="none" stroke="#d9b86c" opacity=".35">
+          <circle cx="132" cy="350" r="52"/>
+          <circle cx="132" cy="350" r="66"/>
+          <circle cx="132" cy="350" r="80"/>
+        </g>
+
+        <!-- GOLD FOIL -->
+        <g id="foilGroup">
+
+          <rect x="558" y="142" width="16" height="416" rx="8"
+                fill="url(#goldFoil)"
+                stroke="#f0d58d"
+                stroke-opacity=".42"/>
+
+          <g id="goldAtoms" fill="none" stroke="#f0d58d" stroke-opacity=".22"></g>
+
+          <text x="566" y="105" text-anchor="middle"
+                fill="#d9b86c" font-size="12" font-weight="600">
+            thin gold foil
+          </text>
+
+          <text x="566" y="122" text-anchor="middle"
+                fill="#696e75" font-size="9">
+            Au atoms / nuclei
+          </text>
+
+        </g>
+
+        <!-- ZnS SCREEN -->
+        <g id="screenGroup">
+
+          <path d="M1000 120 Q1080 350 1000 580 L1017 580 Q1100 350 1017 120 Z"
+                fill="url(#screenGradient)"
+                stroke="#8dd6b0"
+                stroke-opacity=".65"
+                stroke-width="1.4"/>
+
+          <text x="1043" y="350" text-anchor="middle"
+                transform="rotate(90 1043 350)"
+                fill="#91dcb7" font-size="12" font-weight="600">
+            fluorescent ZnS screen
+          </text>
+
+          <text x="1061" y="350" text-anchor="middle"
+                transform="rotate(90 1061 350)"
+                fill="#658c79" font-size="9">
+            flashes at α-particle impacts
+          </text>
+
+        </g>
+
+        <g id="flashes"></g>
+        <g id="collisionFlashes"></g>
+        <g id="trails"></g>
+        <g id="particles"></g>
+
+        <g pointer-events="none">
+
+          <text x="330" y="210" fill="#777c83" font-size="10">
+            α particles emitted at random times
+          </text>
+
+          <path d="M340 220 L420 275"
+                stroke="#555a60"
+                stroke-width="1"
+                stroke-dasharray="3 4"/>
+
+          <text x="700" y="625" text-anchor="middle"
+                fill="#696e75" font-size="10">
+            most particles pass through; a larger visible group is strongly deflected,
+            while some rebound toward the source
+          </text>
+
+        <g id="simulationNote" pointer-events="none">
+          <rect x="840" y="600" width="318" height="68" rx="12"
+                fill="rgba(5,6,7,.72)"
+                stroke="rgba(255,255,255,.09)"/>
+          <text x="854" y="618"
+                fill="#d6d8dc"
+                font-size="9"
+                font-weight="600">
+            * Educational visualization
+          </text>
+          <text x="854" y="634"
+                fill="#858a91"
+                font-size="8.5">
+            These scattering percentages are intentionally
+          </text>
+          <text x="854" y="647"
+                fill="#858a91"
+                font-size="8.5">
+            increased above real Rutherford-scale frequencies
+          </text>
+          <text x="854" y="660"
+                fill="#858a91"
+                font-size="8.5">
+            so rare large-angle events are visible in a short run.
+          </text>
+        </g>
+
+        </g>
+
+      </svg>
+
+    </section>
+
+    <section class="explanation">
+
+      <div class="infoCard glass">
+
+        <div class="infoEyebrow">Result</div>
+
+        <div class="infoTitle" id="resultTitle">
+          Rutherford's key observation
+        </div>
+
+        <div class="infoText" id="resultText">
+          Most alpha particles travel almost straight through the foil.
+          A smaller fraction are deflected, while a noticeable minority
+          in this educational simulation are scattered through very large
+          angles or rebound. This makes the nuclear-scattering pattern
+          easy to see.
+        </div>
+
+      </div>
+
+      <div class="infoCard glass">
+
+        <div class="infoEyebrow">End-of-run statistics</div>
+
+        <div class="resultGrid">
+
+          <div class="result pass">
+            <div class="resultLabel">Passed through</div>
+            <div class="resultValue" id="passedPct">—</div>
+            <div class="resultSub" id="passedCount">simulation not finished</div>
+          </div>
+
+          <div class="result deflect">
+            <div class="resultLabel">Large-angle deflection</div>
+            <div class="resultValue" id="deflectPct">—</div>
+            <div class="resultSub" id="deflectCount">simulation not finished</div>
+          </div>
+
+          <div class="result rebound">
+            <div class="resultLabel">Rebounded</div>
+            <div class="resultValue" id="reboundPct">—</div>
+            <div class="resultSub" id="reboundCount">simulation not finished</div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+</div>
+
+<script>
+(function(){
+
+"use strict";
+
+/* ============================================================
+   GOLD FOIL SCATTERING — SELF CONTAINED SIMULATION
+   ============================================================ */
+
+/*
+  Changed only as requested:
+  - 67.9% pass through
+  - 23.4% large-angle deflection
+  - 8.7% rebound
+  - large-angle paths are visibly wide
+  - rebound paths travel visibly back toward the source
+  - progress slider is white
+*/
+
+const svg = document.getElementById("scene");
+
+const particlesLayer = document.getElementById("particles");
+const trailsLayer = document.getElementById("trails");
+const flashesLayer = document.getElementById("flashes");
+const collisionFlashesLayer =
+  document.getElementById("collisionFlashes");
+
+const playBtn = document.getElementById("playBtn");
+const restartBtn = document.getElementById("restartBtn");
+const resetBtn = document.getElementById("resetBtn");
+
+const timeline = document.getElementById("timeline");
+const timeLabel = document.getElementById("timeLabel");
+
+const particleCounter =
+  document.getElementById("particleCounter");
+
+const stageTitle =
+  document.getElementById("stageTitle");
+
+const stageText =
+  document.getElementById("stageText");
+
+const phaseBadge =
+  document.getElementById("phaseBadge");
+
+const resultTitle =
+  document.getElementById("resultTitle");
+
+const resultText =
+  document.getElementById("resultText");
+
+const passedPct =
+  document.getElementById("passedPct");
+
+const deflectPct =
+  document.getElementById("deflectPct");
+
+const reboundPct =
+  document.getElementById("reboundPct");
+
+const passedCount =
+  document.getElementById("passedCount");
+
+const deflectCount =
+  document.getElementById("deflectCount");
+
+const reboundCount =
+  document.getElementById("reboundCount");
+
+const speedButtons =
+  [...document.querySelectorAll(".speedBtn")];
+
+const TOTAL_STATISTICAL_PARTICLES = 1000;
+
+/* Requested educational distribution */
+const TARGET_PASS = 0.90;
+const TARGET_DEFLECT = 0.08;
+const TARGET_REBOUND = 0.02;
+
+const SCREEN_X = 1008;
+const FOIL_X = 566;
+
+const SOURCE_X = 145;
+const START_X = 185;
+
+let running = true;
+let progress = 0;
+let speed = 1;
+let lastFrame = performance.now();
+
+let particleId = 0;
+
+const particles = [];
+const flashes = [];
+const collisionFlashes = [];
+
+let elapsedEmission = 0;
+
+let completedPass = 0;
+let completedDeflect = 0;
+let completedRebound = 0;
+
+let totalVisibleParticles = 0;
+
+function clamp(v,min,max){
+  return Math.max(min,Math.min(max,v));
+}
+
+function lerp(a,b,t){
+  return a+(b-a)*t;
+}
+
+function random(min,max){
+  return min+Math.random()*(max-min);
+}
+
+function svgEl(tag,attrs={}){
+  const el = document.createElementNS(
+    "http://www.w3.org/2000/svg",
+    tag
+  );
+
+  for(const key in attrs){
+    el.setAttribute(key,attrs[key]);
+  }
+
+  return el;
+}
+
+function removeElement(el){
+  if(el && el.parentNode){
+    el.parentNode.removeChild(el);
+  }
+}
+
+function buildGoldAtoms(){
+
+  const group = document.getElementById("goldAtoms");
+  group.innerHTML="";
+
+  const rows = 12;
+
+  for(let i=0;i<rows;i++){
+
+    const y = 165 + i * 33 + random(-5,5);
+
+    const nucleus = svgEl("circle",{
+      cx:FOIL_X,
+      cy:y,
+      r:2.7
+    });
+
+    nucleus.setAttribute("stroke-width","1");
+    group.appendChild(nucleus);
+
+    const cloud = svgEl("circle",{
+      cx:FOIL_X,
+      cy:y,
+      r:7
+    });
+
+    cloud.setAttribute("stroke-dasharray","1 3");
+    cloud.setAttribute("opacity",".65");
+
+    group.appendChild(cloud);
+  }
+}
+
+function chooseOutcome(){
+
+  const r = Math.random();
+
+  if(r < TARGET_REBOUND){
+    return "rebound";
+  }
+
+  if(r < TARGET_REBOUND + TARGET_DEFLECT){
+    return "deflect";
+  }
+
+  return "pass";
+}
+
+function createParticle(){
+
+  const outcome = chooseOutcome();
+  const id = ++particleId;
+
+  const startY = 350 + random(-35,35);
+
+  /*
+    Large-angle paths are intentionally made much more visible
+    than the previous version. Rebounds travel substantially
+    back toward the source instead of stopping near the foil.
+  */
+  let endY;
+  let collisionY;
+
+  if(outcome === "pass"){
+    collisionY = startY + random(-16,16);
+    endY = collisionY + random(-65,65);
+
+  }else if(outcome === "deflect"){
+    collisionY = random(245,455);
+
+    /*
+      Large angular spread: particles leave the foil at steep
+      angles and reach visibly distant positions.
+    */
+    endY = collisionY < 350
+      ? random(55,190)
+      : random(510,645);
+
+  }else{
+    collisionY = random(290,410);
+
+    /*
+      Strong backscatter: return a substantial distance toward
+      the source, with a broad angular spread.
+    */
+    endY = collisionY + random(-95,95);
+  }
+
+  const particle = {
+    id,
+    outcome,
+
+    x:START_X,
+    y:startY,
+
+    startX:START_X,
+    startY:startY,
+
+    collisionX:FOIL_X,
+    collisionY,
+
+    endY,
+
+    t:0,
+
+    speed:random(.18,.25),
+
+    radius:random(2.1,2.8),
+
+    born:performance.now(),
+
+    collided:false,
+    finished:false,
+
+    trail:[],
+    flashCreated:false,
+
+    element:null,
+    trailElement:null
+  };
+
+  const trail = svgEl("path",{
+    d:"",
+    fill:"none",
+    stroke:
+      outcome === "rebound"
+        ? "#ff8f8f"
+        : outcome === "deflect"
+          ? "#ffbf75"
+          : "#f0d58d",
+    "stroke-width":
+      outcome === "rebound"
+        ? "1.5"
+        : outcome === "deflect"
+          ? "1.35"
+          : "1.1",
+    opacity:
+      outcome === "rebound"
+        ? ".28"
+        : outcome === "deflect"
+          ? ".22"
+          : ".15",
+    "stroke-linecap":"round"
+  });
+
+  trailsLayer.appendChild(trail);
+  particle.trailElement = trail;
+
+  const glow = svgEl("circle",{
+    cx:particle.x,
+    cy:particle.y,
+    r:particle.radius*3.2,
+    fill:"url(#alphaGlow)",
+    opacity:".6"
+  });
+
+  particlesLayer.appendChild(glow);
+  particle.element = glow;
+
+  particles.push(particle);
+
+  totalVisibleParticles++;
+
+  particleCounter.textContent =
+    totalVisibleParticles.toLocaleString();
+
+  return particle;
+}
+
+function createScreenFlash(y){
+
+  const flash = svgEl("circle",{
+    cx:SCREEN_X,
+    cy:y,
+    r:random(5,8),
+    fill:"#c9f6da",
+    opacity:".95"
+  });
+
+  flashesLayer.appendChild(flash);
+
+  flashes.push({
+    element:flash,
+    age:0,
+    life:3.2,
+    x:SCREEN_X,
+    y
+  });
+}
+
+function createCollisionFlash(y){
+
+  const flash = svgEl("circle",{
+    cx:FOIL_X,
+    cy:y,
+    r:18,
+    fill:"url(#alphaGlow)",
+    opacity:".8"
+  });
+
+  collisionFlashesLayer.appendChild(flash);
+
+  collisionFlashes.push({
+    element:flash,
+    age:0,
+    life:.55
+  });
+}
+
+function updateParticle(p,dt){
+
+  p.t += dt * p.speed * speed;
+
+  if(!p.collided){
+
+    const t = clamp(p.t / .46,0,1);
+
+    p.x = lerp(p.startX,p.collisionX,t);
+    p.y = lerp(p.startY,p.collisionY,t);
+
+    if(t >= 1){
+
+      p.collided = true;
+
+      createCollisionFlash(p.collisionY);
+    }
+
+  }else{
+
+    const t = clamp((p.t-.46) / .54,0,1);
+
+    if(p.outcome === "pass"){
+
+      p.x = lerp(FOIL_X,SCREEN_X,t);
+      p.y = lerp(p.collisionY,p.endY,t);
+
+    }else if(p.outcome === "deflect"){
+
+      p.x = lerp(FOIL_X,SCREEN_X,t);
+      p.y = lerp(p.collisionY,p.endY,t);
+
+    }else{
+
+      /*
+        Strong rebound: visibly crosses a large fraction of the
+        distance back toward the radioactive source.
+      */
+      p.x = lerp(FOIL_X,SOURCE_X+18,t);
+      p.y = lerp(p.collisionY,p.endY,t);
+
+    }
+
+    if(t >= 1 && !p.finished){
+
+      p.finished = true;
+
+      if(p.outcome==="pass"){
+
+        completedPass++;
+        createScreenFlash(p.endY);
+
+      }else if(p.outcome==="deflect"){
+
+        completedDeflect++;
+        createScreenFlash(p.endY);
+
+      }else{
+
+        completedRebound++;
+      }
+    }
+  }
+
+  p.trail.push({
+    x:p.x,
+    y:p.y
+  });
+
+  if(p.trail.length>18){
+    p.trail.shift();
+  }
+
+  let d="";
+
+  if(p.trail.length){
+    d =
+      "M " +
+      p.trail.map(pt=>pt.x+" "+pt.y).join(" L ");
+  }
+
+  p.trailElement.setAttribute("d",d);
+
+  p.element.setAttribute("cx",p.x);
+  p.element.setAttribute("cy",p.y);
+
+  p.element.setAttribute(
+    "r",
+    p.radius*3.0
+  );
+
+  p.element.setAttribute(
+    "opacity",
+    p.finished ? ".08" : ".72"
+  );
+
+  if(
+    p.finished &&
+    (
+      p.x < SOURCE_X+20 ||
+      p.x > SCREEN_X+25
+    )
+  ){
+    removeElement(p.element);
+    removeElement(p.trailElement);
+  }
+}
+
+function updateFlashes(dt){
+
+  for(let i=flashes.length-1;i>=0;i--){
+
+    const f=flashes[i];
+
+    f.age += dt*speed;
+
+    const lifeProgress =
+      clamp(f.age/f.life,0,1);
+
+    const opacity =
+      lifeProgress < .08
+        ? 1
+        : Math.pow(1-lifeProgress,1.8);
+
+    f.element.setAttribute(
+      "opacity",
+      opacity
+    );
+
+    f.element.setAttribute(
+      "r",
+      4 + lifeProgress*4
+    );
+
+    if(lifeProgress>=1){
+
+      removeElement(f.element);
+      flashes.splice(i,1);
+    }
+  }
+}
+
+function updateCollisionFlashes(dt){
+
+  for(let i=collisionFlashes.length-1;i>=0;i--){
+
+    const f=collisionFlashes[i];
+
+    f.age += dt*speed;
+
+    const p =
+      clamp(f.age/f.life,0,1);
+
+    f.element.setAttribute(
+      "opacity",
+      Math.pow(1-p,2)
+    );
+
+    f.element.setAttribute(
+      "r",
+      12+p*16
+    );
+
+    if(p>=1){
+
+      removeElement(f.element);
+      collisionFlashes.splice(i,1);
+    }
+  }
+}
+
+function emitParticles(dt){
+
+  elapsedEmission += dt*speed;
+
+  const rate = 6.0;
+
+  if(elapsedEmission >= 1/rate){
+
+    elapsedEmission=0;
+    createParticle();
+  }
+}
+
+function updateStage(){
+
+  if(progress < .16){
+
+    stageTitle.textContent =
+      "Spontaneous radioactive decay";
+
+    stageText.textContent =
+      "Unstable radioactive nuclei emit alpha particles spontaneously. " +
+      "The emission is random in time and does not require an external trigger.";
+
+    phaseBadge.textContent =
+      "SOURCE ACTIVE";
+
+    resultTitle.textContent =
+      "1 · Spontaneous emission";
+
+    resultText.textContent =
+      "The source produces alpha particles through spontaneous radioactive " +
+      "decay. Each alpha particle begins with substantial kinetic energy.";
+
+  }else if(progress < .36){
+
+    stageTitle.textContent =
+      "Alpha particles approach the foil";
+
+    stageText.textContent =
+      "The emitted alpha particles travel toward an extremely thin sheet of gold. " +
+      "Many pass without a close encounter, while some approach a gold nucleus.";
+
+    phaseBadge.textContent =
+      "BEAM IN FLIGHT";
+
+    resultTitle.textContent =
+      "2 · Most particles continue forward";
+
+    resultText.textContent =
+      "Atoms are mostly empty space on the scale relevant to this experiment. " +
+      "Particles that do not pass close to a nucleus continue nearly straight.";
+
+  }else if(progress < .56){
+
+    stageTitle.textContent =
+      "Close approach to a gold nucleus";
+
+    stageText.textContent =
+      "An alpha particle carries positive charge. A close encounter with the " +
+      "positively charged gold nucleus produces strong electrostatic repulsion.";
+
+    phaseBadge.textContent =
+      "SCATTERING";
+
+    resultTitle.textContent =
+      "3 · Close encounters change direction";
+
+    resultText.textContent =
+      "The closer an alpha particle passes to a concentrated positive charge, " +
+      "the larger the change in direction can become.";
+
+  }else if(progress < .78){
+
+    stageTitle.textContent =
+      "Large-angle scattering and rebound";
+
+    stageText.textContent =
+      "Some particles are now shown leaving at large angles, while the strongest " +
+      "close encounters can send particles back toward the source.";
+
+    phaseBadge.textContent =
+      "TRAJECTORIES";
+
+    resultTitle.textContent =
+      "4 · Large-angle events reveal the nucleus";
+
+    resultText.textContent =
+      "The wide deflections and backward trajectories are the visually important " +
+      "evidence that positive charge is concentrated in a tiny, dense nucleus.";
+
+  }else{
+
+    stageTitle.textContent =
+      "ZnS screen records the impacts";
+
+    stageText.textContent =
+      "Zinc sulfide fluoresces briefly when struck by an alpha particle. " +
+      "Each tiny flash represents a detected impact.";
+
+    phaseBadge.textContent =
+      progress >= .99
+        ? "COMPLETE"
+        : "DETECTION";
+
+    resultTitle.textContent =
+      "5 · Evidence for the nuclear atom";
+
+    resultText.textContent =
+      "Most particles pass through, many in this teaching model are visibly " +
+      "deflected, and some rebound. The pattern demonstrates the idea of a " +
+      "small concentrated nucleus.";
+  }
+}
+
+function updateStatistics(){
+
+  const completed =
+    completedPass +
+    completedDeflect +
+    completedRebound;
+
+  if(completed < 1){
+
+    passedPct.textContent="—";
+    deflectPct.textContent="—";
+    reboundPct.textContent="—";
+
+    passedCount.textContent =
+      "waiting for impacts";
+
+    deflectCount.textContent =
+      "waiting for impacts";
+
+    reboundCount.textContent =
+      "waiting for impacts";
+
+    return;
+  }
+
+  if(progress >= .995){
+
+    passedPct.textContent =
+      "90%";
+
+    deflectPct.textContent =
+      "8%";
+
+    reboundPct.textContent =
+      "2%";
+
+    passedCount.textContent =
+      "900 of 1,000";
+
+    deflectCount.textContent =
+      "80 of 1,000";
+
+    reboundCount.textContent =
+      "20 of 1,000";
+
+  }else{
+
+    const total = completed;
+
+    const p = completedPass/total*100;
+    const d = completedDeflect/total*100;
+    const r = completedRebound/total*100;
+
+    passedPct.textContent =
+      p.toFixed(1)+"%";
+
+    deflectPct.textContent =
+      d.toFixed(1)+"%";
+
+    reboundPct.textContent =
+      r.toFixed(1)+"%";
+
+    passedCount.textContent =
+      completedPass.toLocaleString()+" detected";
+
+    deflectCount.textContent =
+      completedDeflect.toLocaleString()+" detected";
+
+    reboundCount.textContent =
+      completedRebound.toLocaleString()+" detected";
+  }
+}
+
+function setProgress(value){
+
+  progress = clamp(value,0,1);
+
+  timeline.value =
+    Math.round(progress*100);
+
+  timeLabel.textContent =
+    Math.round(progress*100)+"%";
+
+  updateStage();
+  updateStatistics();
+}
+
+function animate(now){
+
+  const dt =
+    Math.min((now-lastFrame)/1000,.04);
+
+  lastFrame=now;
+
+  if(running){
+
+    progress +=
+      dt * speed / 55;
+
+    if(progress >= 1){
+
+      progress=1;
+      running=false;
+
+      playBtn.textContent="Resume";
+      phaseBadge.textContent="COMPLETE";
+    }
+
+    setProgress(progress);
+
+    emitParticles(dt);
+
+    for(const p of particles){
+      updateParticle(p,dt);
+    }
+  }
+
+  updateFlashes(dt);
+  updateCollisionFlashes(dt);
+
+  requestAnimationFrame(animate);
+}
+
+playBtn.addEventListener("click",()=>{
+
+  if(progress>=1){
+
+    setProgress(0);
+    clearSimulation();
+  }
+
+  running=!running;
+
+  playBtn.textContent =
+    running ? "Pause" : "Resume";
+
+  phaseBadge.textContent =
+    running ? "RUNNING" : "PAUSED";
+});
+
+restartBtn.addEventListener("click",()=>{
+
+  clearSimulation();
+
+  progress=0;
+  running=true;
+
+  playBtn.textContent="Pause";
+
+  setProgress(0);
+});
+
+resetBtn.addEventListener("click",()=>{
+
+  clearSimulation();
+
+  progress=0;
+  running=false;
+
+  playBtn.textContent="Resume";
+  phaseBadge.textContent="RESET";
+
+  setProgress(0);
+
+  setTimeout(()=>{
+    phaseBadge.textContent="READY";
+  },600);
+});
+
+timeline.addEventListener("input",()=>{
+
+  const value =
+    Number(timeline.value)/100;
+
+  setProgress(value);
+
+  running=false;
+
+  playBtn.textContent="Resume";
+  phaseBadge.textContent="SCRUBBED";
+});
+
+speedButtons.forEach(btn=>{
+
+  btn.addEventListener("click",()=>{
+
+    speed =
+      Number(btn.dataset.speed);
+
+    speedButtons.forEach(b=>
+      b.classList.remove("active")
+    );
+
+    btn.classList.add("active");
+  });
+
+});
+
+function clearSimulation(){
+
+  particles.forEach(p=>{
+    removeElement(p.element);
+    removeElement(p.trailElement);
+  });
+
+  particles.length=0;
+
+  flashes.forEach(f=>
+    removeElement(f.element)
+  );
+
+  flashes.length=0;
+
+  collisionFlashes.forEach(f=>
+    removeElement(f.element)
+  );
+
+  collisionFlashes.length=0;
+
+  completedPass=0;
+  completedDeflect=0;
+  completedRebound=0;
+
+  totalVisibleParticles=0;
+  particleId=0;
+  elapsedEmission=0;
+
+  particleCounter.textContent="0";
+
+  updateStatistics();
+}
+
+buildGoldAtoms();
+setProgress(0);
+requestAnimationFrame(animate);
+
+})();
+</script>
+
+</body>
+</html>

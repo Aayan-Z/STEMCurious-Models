@@ -1,0 +1,72 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Vector Addition Laboratory</title><style>
+:root{color-scheme:dark;--bg:#000;--panel:rgba(255,255,255,.075);--line:rgba(255,255,255,.16);--text:#d8d4cc;--muted:#9d9991;--accent:#d6b47b}*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#000;color:var(--text);font-family:Georgia,'Times New Roman',serif}body{overflow:hidden}main{height:100vh;display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:16px;padding:16px}.stage{min-width:0;min-height:0;border:1px solid var(--line);border-radius:24px;overflow:hidden;background:#050505;position:relative}.stage canvas{width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}.panel{background:var(--panel);border:1px solid var(--line);border-radius:24px;padding:22px;backdrop-filter:blur(22px);overflow:auto}h1{font-size:30px;font-weight:400;margin:0 0 8px}p{color:var(--muted);line-height:1.45;margin:0 0 18px}.button{font:inherit;color:var(--text);background:#ffffff0b;border:1px solid var(--line);border-radius:999px;padding:10px 14px;cursor:pointer}.button:hover{background:#ffffff18}.controls{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 20px}.metric{border:1px solid var(--line);border-radius:15px;padding:12px;margin-top:9px;background:#ffffff06}.metric span{display:block;color:var(--muted);font-size:13px}.metric strong{display:block;font-size:22px;font-weight:400;margin-top:5px}.small{font-size:13px;color:var(--muted)}@media(max-width:760px){body{overflow:auto}main{height:auto;min-height:100vh;grid-template-columns:1fr;padding:10px}.stage{height:65vh;min-height:360px}.panel{order:-1}}
+</style></head><body><main><section class="stage"><canvas id="canvas" aria-label="Draw vectors by dragging from tail to head"></canvas></section><aside class="panel"><h1>Vector addition</h1><p>Drag on the plane to create a force vector. Add as many as you need, then press <em>Add vectors</em> to place them tail-to-head and show the resultant.</p><div class="controls"><button class="button" id="add">Add vectors</button><button class="button" id="clear">Clear</button><button class="button" id="undo">Undo</button></div><div class="metric"><span>Vectors drawn</span><strong id="count">0</strong></div><div class="metric"><span>Resultant magnitude</span><strong id="mag">0.00 N</strong></div><div class="metric"><span>Resultant components</span><strong id="comp">Fₓ = 0.00 N<br>Fᵧ = 0.00 N</strong></div><div class="metric"><span>Resultant direction</span><strong id="angle">0.00°</strong></div><p class="small" id="status">Draw a vector to begin.</p><p class="small">Scale: 1 grid square = 1 N. Positive y is upward.</p></aside></main><script>
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+const state={vectors:[],current:null,drag:false,panning:false,animating:false,added:false,resultantProgress:0};
+let W=1000,H=700,origin={x:500,y:350},scale=35,zoom=1,pan={x:0,y:0},animationStart=0,animationDuration=1100,resultantStart=0,resultantDuration=700;
+
+function resize(){const r=canvas.getBoundingClientRect();const d=Math.max(1,devicePixelRatio||1);W=Math.max(500,Math.floor(r.width));H=Math.max(360,Math.floor(r.height));canvas.width=W*d;canvas.height=H*d;ctx.setTransform(d,0,0,d,0,0);origin={x:W*.5,y:H*.5};draw()}
+function pt(e){const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left-pan.x)/zoom,y:(e.clientY-r.top-pan.y)/zoom}}
+function vec(a,b){return{dx:(b.x-a.x)/scale,dy:(a.y-b.y)/scale}}
+function arrow(a,b,color,w=3,alpha=1){ctx.save();ctx.globalAlpha=alpha;ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();const ang=Math.atan2(b.y-a.y,b.x-a.x),s=13;ctx.beginPath();ctx.moveTo(b.x,b.y);ctx.lineTo(b.x-s*Math.cos(ang-.48),b.y-s*Math.sin(ang-.48));ctx.lineTo(b.x-s*Math.cos(ang+.48),b.y-s*Math.sin(ang+.48));ctx.closePath();ctx.fill();ctx.restore()}
+function ease(t){return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2}
+function draw(){
+ ctx.clearRect(0,0,W,H);ctx.fillStyle='#050505';ctx.fillRect(0,0,W,H);ctx.save();ctx.translate(pan.x,pan.y);ctx.scale(zoom,zoom);
+ ctx.strokeStyle='#ffffff12';ctx.lineWidth=1;
+ for(let x=origin.x%scale;x<W;x+=scale){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+ for(let y=origin.y%scale;y<H;y+=scale){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+ ctx.strokeStyle='#ffffff55';ctx.beginPath();ctx.moveTo(0,origin.y);ctx.lineTo(W,origin.y);ctx.moveTo(origin.x,0);ctx.lineTo(origin.x,H);ctx.stroke();
+ ctx.fillStyle='#aaa59c';ctx.font='14px Georgia';ctx.fillText('+x',W-30,origin.y-9);ctx.fillText('+y',origin.x+9,18);
+ state.vectors.forEach((v,i)=>{arrow(v.a,v.b,`hsl(${35+i*47},55%,68%)`,3);ctx.fillStyle='#d8d4cc';ctx.font='14px Georgia';ctx.fillText('F'+(i+1),v.b.x+8,v.b.y-8)});
+ if(state.current)arrow(state.current.a,state.current.b,'#d6b47b',4);
+ if(state.added&&state.vectors.length){
+   let p={...origin};
+   state.vectors.forEach(v=>{const end={x:p.x+v.dx*scale,y:p.y-v.dy*scale};p=end});
+   const a={...origin},b={...p};
+   arrow(a,b,'#f1e2bd',5,state.resultantProgress);
+   if(state.resultantProgress>0){ctx.save();ctx.globalAlpha=state.resultantProgress;ctx.fillStyle='#f1e2bd';ctx.font='16px Georgia';ctx.fillText('R',p.x+10,p.y-10);ctx.restore()}
+ }
+ ctx.restore();
+}
+function update(){
+ document.getElementById('count').textContent=state.vectors.length;
+ let x=0,y=0;state.vectors.forEach(v=>{x+=v.dx;y+=v.dy});
+ document.getElementById('mag').textContent=Math.hypot(x,y).toFixed(2)+' N';
+ document.getElementById('comp').innerHTML='Fₓ = '+x.toFixed(2)+' N<br>Fᵧ = '+y.toFixed(2)+' N';
+ document.getElementById('angle').textContent=(Math.atan2(y,x)*180/Math.PI).toFixed(2)+'°';
+ document.getElementById('status').textContent=state.animating?'Arranging vectors tail-to-head…':state.added?'Vectors arranged tail-to-head; resultant shown from first tail to final head.':'Draw more vectors or press Add vectors.';
+}
+function animateArrangement(now){
+ const t=Math.min(1,(now-animationStart)/animationDuration),e=ease(t);
+ state.vectors.forEach(v=>{v.a.x=v.fromA.x+(v.toA.x-v.fromA.x)*e;v.a.y=v.fromA.y+(v.toA.y-v.fromA.y)*e;v.b.x=v.fromB.x+(v.toB.x-v.fromB.x)*e;v.b.y=v.fromB.y+(v.toB.y-v.fromB.y)*e});
+ draw();
+ if(t<1){requestAnimationFrame(animateArrangement);return}
+ state.animating=false;resultantStart=now;state.resultantProgress=0;update();requestAnimationFrame(animateResultant)
+}
+function animateResultant(now){
+ const t=Math.min(1,(now-resultantStart)/resultantDuration);state.resultantProgress=ease(t);draw();
+ if(t<1)requestAnimationFrame(animateResultant);else{state.resultantProgress=1;update();draw()}
+}
+function addVectors(){
+ if(!state.vectors.length||state.animating)return;
+ state.added=true;state.animating=true;state.resultantProgress=0;
+ let p={...origin};
+ state.vectors.forEach(v=>{
+   v.fromA={...v.a};v.fromB={...v.b};
+   v.toA={...p};
+   v.toB={x:p.x+v.dx*scale,y:p.y-v.dy*scale};
+   p={...v.toB};
+ });
+ animationStart=performance.now();update();requestAnimationFrame(animateArrangement)
+}
+canvas.addEventListener('pointerdown',e=>{if(state.animating)return;canvas.setPointerCapture(e.pointerId);if(e.button===1||e.button===2||e.shiftKey){state.panning=true;state.panStart={x:e.clientX,y:e.clientY};state.panOrigin={...pan};return}state.drag=true;state.current={a:pt(e),b:pt(e)};state.added=false;state.resultantProgress=0;draw();update()});
+canvas.addEventListener('pointermove',e=>{if(state.panning){pan.x=state.panOrigin.x+e.clientX-state.panStart.x;pan.y=state.panOrigin.y+e.clientY-state.panStart.y;draw();return}if(!state.drag)return;state.current.b=pt(e);draw()});
+canvas.addEventListener('pointerup',e=>{if(state.panning){state.panning=false;return}if(!state.drag)return;state.current.b=pt(e);state.drag=false;const v=vec(state.current.a,state.current.b);if(Math.hypot(v.dx,v.dy)>.15)state.vectors.push({...v,a:{...state.current.a},b:{...state.current.b}});state.current=null;state.added=false;state.resultantProgress=0;update();draw()});
+canvas.addEventListener('pointercancel',()=>{state.drag=false;state.panning=false;state.current=null;draw()});
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+canvas.addEventListener('wheel',e=>{e.preventDefault();const r=canvas.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;const before={x:(mx-pan.x)/zoom,y:(my-pan.y)/zoom};const factor=e.deltaY<0?1.12:1/1.12;zoom=Math.max(.35,Math.min(4,zoom*factor));pan.x=mx-before.x*zoom;pan.y=my-before.y*zoom;draw()},{passive:false});
+document.getElementById('add').onclick=addVectors;
+document.getElementById('clear').onclick=()=>{state.vectors=[];state.current=null;state.added=false;state.animating=false;state.resultantProgress=0;update();draw()};
+document.getElementById('undo').onclick=()=>{if(state.animating)return;state.vectors.pop();state.added=false;state.resultantProgress=0;update();draw()};
+window.addEventListener('resize',resize);resize();update();
+</script></body></html>

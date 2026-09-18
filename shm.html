@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spring-Mass Oscillator</title>
+<style>
+  *{box-sizing:border-box;}
+  html,body{ margin:0; padding:0; width:100%; height:100%; background:#000; color:#fff;
+    font-family:'Times New Roman', Times, serif; overflow:hidden; }
+  #canvas-wrap{ position:fixed; inset:0; background:#000; }
+  canvas.three{ display:block; }
+
+  #panel{
+    position:fixed; top:16px; left:16px; width:270px;
+    background:rgba(255,255,255,0.08);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    backdrop-filter: blur(32px) saturate(180%);
+    border:1px solid rgba(255,255,255,0.22);
+    border-radius:26px;
+    padding:22px 22px 18px 22px; z-index:6;
+    box-shadow: 0 12px 36px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.28);
+  }
+  .slider-label{ font-size:12.5px; color:rgba(255,255,255,0.55); margin-bottom:4px; display:flex; justify-content:space-between; }
+  .slider-label b{ color:rgba(255,255,255,0.85); font-weight:700; }
+  input[type=range]{ -webkit-appearance:none; appearance:none; width:100%; height:22px; background:transparent; }
+  input[type=range]::-webkit-slider-runnable-track{ height:5px; border-radius:3px;
+    background:linear-gradient(90deg, rgba(255,255,255,0.5), rgba(255,255,255,0.12)); }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:19px; height:19px; border-radius:50%;
+    background:radial-gradient(circle at 32% 28%, #fff 0%, #d8d8de 100%);
+    box-shadow:0 2px 6px rgba(0,0,0,0.5); margin-top:-7px; cursor:pointer; }
+  .slider-block{ margin-bottom:16px; }
+  .slider-block:last-child{ margin-bottom:0; }
+
+  .btn-row{ display:flex; gap:8px; margin-top:18px; }
+  .action-btn{
+    flex:1; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2);
+    color:#fff; font-family:'Times New Roman', Times, serif; font-size:14px;
+    padding:9px 0; border-radius:13px; cursor:pointer; transition: background .15s ease;
+  }
+  .action-btn:hover{ background:rgba(255,255,255,0.2); }
+
+  .divider{ height:1px; margin:18px 0; background:linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.2), rgba(255,255,255,0)); }
+  .stat-line{ font-size:13px; line-height:1.85; color:rgba(255,255,255,0.6); }
+  .stat-line b{ color:rgba(255,255,255,0.9); font-weight:700; }
+
+  #hint{ position:fixed; top:24px; right:28px; font-size:14px; color:#fff; text-align:right;
+    line-height:1.9; z-index:6; pointer-events:none; font-family:'Times New Roman', Times, serif; }
+
+  #graphWrap{
+    position:fixed; right:26px; bottom:26px; z-index:6;
+    display:flex; flex-direction:column; gap:12px;
+  }
+  .graphCard{
+    background:rgba(255,255,255,0.07);
+    -webkit-backdrop-filter: blur(22px); backdrop-filter: blur(22px);
+    border:1px solid rgba(255,255,255,0.2); border-radius:18px; padding:12px 16px 8px 16px;
+  }
+  .graphTitle{ font-size:12px; color:rgba(255,255,255,0.55); margin-bottom:6px; font-style:italic; display:flex; gap:14px; align-items:center; }
+  .legend-sw{ display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; }
+
+  #info{ position:fixed; left:16px; bottom:22px; max-width:400px; z-index:6; pointer-events:none;
+    color:rgba(255,255,255,0.6); font-family:'Times New Roman', Times, serif; font-size:13px; line-height:1.55; }
+
+  @media (max-width: 960px){
+    #panel{ width:210px; padding:16px; } #hint{ display:none; }
+    #graphWrap{ display:none; } #info{ max-width:230px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="canvas-wrap"></div>
+
+<div id="panel">
+  <div class="slider-block">
+    <div class="slider-label"><span>Amplitude</span><b id="ampRead">2.0 m</b></div>
+    <input type="range" id="ampSlider" min="0.5" max="3" step="0.1" value="2">
+  </div>
+  <div class="slider-block">
+    <div class="slider-label"><span>Mass</span><b id="massRead">1.0 kg</b></div>
+    <input type="range" id="massSlider" min="0.4" max="4" step="0.1" value="1">
+  </div>
+  <div class="slider-block">
+    <div class="slider-label"><span>Spring Constant</span><b id="kRead">4.0 N/m</b></div>
+    <input type="range" id="kSlider" min="1" max="12" step="0.1" value="4">
+  </div>
+
+  <div class="btn-row">
+    <button class="action-btn" id="playBtn">Pause</button>
+    <button class="action-btn" id="resetBtn">Reset</button>
+  </div>
+
+  <div class="divider"></div>
+  <div class="stat-line" id="stats"></div>
+</div>
+
+<div id="hint">
+  Drag to rotate<br>
+  Scroll to zoom<br>
+  Right-click to pan
+</div>
+
+<div id="info">Hooke's law: F = &minus;kx always points back toward the labeled equilibrium position. Kinetic and elastic potential energy trade off perfectly, oscillating at <b>twice</b> the frequency of the motion itself &mdash; each completes two full cycles for every one swing of the mass &mdash; while their sum stays exactly constant.</div>
+
+<div id="graphWrap">
+  <div class="graphCard">
+    <div class="graphTitle">Position x(t) &mdash; the sinusoidal motion</div>
+    <canvas id="graphX" width="260" height="90"></canvas>
+  </div>
+  <div class="graphCard">
+    <div class="graphTitle">
+      <span><span class="legend-sw" style="background:#ff9a3c;"></span>Kinetic</span>
+      <span><span class="legend-sw" style="background:#4ad8ff;"></span>Elastic PE</span>
+    </div>
+    <canvas id="graphE" width="260" height="90"></canvas>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   PHYSICS: ideal simple harmonic motion, undamped.
+     x(t) = A cos(wt),  w = sqrt(k/m)
+     v(t) = -Aw sin(wt)
+     F(t) = -k x(t)                (Hooke's law, always toward x=0)
+     KE(t) = 1/2 m v^2 = 1/2 m A^2 w^2 sin^2(wt)
+     PE(t) = 1/2 k x^2             = 1/2 k A^2 cos^2(wt)
+   KE + PE = 1/2 k A^2 exactly, for all t (verified numerically
+   before building this). Because KE ~ sin^2 and PE ~ cos^2, both
+   complete two energy oscillations per one mechanical period.
+   ============================================================ */
+
+var state = { A:2.0, m:1.0, k:4.0, t:0, running:true };
+function omega(){ return Math.sqrt(state.k/state.m); }
+function xOf(t){ return state.A*Math.cos(omega()*t); }
+function vOf(t){ return -state.A*omega()*Math.sin(omega()*t); }
+
+/* ============================================================
+   SCENE SETUP
+   ============================================================ */
+
+var wrap = document.getElementById('canvas-wrap');
+var scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000000);
+
+var camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.05, 200);
+camera.position.set(1.5, 3.2, 8.5);
+
+var renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.domElement.className='three';
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+wrap.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.rotateSpeed = 0.6;
+controls.zoomSpeed = 0.8;
+controls.minDistance = 1.5;
+controls.maxDistance = 40;
+controls.target.set(0,0,0);
+
+window.addEventListener('resize', function(){
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+var keyLight = new THREE.DirectionalLight(0xffffff, 0.8);
+keyLight.position.set(5,8,6);
+scene.add(keyLight);
+var fillLight = new THREE.DirectionalLight(0xaeccff, 0.3);
+fillLight.position.set(-5,-3,-4);
+scene.add(fillLight);
+
+/* ---------- wall, rail, equilibrium marker ---------- */
+
+var WALL_X = -5.5;
+var wallMat = new THREE.MeshStandardMaterial({ color:0x555a66, metalness:0.3, roughness:0.6 });
+var wall = new THREE.Mesh(new THREE.BoxGeometry(0.3,2.4,2.2), wallMat);
+wall.position.set(WALL_X,0,0);
+scene.add(wall);
+
+var railMat = new THREE.MeshStandardMaterial({ color:0x888888, metalness:0.6, roughness:0.35 });
+var rail = new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,9.5,16), railMat);
+rail.rotation.z = Math.PI/2;
+rail.position.set(1.2,-0.55,0);
+scene.add(rail);
+
+// equilibrium marker: dashed vertical line + small flag
+var eqGroup = new THREE.Group();
+var eqLineMat = new THREE.LineDashedMaterial({ color:0xffd35c, dashSize:0.15, gapSize:0.1, transparent:true, opacity:0.8 });
+var eqLineGeo = new THREE.BufferGeometry().setFromPoints([ new THREE.Vector3(0,-1.3,0), new THREE.Vector3(0,1.6,0) ]);
+var eqLine = new THREE.Line(eqLineGeo, eqLineMat);
+eqLine.computeLineDistances();
+eqGroup.add(eqLine);
+scene.add(eqGroup);
+
+function makeLabel(text, color, scale){
+  var size=340, canvas=document.createElement('canvas');
+  canvas.width=size; canvas.height=size*0.32;
+  var ctx=canvas.getContext('2d');
+  ctx.font='400 46px "Times New Roman", Times, serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.lineWidth=6; ctx.strokeStyle='rgba(0,0,0,0.85)';
+  ctx.strokeText(text, size/2, size*0.16);
+  ctx.fillStyle=color;
+  ctx.fillText(text, size/2, size*0.16);
+  var tex=new THREE.CanvasTexture(canvas);
+  var mat=new THREE.SpriteMaterial({ map:tex, transparent:true, depthWrite:false });
+  var sprite=new THREE.Sprite(mat);
+  sprite.scale.set(scale*3.1, scale, 1);
+  return sprite;
+}
+var eqLabel = makeLabel('Equilibrium (start)', '#ffd35c', 0.55);
+eqLabel.position.set(0, 2.05, 0);
+scene.add(eqLabel);
+
+/* ---------- spring (zigzag) ---------- */
+
+var COILS = 12;
+var springMat = new THREE.LineBasicMaterial({ color:0xbfe0ff, transparent:true, opacity:0.85 });
+var springGeo = new THREE.BufferGeometry();
+var springLine = new THREE.Line(springGeo, springMat);
+scene.add(springLine);
+
+function updateSpring(massX){
+  var x0 = WALL_X+0.2, x1 = massX-0.45;
+  var pts = [];
+  pts.push(new THREE.Vector3(x0,0,0));
+  var straight = 0.35;
+  var coilStart = x0+straight, coilEnd = x1-straight;
+  var n = COILS*2;
+  for(var i=0;i<=n;i++){
+    var fx = coilStart + (coilEnd-coilStart)*(i/n);
+    var amp = 0.32;
+    var y = (i===0||i===n) ? 0 : (i%2===1 ? amp : -amp);
+    pts.push(new THREE.Vector3(fx,y,0));
+  }
+  pts.push(new THREE.Vector3(x1,0,0));
+  pts.push(new THREE.Vector3(massX-0.001,0,0));
+  springGeo.setFromPoints(pts);
+}
+
+/* ---------- mass ---------- */
+
+var massMat = new THREE.MeshStandardMaterial({ color:0xff9a3c, metalness:0.35, roughness:0.35, emissive:0x552200, emissiveIntensity:0.25 });
+var mass = new THREE.Mesh(new THREE.BoxGeometry(0.9,0.9,0.9), massMat);
+scene.add(mass);
+
+/* ---------- force arrow ---------- */
+
+var arrowDir = new THREE.Vector3(1,0,0);
+var arrow = new THREE.ArrowHelper(arrowDir, new THREE.Vector3(0,0,0), 0.01, 0xff4a4a, 0.18, 0.1);
+scene.add(arrow);
+
+/* ============================================================
+   UI
+   ============================================================ */
+
+function bindSlider(id,readId,prop,unit,decimals){
+  var el=document.getElementById(id), read=document.getElementById(readId);
+  el.addEventListener('input', function(){
+    state[prop]=parseFloat(el.value);
+    read.textContent=state[prop].toFixed(decimals)+' '+unit;
+  });
+}
+bindSlider('ampSlider','ampRead','A','m',1);
+bindSlider('massSlider','massRead','m','kg',1);
+bindSlider('kSlider','kRead','k','N/m',1);
+
+document.getElementById('playBtn').addEventListener('click', function(){
+  state.running = !state.running;
+  this.textContent = state.running ? 'Pause' : 'Play';
+});
+document.getElementById('resetBtn').addEventListener('click', function(){
+  state.t = 0;
+});
+
+/* ============================================================
+   GRAPHS
+   ============================================================ */
+
+var gxCanvas=document.getElementById('graphX'), gxCtx=gxCanvas.getContext('2d');
+var geCanvas=document.getElementById('graphE'), geCtx=geCanvas.getContext('2d');
+var GW=260, GH=90, PAD=8;
+var xHistory=[], keHistory=[], peHistory=[];
+var HIST_SECONDS = 6;
+
+function pushHistory(t,x,ke,pe){
+  xHistory.push([t,x]); keHistory.push([t,ke]); peHistory.push([t,pe]);
+  while(xHistory.length && t-xHistory[0][0]>HIST_SECONDS) xHistory.shift();
+  while(keHistory.length && t-keHistory[0][0]>HIST_SECONDS) keHistory.shift();
+  while(peHistory.length && t-peHistory[0][0]>HIST_SECONDS) peHistory.shift();
+}
+
+function drawTrace(ctx, hist, t, yMin, yMax, color){
+  ctx.strokeStyle=color; ctx.lineWidth=1.8; ctx.beginPath();
+  hist.forEach(function(p,i){
+    var px = GW - (t-p[0])/HIST_SECONDS*(GW-PAD*2) - PAD;
+    var py = GH-PAD - ((p[1]-yMin)/(yMax-yMin))*(GH-PAD*2);
+    if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+  });
+  ctx.stroke();
+}
+
+function drawGraphs(){
+  gxCtx.clearRect(0,0,GW,GH);
+  gxCtx.strokeStyle='rgba(255,255,255,0.18)'; gxCtx.lineWidth=1;
+  gxCtx.beginPath(); gxCtx.moveTo(PAD,GH/2); gxCtx.lineTo(GW-PAD,GH/2); gxCtx.stroke();
+  drawTrace(gxCtx, xHistory, state.t, -state.A*1.15, state.A*1.15, '#ffd35c');
+
+  geCtx.clearRect(0,0,GW,GH);
+  var Emax = 0.5*state.k*state.A*state.A;
+  geCtx.strokeStyle='rgba(255,255,255,0.18)'; geCtx.lineWidth=1;
+  geCtx.beginPath(); geCtx.moveTo(PAD,GH-PAD); geCtx.lineTo(GW-PAD,GH-PAD); geCtx.stroke();
+  drawTrace(geCtx, keHistory, state.t, 0, Emax*1.08, '#ff9a3c');
+  drawTrace(geCtx, peHistory, state.t, 0, Emax*1.08, '#4ad8ff');
+}
+
+/* ============================================================
+   RENDER LOOP
+   ============================================================ */
+
+var lastNow = performance.now();
+function animate(now){
+  requestAnimationFrame(animate);
+  var dt = Math.min((now-lastNow)/1000, 0.033);
+  lastNow = now;
+
+  if(state.running) state.t += dt;
+
+  var x = xOf(state.t);
+  var v = vOf(state.t);
+  var F = -state.k*x;
+  var KE = 0.5*state.m*v*v;
+  var PE = 0.5*state.k*x*x;
+
+  var massX = x;
+  mass.position.set(massX,0,0);
+  updateSpring(massX);
+
+  var fMag = Math.min(1.4, Math.abs(F)*0.12);
+  arrow.position.set(massX,0.75,0);
+  arrow.setDirection(new THREE.Vector3(F>=0?1:-1,0,0));
+  arrow.setLength(Math.max(0.01,fMag), 0.16, 0.09);
+
+  if(state.running){
+    pushHistory(state.t, x, KE, PE);
+    drawGraphs();
+  }
+
+  document.getElementById('stats').innerHTML =
+    'Position: <b>'+x.toFixed(2)+' m</b><br>'+
+    'Velocity: <b>'+v.toFixed(2)+' m/s</b><br>'+
+    'Restoring force: <b>'+F.toFixed(2)+' N</b><br>'+
+    'Kinetic energy: <b>'+KE.toFixed(2)+' J</b><br>'+
+    'Elastic PE: <b>'+PE.toFixed(2)+' J</b><br>'+
+    'Total energy: <b>'+(KE+PE).toFixed(2)+' J</b><br>'+
+    'Period T: <b>'+(2*Math.PI/omega()).toFixed(2)+' s</b>';
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+drawGraphs();
+lastNow = performance.now();
+requestAnimationFrame(animate);
+
+})();
+</script>
+</body>
+</html>

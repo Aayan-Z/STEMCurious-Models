@@ -1,0 +1,1266 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Reaction Kinetics</title>
+
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #050505;
+  --panel: rgba(22, 22, 22, 0.72);
+  --panel-border: rgba(255, 255, 255, 0.12);
+  --text: #f1f1f1;
+  --muted: #9b9b9b;
+  --line: rgba(255, 255, 255, 0.12);
+  --a: #e8e8e8;
+  --b: #8b9fb8;
+  --product: #d5ad69;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button,
+select {
+  color: var(--text);
+}
+
+button {
+  cursor: pointer;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 1px solid rgba(255, 255, 255, 0.65);
+  outline-offset: 3px;
+}
+
+.app {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 16px;
+  padding: 16px;
+}
+
+.panel {
+  min-width: 0;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 18px;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 18px 50px rgba(0, 0, 0, 0.28);
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 22px;
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.heading h1 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+}
+
+.heading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.section-title {
+  color: #d4d4d4;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.field label {
+  color: #cfcfcf;
+  font-size: 12px;
+}
+
+.value {
+  color: #f5f5f5;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 10px 11px;
+  font-size: 12px;
+}
+
+input[type="range"] {
+  width: 100%;
+  margin: 0;
+  accent-color: #d8d8d8;
+  cursor: pointer;
+}
+
+input[type="checkbox"] {
+  accent-color: #d8d8d8;
+}
+
+.bar-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.bar-label {
+  display: flex;
+  justify-content: space-between;
+  color: #bdbdbd;
+  font-size: 11px;
+}
+
+.bar {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.bar-fill {
+  width: 50%;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 100ms linear;
+}
+
+.bar-fill.a {
+  background: var(--a);
+}
+
+.bar-fill.b {
+  background: var(--b);
+}
+
+.divider {
+  height: 1px;
+  background: var(--line);
+}
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #cfcfcf;
+  font-size: 12px;
+}
+
+.check-row input {
+  margin: 0;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.action {
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 10px 8px;
+  color: #d6d6d6;
+  font-size: 11px;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.action:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.stage-panel {
+  position: relative;
+  min-height: 650px;
+  overflow: hidden;
+}
+
+#scene {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 650px;
+  touch-action: none;
+  cursor: grab;
+}
+
+#scene:active {
+  cursor: grabbing;
+}
+
+.stage-top {
+  position: absolute;
+  top: 20px;
+  left: 22px;
+  right: 22px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+  pointer-events: none;
+}
+
+.stage-label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.stage-label strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.stage-label span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+  color: #aaa;
+  font-size: 11px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.legend-dot.a {
+  background: var(--a);
+}
+
+.legend-dot.b {
+  background: var(--b);
+}
+
+.legend-dot.p {
+  background: var(--product);
+}
+
+.readout {
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  bottom: 20px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  pointer-events: none;
+}
+
+.readout-card {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(8, 8, 8, 0.58);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.readout-card span {
+  display: block;
+  margin-bottom: 5px;
+  color: #969696;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.readout-card strong {
+  display: block;
+  overflow: hidden;
+  color: #eeeeee;
+  font-size: 16px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 900px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .heading,
+  .actions {
+    grid-column: 1 / -1;
+  }
+
+  .stage-panel {
+    min-height: 620px;
+  }
+}
+
+@media (max-width: 560px) {
+  .app {
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .sidebar {
+    display: flex;
+    padding: 17px;
+  }
+
+  .stage-panel {
+    min-height: 560px;
+  }
+
+  #scene {
+    min-height: 560px;
+  }
+
+  .stage-top {
+    top: 15px;
+    left: 15px;
+    right: 15px;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .legend {
+    justify-content: flex-start;
+  }
+
+  .readout {
+    left: 15px;
+    right: 15px;
+    bottom: 15px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .readout-card strong {
+    font-size: 14px;
+  }
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+  <aside class="sidebar panel">
+    <div class="heading">
+      <h1>Reaction kinetics</h1>
+      <p>Qualitative molecular model of reaction rate inside a sealed isolated system.</p>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Reaction</div>
+
+      <div class="field">
+        <label for="reaction">Chemical system</label>
+        <select id="reaction">
+          <option value="peroxide">2 H₂O₂ → 2 H₂O + O₂</option>
+          <option value="hydrogen">H₂ + I₂ ⇌ 2 HI</option>
+          <option value="ammonia">N₂ + 3 H₂ ⇌ 2 NH₃</option>
+          <option value="ester">CH₃COOH + C₂H₅OH ⇌ ester + H₂O</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Independent concentrations</div>
+
+      <div class="field">
+        <div class="field-row">
+          <label for="concentrationA">Compound A</label>
+          <span class="value" id="concentrationAValue">50%</span>
+        </div>
+        <input id="concentrationA" type="range" min="0" max="100" step="1" value="50" />
+        <div class="bar-wrap">
+          <div class="bar-label">
+            <span>Relative concentration</span>
+            <span id="barAValue">50%</span>
+          </div>
+          <div class="bar">
+            <div class="bar-fill a" id="barA"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-row">
+          <label for="concentrationB">Compound B</label>
+          <span class="value" id="concentrationBValue">50%</span>
+        </div>
+        <input id="concentrationB" type="range" min="0" max="100" step="1" value="50" />
+        <div class="bar-wrap">
+          <div class="bar-label">
+            <span>Relative concentration</span>
+            <span id="barBValue">50%</span>
+          </div>
+          <div class="bar">
+            <div class="bar-fill b" id="barB"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Conditions</div>
+
+      <div class="field">
+        <div class="field-row">
+          <label for="temperature">Temperature</label>
+          <span class="value" id="temperatureValue">300 K</span>
+        </div>
+        <input id="temperature" type="range" min="180" max="700" step="1" value="300" />
+      </div>
+
+      <label class="check-row">
+        <input id="catalyst" type="checkbox" />
+        Add catalyst
+      </label>
+
+      <div class="field">
+        <div class="field-row">
+          <label for="collisionSensitivity">Collision sensitivity</label>
+          <span class="value" id="collisionSensitivityValue">50%</span>
+        </div>
+        <input id="collisionSensitivity" type="range" min="0" max="100" step="1" value="50" />
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Display</div>
+
+      <label class="check-row">
+        <input id="showMolecules" type="checkbox" checked />
+        Molecules
+      </label>
+
+      <label class="check-row">
+        <input id="showPaths" type="checkbox" checked />
+        Motion paths
+      </label>
+
+      <label class="check-row">
+        <input id="showFlashes" type="checkbox" checked />
+        Collision flashes
+      </label>
+
+      <label class="check-row">
+        <input id="showBars" type="checkbox" checked />
+        Concentration bars
+      </label>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="actions">
+      <button class="action" id="reset">Reset</button>
+      <button class="action" id="pause">Pause</button>
+      <button class="action" id="rebuild">Rebuild particles</button>
+      <button class="action" id="randomize">Randomize</button>
+    </div>
+  </aside>
+
+  <main class="stage-panel panel">
+    <canvas id="scene"></canvas>
+
+    <div class="stage-top">
+      <div class="stage-label">
+        <strong id="reactionTitle">2 H₂O₂ → 2 H₂O + O₂</strong>
+        <span>Drag with LMB to rotate · RMB to pan · wheel to zoom</span>
+      </div>
+
+      <div class="legend">
+        <div class="legend-item">
+          <span class="legend-dot a"></span>
+          <span>Compound A</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot b"></span>
+          <span>Compound B</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot p"></span>
+          <span>Product</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="readout">
+      <div class="readout-card">
+        <span>Reaction rate</span>
+        <strong id="rateValue">0.000</strong>
+      </div>
+      <div class="readout-card">
+        <span>Temperature</span>
+        <strong id="readoutTemperature">300 K</strong>
+      </div>
+      <div class="readout-card">
+        <span>Successful collisions</span>
+        <strong id="collisionValue">0</strong>
+      </div>
+      <div class="readout-card">
+        <span>Catalyst</span>
+        <strong id="catalystValue">Absent</strong>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+"use strict";
+
+const canvas = document.getElementById("scene");
+const ctx = canvas.getContext("2d");
+
+const reactionSelect = document.getElementById("reaction");
+const concentrationASlider = document.getElementById("concentrationA");
+const concentrationBSlider = document.getElementById("concentrationB");
+const temperatureSlider = document.getElementById("temperature");
+const catalystCheckbox = document.getElementById("catalyst");
+const collisionSensitivitySlider = document.getElementById("collisionSensitivity");
+
+const concentrationAValue = document.getElementById("concentrationAValue");
+const concentrationBValue = document.getElementById("concentrationBValue");
+const temperatureValue = document.getElementById("temperatureValue");
+const collisionSensitivityValue = document.getElementById("collisionSensitivityValue");
+
+const barA = document.getElementById("barA");
+const barB = document.getElementById("barB");
+const barAValue = document.getElementById("barAValue");
+const barBValue = document.getElementById("barBValue");
+
+const reactionTitle = document.getElementById("reactionTitle");
+const rateValue = document.getElementById("rateValue");
+const readoutTemperature = document.getElementById("readoutTemperature");
+const collisionValue = document.getElementById("collisionValue");
+const catalystValue = document.getElementById("catalystValue");
+
+const showMolecules = document.getElementById("showMolecules");
+const showPaths = document.getElementById("showPaths");
+const showFlashes = document.getElementById("showFlashes");
+const showBars = document.getElementById("showBars");
+
+const reactions = {
+  peroxide: {
+    title: "2 H₂O₂ → 2 H₂O + O₂",
+    activation: 0.68,
+    colorA: "#e8e8e8",
+    colorB: "#8b9fb8"
+  },
+  hydrogen: {
+    title: "H₂ + I₂ ⇌ 2 HI",
+    activation: 0.78,
+    colorA: "#e8e8e8",
+    colorB: "#8b9fb8"
+  },
+  ammonia: {
+    title: "N₂ + 3 H₂ ⇌ 2 NH₃",
+    activation: 0.88,
+    colorA: "#e8e8e8",
+    colorB: "#8b9fb8"
+  },
+  ester: {
+    title: "CH₃COOH + C₂H₅OH ⇌ ester + H₂O",
+    activation: 0.73,
+    colorA: "#e8e8e8",
+    colorB: "#8b9fb8"
+  }
+};
+
+let concentrationA = 50;
+let concentrationB = 50;
+let temperature = 300;
+let collisionSensitivity = 50;
+let catalyst = false;
+let paused = false;
+let successfulCollisions = 0;
+let reactionRate = 0;
+
+let molecules = [];
+let flashes = [];
+
+let width = 0;
+let height = 0;
+let dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+let yaw = -0.55;
+let pitch = 0.34;
+let zoom = 1;
+let panX = 0;
+let panY = 0;
+
+let dragging = false;
+let dragMode = "rotate";
+let lastPointerX = 0;
+let lastPointerY = 0;
+
+const bounds = {
+  x: 255,
+  y: 175,
+  z: 145
+};
+
+const MAX_PARTICLES = 105;
+
+function resize() {
+  const rect = canvas.getBoundingClientRect();
+
+  width = Math.max(320, rect.width);
+  height = Math.max(420, rect.height);
+
+  canvas.width = Math.floor(width * dpr);
+  canvas.height = Math.floor(height * dpr);
+
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function randomBetween(min, max) {
+  return min + Math.random() * (max - min);
+}
+
+function randomPosition() {
+  return {
+    x: randomBetween(-bounds.x, bounds.x),
+    y: randomBetween(-bounds.y, bounds.y),
+    z: randomBetween(-bounds.z, bounds.z)
+  };
+}
+
+function createMolecule(type) {
+  const position = randomPosition();
+  const speedScale = 0.5 + temperature / 420;
+  const angle = Math.random() * Math.PI * 2;
+  const vertical = randomBetween(-0.8, 0.8);
+
+  return {
+    type,
+    x: position.x,
+    y: position.y,
+    z: position.z,
+    vx: Math.cos(angle) * speedScale * randomBetween(0.45, 1.1),
+    vy: vertical * speedScale * randomBetween(0.45, 1.1),
+    vz: Math.sin(angle) * speedScale * randomBetween(0.45, 1.1),
+    radius: type === "P" ? 7 : 6,
+    phase: Math.random() * Math.PI * 2,
+    life: 1
+  };
+}
+
+function rebuildMolecules() {
+  molecules = [];
+  flashes = [];
+
+  const countA = Math.round(MAX_PARTICLES * concentrationA / 100);
+  const countB = Math.round(MAX_PARTICLES * concentrationB / 100);
+
+  for (let i = 0; i < countA; i++) {
+    molecules.push(createMolecule("A"));
+  }
+
+  for (let i = 0; i < countB; i++) {
+    molecules.push(createMolecule("B"));
+  }
+
+  updateBars();
+}
+
+function updateBars() {
+  concentrationAValue.textContent = `${concentrationA}%`;
+  concentrationBValue.textContent = `${concentrationB}%`;
+
+  barAValue.textContent = `${concentrationA}%`;
+  barBValue.textContent = `${concentrationB}%`;
+
+  barA.style.width = `${concentrationA}%`;
+  barB.style.width = `${concentrationB}%`;
+}
+
+function updateReadouts() {
+  temperatureValue.textContent = `${temperature} K`;
+  readoutTemperature.textContent = `${temperature} K`;
+  collisionSensitivityValue.textContent = `${collisionSensitivity}%`;
+  collisionValue.textContent = String(successfulCollisions);
+  catalystValue.textContent = catalyst ? "Present" : "Absent";
+  reactionTitle.textContent = reactions[reactionSelect.value].title;
+  rateValue.textContent = reactionRate.toFixed(3);
+}
+
+function getTemperatureFactor() {
+  return Math.exp((temperature - 300) / 125);
+}
+
+function getActivationFactor() {
+  return catalyst ? 0.42 : 1;
+}
+
+function calculateRate() {
+  const concentrationFactor =
+    (concentrationA / 100) *
+    (concentrationB / 100);
+
+  const temperatureFactor = getTemperatureFactor();
+  const catalystFactor = catalyst ? 1.85 : 1;
+  const sensitivityFactor = 0.35 + collisionSensitivity / 100;
+
+  reactionRate =
+    concentrationFactor *
+    temperatureFactor *
+    catalystFactor *
+    sensitivityFactor *
+    0.1;
+}
+
+function project(point) {
+  const cy = Math.cos(yaw);
+  const sy = Math.sin(yaw);
+  const cp = Math.cos(pitch);
+  const sp = Math.sin(pitch);
+
+  const x1 = point.x * cy - point.z * sy;
+  const z1 = point.x * sy + point.z * cy;
+
+  const y1 = point.y * cp + z1 * sp;
+  const z2 = -point.y * sp + z1 * cp;
+
+  const scale = 1.18 * zoom;
+  const depth = 1 / (1 + z2 / 1100);
+
+  return {
+    x: width / 2 + panX + x1 * scale * depth,
+    y: height / 2 + panY + y1 * scale * depth,
+    depth: z2,
+    scale: scale * depth
+  };
+}
+
+function drawBackground() {
+  ctx.clearRect(0, 0, width, height);
+
+  const gradient = ctx.createRadialGradient(
+    width * 0.5,
+    height * 0.48,
+    0,
+    width * 0.5,
+    height * 0.48,
+    Math.max(width, height) * 0.75
+  );
+
+  gradient.addColorStop(0, "#101010");
+  gradient.addColorStop(0.6, "#070707");
+  gradient.addColorStop(1, "#030303");
+
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+}
+
+function drawContainer() {
+  const corners = [
+    { x: -bounds.x, y: -bounds.y, z: -bounds.z },
+    { x: bounds.x, y: -bounds.y, z: -bounds.z },
+    { x: bounds.x, y: bounds.y, z: -bounds.z },
+    { x: -bounds.x, y: bounds.y, z: -bounds.z },
+    { x: -bounds.x, y: -bounds.y, z: bounds.z },
+    { x: bounds.x, y: -bounds.y, z: bounds.z },
+    { x: bounds.x, y: bounds.y, z: bounds.z },
+    { x: -bounds.x, y: bounds.y, z: bounds.z }
+  ];
+
+  const projected = corners.map(project);
+
+  const edges = [
+    [0, 1], [1, 2], [2, 3], [3, 0],
+    [4, 5], [5, 6], [6, 7], [7, 4],
+    [0, 4], [1, 5], [2, 6], [3, 7]
+  ];
+
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = "rgba(255,255,255,0.12)";
+  ctx.beginPath();
+
+  for (const [a, b] of edges) {
+    ctx.moveTo(projected[a].x, projected[a].y);
+    ctx.lineTo(projected[b].x, projected[b].y);
+  }
+
+  ctx.stroke();
+}
+
+function drawPath(molecule) {
+  const p = project(molecule);
+  const previous = project({
+    x: molecule.x - molecule.vx * 18,
+    y: molecule.y - molecule.vy * 18,
+    z: molecule.z - molecule.vz * 18
+  });
+
+  ctx.strokeStyle =
+    molecule.type === "A"
+      ? "rgba(232,232,232,0.15)"
+      : molecule.type === "B"
+        ? "rgba(139,159,184,0.22)"
+        : "rgba(213,173,105,0.22)";
+
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(previous.x, previous.y);
+  ctx.lineTo(p.x, p.y);
+  ctx.stroke();
+}
+
+function drawMolecule(molecule) {
+  const p = project(molecule);
+  const radius = molecule.radius * p.scale * 0.95;
+
+  if (radius < 0.5) {
+    return;
+  }
+
+  let color = "#e8e8e8";
+
+  if (molecule.type === "B") {
+    color = "#8b9fb8";
+  }
+
+  if (molecule.type === "P") {
+    color = "#d5ad69";
+  }
+
+  const gradient = ctx.createRadialGradient(
+    p.x - radius * 0.35,
+    p.y - radius * 0.4,
+    radius * 0.1,
+    p.x,
+    p.y,
+    radius
+  );
+
+  gradient.addColorStop(0, "#ffffff");
+  gradient.addColorStop(0.22, color);
+  gradient.addColorStop(0.72, color);
+  gradient.addColorStop(1, "#252525");
+
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+  ctx.fillStyle = gradient;
+  ctx.fill();
+
+  ctx.strokeStyle = "rgba(255,255,255,0.28)";
+  ctx.lineWidth = 0.7;
+  ctx.stroke();
+}
+
+function drawFlash(flash) {
+  const p = project(flash);
+  const radius = flash.radius * p.scale;
+
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+  ctx.strokeStyle = `rgba(213,173,105,${flash.life * 0.55})`;
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+}
+
+function updateMolecules(delta) {
+  const speed = (0.7 + temperature / 280) * delta * 0.06;
+
+  for (const molecule of molecules) {
+    molecule.x += molecule.vx * speed;
+    molecule.y += molecule.vy * speed;
+    molecule.z += molecule.vz * speed;
+
+    if (molecule.x < -bounds.x || molecule.x > bounds.x) {
+      molecule.vx *= -1;
+      molecule.x = Math.max(-bounds.x, Math.min(bounds.x, molecule.x));
+    }
+
+    if (molecule.y < -bounds.y || molecule.y > bounds.y) {
+      molecule.vy *= -1;
+      molecule.y = Math.max(-bounds.y, Math.min(bounds.y, molecule.y));
+    }
+
+    if (molecule.z < -bounds.z || molecule.z > bounds.z) {
+      molecule.vz *= -1;
+      molecule.z = Math.max(-bounds.z, Math.min(bounds.z, molecule.z));
+    }
+  }
+}
+
+function attemptReactions() {
+  const candidatesA = molecules.filter(molecule => molecule.type === "A");
+  const candidatesB = molecules.filter(molecule => molecule.type === "B");
+
+  if (!candidatesA.length || !candidatesB.length) {
+    return;
+  }
+
+  const attempts = Math.max(
+    1,
+    Math.round((temperature / 300) * (0.5 + collisionSensitivity / 60))
+  );
+
+  const activation =
+    reactions[reactionSelect.value].activation *
+    getActivationFactor();
+
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    const a = candidatesA[Math.floor(Math.random() * candidatesA.length)];
+    const b = candidatesB[Math.floor(Math.random() * candidatesB.length)];
+
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    const dz = a.z - b.z;
+    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+    if (distance > 32) {
+      continue;
+    }
+
+    const relativeSpeed =
+      Math.abs(a.vx - b.vx) +
+      Math.abs(a.vy - b.vy) +
+      Math.abs(a.vz - b.vz);
+
+    const collisionEnergy =
+      Math.min(1, relativeSpeed / 3.4) *
+      (0.55 + temperature / 700) *
+      (0.5 + collisionSensitivity / 200);
+
+    if (collisionEnergy > activation && Math.random() < 0.28) {
+      const product = createMolecule("P");
+
+      product.x = (a.x + b.x) / 2;
+      product.y = (a.y + b.y) / 2;
+      product.z = (a.z + b.z) / 2;
+
+      product.vx = (a.vx + b.vx) / 2;
+      product.vy = (a.vy + b.vy) / 2;
+      product.vz = (a.vz + b.vz) / 2;
+
+      const indexA = molecules.indexOf(a);
+
+      if (indexA >= 0) {
+        molecules.splice(indexA, 1);
+      }
+
+      const adjustedIndexB = molecules.indexOf(b);
+
+      if (adjustedIndexB >= 0) {
+        molecules.splice(adjustedIndexB, 1);
+      }
+
+      molecules.push(product);
+      successfulCollisions++;
+
+      flashes.push({
+        x: product.x,
+        y: product.y,
+        z: product.z,
+        radius: 4,
+        life: 1
+      });
+    }
+  }
+}
+
+function updateEffects(delta) {
+  for (const flash of flashes) {
+    flash.radius += delta * 0.035;
+    flash.life -= delta * 0.0015;
+  }
+
+  flashes = flashes.filter(flash => flash.life > 0);
+}
+
+function render() {
+  drawBackground();
+  drawContainer();
+
+  const sorted = [...molecules].sort(
+    (a, b) => project(a).depth - project(b).depth
+  );
+
+  if (showPaths.checked) {
+    for (const molecule of sorted) {
+      drawPath(molecule);
+    }
+  }
+
+  if (showMolecules.checked) {
+    for (const molecule of sorted) {
+      drawMolecule(molecule);
+    }
+  }
+
+  if (showFlashes.checked) {
+    for (const flash of flashes) {
+      drawFlash(flash);
+    }
+  }
+}
+
+let lastTime = performance.now();
+
+function animate(now) {
+  const delta = Math.min(34, now - lastTime);
+  lastTime = now;
+
+  if (!paused) {
+    updateMolecules(delta);
+    attemptReactions();
+    updateEffects(delta);
+    calculateRate();
+    updateReadouts();
+  }
+
+  render();
+  requestAnimationFrame(animate);
+}
+
+function setConcentrationA(value) {
+  concentrationA = Number(value);
+  updateBars();
+  rebuildMolecules();
+}
+
+function setConcentrationB(value) {
+  concentrationB = Number(value);
+  updateBars();
+  rebuildMolecules();
+}
+
+concentrationASlider.addEventListener("input", event => {
+  setConcentrationA(event.target.value);
+});
+
+concentrationBSlider.addEventListener("input", event => {
+  setConcentrationB(event.target.value);
+});
+
+temperatureSlider.addEventListener("input", event => {
+  temperature = Number(event.target.value);
+  updateReadouts();
+});
+
+collisionSensitivitySlider.addEventListener("input", event => {
+  collisionSensitivity = Number(event.target.value);
+  updateReadouts();
+});
+
+catalystCheckbox.addEventListener("change", event => {
+  catalyst = event.target.checked;
+  updateReadouts();
+});
+
+reactionSelect.addEventListener("change", () => {
+  successfulCollisions = 0;
+  rebuildMolecules();
+  updateReadouts();
+});
+
+showBars.addEventListener("change", event => {
+  document.querySelectorAll(".bar-wrap").forEach(element => {
+    element.style.display = event.target.checked ? "flex" : "none";
+  });
+});
+
+document.getElementById("reset").addEventListener("click", () => {
+  concentrationA = 50;
+  concentrationB = 50;
+  temperature = 300;
+  collisionSensitivity = 50;
+  catalyst = false;
+  paused = false;
+  successfulCollisions = 0;
+
+  concentrationASlider.value = String(concentrationA);
+  concentrationBSlider.value = String(concentrationB);
+  temperatureSlider.value = String(temperature);
+  collisionSensitivitySlider.value = String(collisionSensitivity);
+  catalystCheckbox.checked = catalyst;
+  document.getElementById("pause").textContent = "Pause";
+
+  yaw = -0.55;
+  pitch = 0.34;
+  zoom = 1;
+  panX = 0;
+  panY = 0;
+
+  rebuildMolecules();
+  updateBars();
+  updateReadouts();
+});
+
+document.getElementById("pause").addEventListener("click", event => {
+  paused = !paused;
+  event.currentTarget.textContent = paused ? "Resume" : "Pause";
+});
+
+document.getElementById("rebuild").addEventListener("click", () => {
+  successfulCollisions = 0;
+  rebuildMolecules();
+  updateReadouts();
+});
+
+document.getElementById("randomize").addEventListener("click", () => {
+  concentrationA = Math.round(Math.random() * 100);
+  concentrationB = Math.round(Math.random() * 100);
+  temperature = Math.round(randomBetween(220, 650));
+  collisionSensitivity = Math.round(Math.random() * 100);
+  catalyst = Math.random() > 0.5;
+  successfulCollisions = 0;
+
+  concentrationASlider.value = String(concentrationA);
+  concentrationBSlider.value = String(concentrationB);
+  temperatureSlider.value = String(temperature);
+  collisionSensitivitySlider.value = String(collisionSensitivity);
+  catalystCheckbox.checked = catalyst;
+
+  rebuildMolecules();
+  updateBars();
+  updateReadouts();
+});
+
+canvas.addEventListener("pointerdown", event => {
+  dragging = true;
+  dragMode = event.button === 2 ? "pan" : "rotate";
+  lastPointerX = event.clientX;
+  lastPointerY = event.clientY;
+  canvas.setPointerCapture(event.pointerId);
+});
+
+canvas.addEventListener("pointermove", event => {
+  if (!dragging) {
+    return;
+  }
+
+  const dx = event.clientX - lastPointerX;
+  const dy = event.clientY - lastPointerY;
+
+  lastPointerX = event.clientX;
+  lastPointerY = event.clientY;
+
+  if (dragMode === "rotate") {
+    yaw += dx * 0.008;
+    pitch += dy * 0.008;
+    pitch = Math.max(-1.35, Math.min(1.35, pitch));
+  } else {
+    panX += dx;
+    panY += dy;
+  }
+});
+
+canvas.addEventListener("pointerup", event => {
+  dragging = false;
+  canvas.releasePointerCapture(event.pointerId);
+});
+
+canvas.addEventListener("pointercancel", () => {
+  dragging = false;
+});
+
+canvas.addEventListener("contextmenu", event => {
+  event.preventDefault();
+});
+
+canvas.addEventListener("wheel", event => {
+  event.preventDefault();
+
+  zoom *= event.deltaY < 0 ? 1.08 : 0.92;
+  zoom = Math.max(0.45, Math.min(2.7, zoom));
+}, { passive: false });
+
+window.addEventListener("resize", resize);
+
+resize();
+updateBars();
+rebuildMolecules();
+updateReadouts();
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

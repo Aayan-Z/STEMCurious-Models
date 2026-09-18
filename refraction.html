@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Refraction & Total Internal Reflection</title>
+<style>
+:root{
+  --bg:#050607;
+  --glass:rgba(24,26,29,.76);
+  --border:rgba(255,255,255,.11);
+  --border2:rgba(255,255,255,.065);
+  --text:#f3f4f5;
+  --muted:#92979f;
+}
+*{box-sizing:border-box}
+html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#050607;color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif}
+body{background:radial-gradient(circle at 72% 28%,rgba(255,255,255,.035),transparent 28%),radial-gradient(circle at 45% 72%,rgba(100,170,255,.028),transparent 35%),#050607}
+.app{width:100%;height:100%;display:grid;grid-template-columns:294px minmax(0,1fr);gap:14px;padding:14px}
+.glass{background:linear-gradient(145deg,rgba(255,255,255,.075),rgba(255,255,255,.028) 48%,rgba(255,255,255,.018));border:1px solid var(--border);box-shadow:0 24px 70px rgba(0,0,0,.44),inset 0 1px 0 rgba(255,255,255,.055);backdrop-filter:blur(22px) saturate(125%);-webkit-backdrop-filter:blur(22px) saturate(125%)}
+.sidebar{height:calc(100vh - 28px);border-radius:25px;padding:20px;display:flex;flex-direction:column;overflow:auto;scrollbar-width:none}
+.sidebar::-webkit-scrollbar{display:none}
+.brand{display:flex;align-items:center;gap:11px;margin-bottom:6px}
+.brandMark{width:35px;height:35px;border-radius:11px;position:relative;border:1px solid rgba(149,221,255,.28);background:radial-gradient(circle at 50% 50%,rgba(149,221,255,.20),transparent 38%),rgba(149,221,255,.055)}
+.brandMark:before{content:"";position:absolute;left:7px;right:7px;top:16px;height:1px;background:rgba(149,221,255,.76);transform:rotate(-20deg);box-shadow:0 0 10px rgba(149,221,255,.45)}
+.brandMark:after{content:"";position:absolute;width:5px;height:5px;border-radius:50%;left:15px;top:15px;background:#fff;box-shadow:0 0 9px #95ddff}
+.title{font-size:15px;font-weight:650;letter-spacing:-.02em}
+.subtitle{margin:0 0 18px 46px;color:var(--muted);font-size:10.5px;line-height:1.46}
+.section{margin-top:15px}
+.sectionLabel{margin-bottom:8px;color:#767b83;font-size:9px;font-weight:700;letter-spacing:.11em;text-transform:uppercase}
+.controlBox{border:1px solid var(--border2);background:rgba(255,255,255,.025);border-radius:14px;padding:11px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px}.row+.row{margin-top:9px}
+.label{color:#92979f;font-size:10px}.value{color:#f0f1f2;font-size:10px;font-weight:650;white-space:nowrap}
+input[type="range"]{width:100%;margin:7px 0 0;accent-color:#fff;cursor:pointer}
+select{width:100%;appearance:none;color:#f0f1f2;background:rgba(255,255,255,.055);border:1px solid var(--border);border-radius:11px;padding:10px 11px;outline:none;font-size:10px}
+select option{background:#111316;color:#fff}
+button{width:100%;border:1px solid var(--border);background:rgba(255,255,255,.055);color:var(--text);border-radius:11px;padding:10px 11px;font-size:10px;font-weight:650;cursor:pointer;transition:.18s ease}
+button:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.18)}
+.toggleRow{display:flex;gap:6px}.toggleRow button{padding:8px 7px}.toggleRow button.active{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.21)}
+.equation{margin-top:8px;padding:9px 10px;border-radius:11px;border:1px solid var(--border2);background:rgba(255,255,255,.023);font-size:10px;color:#d6d9dd;line-height:1.5}.equation strong{color:#fff}
+.status{margin-top:12px;border-radius:14px;border:1px solid var(--border2);background:rgba(255,255,255,.025);padding:11px}
+.statusTitle{font-size:11px;font-weight:650;margin-bottom:5px}.statusText{color:#969ba3;font-size:9px;line-height:1.5}
+.statusTag{display:inline-flex;align-items:center;gap:6px;margin-bottom:8px;padding:5px 7px;border-radius:999px;border:1px solid rgba(255,255,255,.08);color:#b8bdc3;font-size:8px;letter-spacing:.06em;text-transform:uppercase}
+.statusDot{width:5px;height:5px;border-radius:50%;background:#95ddff;box-shadow:0 0 8px #95ddff}
+.footerNote{margin-top:auto;padding-top:14px;color:#646971;font-size:8px;line-height:1.45}
+.model{position:relative;width:100%;height:calc(100vh - 28px);overflow:hidden;border-radius:27px;border:1px solid rgba(255,255,255,.08);background:radial-gradient(circle at 50% 47%,rgba(255,255,255,.026),transparent 34%),linear-gradient(180deg,rgba(255,255,255,.018),rgba(255,255,255,.008));box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 24px 70px rgba(0,0,0,.28)}
+canvas{display:block;width:100%;height:100%}
+.modelTitle{position:absolute;z-index:2;left:22px;top:18px;pointer-events:none}.modelTitle h1{font-size:14px;margin:0 0 5px;font-weight:650;letter-spacing:-.02em}.modelTitle p{margin:0;color:#777d85;font-size:9px}
+.hint{position:absolute;z-index:2;right:18px;top:18px;text-align:right;color:#686e76;font-size:8px;line-height:1.5;pointer-events:none}
+@media(max-width:850px){.app{grid-template-columns:250px minmax(0,1fr)}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar glass">
+<div class="brand"><div class="brandMark"></div><div class="title">Refraction Lab</div></div>
+<p class="subtitle">Explore Snell's law, bending at a boundary, the critical angle, and total internal reflection.</p>
+
+<div class="section">
+<div class="sectionLabel">Media</div>
+<select id="preset">
+<option value="air-glass">Air → Glass</option>
+<option value="glass-air">Glass → Air</option>
+<option value="water-air">Water → Air</option>
+<option value="water-glass">Water → Glass</option>
+<option value="glass-water">Glass → Water</option>
+<option value="custom">Custom</option>
+</select>
+<div class="controlBox" style="margin-top:7px">
+<div class="row"><span class="label">Upper medium n₁</span><span class="value" id="n1Val">1.00</span></div>
+<input id="n1" type="range" min="1" max="2.5" value="1" step="0.01">
+<div class="row" style="margin-top:10px"><span class="label">Lower medium n₂</span><span class="value" id="n2Val">1.50</span></div>
+<input id="n2" type="range" min="1" max="2.5" value="1.5" step="0.01">
+</div>
+</div>
+
+<div class="section">
+<div class="sectionLabel">Incident ray</div>
+<div class="controlBox">
+<div class="row"><span class="label">Angle to normal</span><span class="value" id="angleVal">35°</span></div>
+<input id="angle" type="range" min="0" max="89" value="35" step="1">
+<div class="row" style="margin-top:10px"><span class="label">Ray animation</span><span class="value" id="speedVal">1.0×</span></div>
+<input id="speed" type="range" min="0" max="2.5" value="1" step="0.1">
+</div>
+</div>
+
+<div class="section">
+<div class="sectionLabel">Display</div>
+<div class="toggleRow"><button id="waveBtn" class="active">Wavefronts</button><button id="labelsBtn" class="active">Labels</button></div>
+</div>
+
+<div class="section">
+<div class="sectionLabel">Calculation</div>
+<div class="equation"><strong>Snell's law</strong><br>n₁ sin θ₁ = n₂ sin θ₂</div>
+<div class="equation" id="criticalBox">Critical angle appears only when <strong>n₁ &gt; n₂</strong>.</div>
+</div>
+
+<div class="status">
+<div class="statusTag"><span class="statusDot" id="statusDot"></span><span id="modeTag">Refraction</span></div>
+<div class="statusTitle" id="statusTitle">Ray bends toward the normal</div>
+<div class="statusText" id="statusText">Light is entering a medium with a higher refractive index, so its speed decreases and the refracted ray bends toward the normal.</div>
+</div>
+
+<div class="footerNote">Angles are measured from the normal, not from the surface. The reflected ray is always shown because a real boundary generally reflects some light as well as transmitting it.</div>
+</aside>
+
+<main class="model">
+<div class="modelTitle"><h1>Refraction & Total Internal Reflection</h1><p>Interactive ray model</p></div>
+<div class="hint">Drag the angle and refractive-index sliders.<br>Total internal reflection appears automatically.</div>
+<canvas id="canvas"></canvas>
+</main>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+const canvas=document.getElementById("canvas"),ctx=canvas.getContext("2d");
+const preset=document.getElementById("preset"),n1=document.getElementById("n1"),n2=document.getElementById("n2"),angle=document.getElementById("angle"),speed=document.getElementById("speed");
+const n1Val=document.getElementById("n1Val"),n2Val=document.getElementById("n2Val"),angleVal=document.getElementById("angleVal"),speedVal=document.getElementById("speedVal");
+const waveBtn=document.getElementById("waveBtn"),labelsBtn=document.getElementById("labelsBtn");
+const criticalBox=document.getElementById("criticalBox"),statusTitle=document.getElementById("statusTitle"),statusText=document.getElementById("statusText"),modeTag=document.getElementById("modeTag"),statusDot=document.getElementById("statusDot");
+
+let showWavefronts=true,showLabels=true,phase=0,last=performance.now();
+
+const presets={"air-glass":[1.00,1.50],"glass-air":[1.50,1.00],"water-air":[1.33,1.00],"water-glass":[1.33,1.50],"glass-water":[1.50,1.33]};
+
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function rad(d){return d*Math.PI/180}
+function deg(r){return r*180/Math.PI}
+
+function resize(){
+  const r=canvas.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,2);
+  canvas.width=Math.round(r.width*dpr);canvas.height=Math.round(r.height*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+window.addEventListener("resize",resize);resize();
+
+function physics(){
+  const a=Number(n1.value),b=Number(n2.value),i=rad(Number(angle.value));
+  const sinR=a/b*Math.sin(i);
+  const tir=a>b&&sinR>1;
+  const r=tir?null:Math.asin(clamp(sinR,-1,1));
+  const critical=a>b?Math.asin(b/a):null;
+  return{a,b,i,r,tir,critical};
+}
+
+function sync(){
+  const p=physics();
+  n1Val.textContent=p.a.toFixed(2);n2Val.textContent=p.b.toFixed(2);
+  angleVal.textContent=Math.round(deg(p.i))+"°";speedVal.textContent=Number(speed.value).toFixed(1)+"×";
+
+  if(p.critical!==null){
+    criticalBox.innerHTML='Critical angle: <strong>'+deg(p.critical).toFixed(1)+'°</strong><br>For θ₁ &gt; θc, no refracted ray leaves the first medium.';
+  }else{
+    criticalBox.innerHTML='Critical angle does not occur here because <strong>n₁ ≤ n₂</strong>.';
+  }
+
+  if(p.tir){
+    modeTag.textContent="Total internal reflection";
+    statusDot.style.background="#ff9b9b";statusDot.style.boxShadow="0 0 8px #ff9b9b";
+    statusTitle.textContent="No transmitted ray";
+    statusText.textContent="The incident angle is greater than the critical angle while light is travelling from a higher refractive index to a lower one. The ray is totally internally reflected.";
+  }else{
+    modeTag.textContent="Refraction";
+    statusDot.style.background="#95ddff";statusDot.style.boxShadow="0 0 8px #95ddff";
+    if(p.b>p.a){
+      statusTitle.textContent="Ray bends toward the normal";
+      statusText.textContent="Light is entering a medium with a higher refractive index, so the refracted angle becomes smaller than the incident angle.";
+    }else if(p.b<p.a){
+      statusTitle.textContent="Ray bends away from the normal";
+      statusText.textContent="Light is entering a medium with a lower refractive index, so the refracted angle becomes larger than the incident angle.";
+    }else{
+      statusTitle.textContent="No bending";
+      statusText.textContent="Both media have the same refractive index, so the ray crosses the boundary without changing direction.";
+    }
+  }
+}
+
+preset.addEventListener("change",()=>{
+  if(preset.value!=="custom"){
+    [n1.value,n2.value]=presets[preset.value];
+    sync();
+  }
+});
+[n1,n2].forEach(el=>el.addEventListener("input",()=>{preset.value="custom";sync()}));
+angle.addEventListener("input",sync);speed.addEventListener("input",sync);
+waveBtn.addEventListener("click",()=>{showWavefronts=!showWavefronts;waveBtn.classList.toggle("active",showWavefronts)});
+labelsBtn.addEventListener("click",()=>{showLabels=!showLabels;labelsBtn.classList.toggle("active",showLabels)});
+sync();
+
+function line(x1,y1,x2,y2,color,width=1,alpha=1,dash=[]){
+  ctx.save();ctx.globalAlpha=alpha;ctx.strokeStyle=color;ctx.lineWidth=width;ctx.setLineDash(dash);
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.restore();
+}
+function text(t,x,y,size=12,color="#fff",align="left",weight=500){
+  ctx.save();ctx.fillStyle=color;ctx.font=weight+" "+size+'px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif';
+  ctx.textAlign=align;ctx.textBaseline="middle";ctx.fillText(t,x,y);ctx.restore();
+}
+function pointOnRay(origin,dir,dist){return{x:origin.x+dir.x*dist,y:origin.y+dir.y*dist}}
+function drawArrow(a,b,color,width=2.2,alpha=1){
+  line(a.x,a.y,b.x,b.y,color,width,alpha);
+  const ang=Math.atan2(b.y-a.y,b.x-a.x),s=9;
+  ctx.save();ctx.globalAlpha=alpha;ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(b.x,b.y);
+  ctx.lineTo(b.x-Math.cos(ang-.48)*s,b.y-Math.sin(ang-.48)*s);
+  ctx.lineTo(b.x-Math.cos(ang+.48)*s,b.y-Math.sin(ang+.48)*s);ctx.closePath();ctx.fill();ctx.restore();
+}
+function drawPulse(origin,dir,maxDist,color,offset){
+  const spacing=92;
+  for(let k=-1;k<8;k++){
+    const d=((phase*90+offset+k*spacing)%(maxDist+spacing));
+    if(d<0||d>maxDist)continue;
+    const p=pointOnRay(origin,dir,d);
+    ctx.save();ctx.fillStyle=color;ctx.shadowColor=color;ctx.shadowBlur=12;ctx.beginPath();ctx.arc(p.x,p.y,3.4,0,Math.PI*2);ctx.fill();ctx.restore();
+  }
+}
+function drawWavefronts(origin,dir,maxDist,n,color){
+  if(!showWavefronts)return;
+  const perp={x:-dir.y,y:dir.x},wavelength=clamp(36/n,16,38);
+  for(let d=40;d<maxDist;d+=wavelength){
+    const p=pointOnRay(origin,dir,d);
+    line(p.x-perp.x*18,p.y-perp.y*18,p.x+perp.x*18,p.y+perp.y*18,color,1,.20);
+  }
+}
+function drawArc(cx,cy,r,a1,a2,color,label){
+  ctx.save();ctx.strokeStyle=color;ctx.lineWidth=1.3;ctx.globalAlpha=.8;ctx.beginPath();ctx.arc(cx,cy,r,a1,a2,a2<a1);ctx.stroke();ctx.restore();
+  if(showLabels){const mid=(a1+a2)/2;text(label,cx+Math.cos(mid)*(r+15),cy+Math.sin(mid)*(r+15),10,color,"center",600)}
+}
+
+function draw(){
+  const w=canvas.clientWidth,h=canvas.clientHeight,p=physics();
+  ctx.clearRect(0,0,w,h);
+
+  const boundaryY=h*.52,hit={x:w*.56,y:boundaryY};
+
+  const gTop=ctx.createLinearGradient(0,0,0,boundaryY);
+  gTop.addColorStop(0,"rgba(255,255,255,.018)");gTop.addColorStop(1,"rgba(149,221,255,.018)");
+  ctx.fillStyle=gTop;ctx.fillRect(0,0,w,boundaryY);
+
+  const lowerAlpha=clamp((p.b-1)/1.5*.13,.025,.13);
+  const gBot=ctx.createLinearGradient(0,boundaryY,0,h);
+  gBot.addColorStop(0,"rgba(120,180,255,"+(lowerAlpha+.015)+")");gBot.addColorStop(1,"rgba(70,110,170,"+lowerAlpha*.45+")");
+  ctx.fillStyle=gBot;ctx.fillRect(0,boundaryY,w,h-boundaryY);
+
+  line(0,boundaryY,w,boundaryY,"rgba(255,255,255,.34)",1.15);
+  line(0,boundaryY+1,w,boundaryY+1,"rgba(149,221,255,.12)",1);
+
+  if(showLabels){
+    text("MEDIUM 1",26,boundaryY-48,9,"#70767e","left",700);
+    text("n₁ = "+p.a.toFixed(2),26,boundaryY-29,12,"#c8ccd1","left",600);
+    text("MEDIUM 2",26,boundaryY+31,9,"#70767e","left",700);
+    text("n₂ = "+p.b.toFixed(2),26,boundaryY+50,12,"#c8ccd1","left",600);
+  }
+
+  line(hit.x,82,hit.x,h-62,"rgba(255,255,255,.18)",1,1,[5,7]);
+  if(showLabels)text("normal",hit.x+11,96,9,"#737981","left",500);
+
+  const i=p.i,incDir={x:Math.sin(i),y:Math.cos(i)};
+  const sourceDist=Math.min(h*.42,370);
+  const source={x:hit.x-incDir.x*sourceDist,y:hit.y-incDir.y*sourceDist};
+
+  const reflDir={x:Math.sin(i),y:-Math.cos(i)};
+  const reflDist=Math.min(h*.42,390),reflEnd=pointOnRay(hit,reflDir,reflDist);
+
+  ctx.save();ctx.fillStyle="#fff";ctx.shadowColor="#95ddff";ctx.shadowBlur=18;ctx.beginPath();ctx.arc(source.x,source.y,5,0,Math.PI*2);ctx.fill();ctx.restore();
+  if(showLabels)text("light source",source.x,source.y-18,9,"#838991","center",500);
+
+  drawArrow(source,hit,"#f5f7f9",2.15,.95);
+  drawWavefronts(source,incDir,sourceDist,p.a,"#dfefff");
+
+  drawArrow(hit,reflEnd,"#ffcf92",1.7,.72);
+  drawWavefronts(hit,reflDir,reflDist,p.a,"#ffd6a7");
+
+  if(!p.tir){
+    const r=p.r,refrDir={x:Math.sin(r),y:Math.cos(r)};
+    const maxY=h-58;
+    let refrDist=(maxY-hit.y)/Math.max(refrDir.y,.001);
+    refrDist=Math.min(refrDist,w*.55);
+    const refrEnd=pointOnRay(hit,refrDir,refrDist);
+
+    drawArrow(hit,refrEnd,"#95ddff",2.4,.96);
+    drawWavefronts(hit,refrDir,refrDist,p.b,"#95ddff");
+    drawPulse(hit,refrDir,refrDist,"#b7e9ff",44);
+
+    drawArc(hit.x,hit.y,62,Math.PI/2-r,Math.PI/2,"#95ddff","θ₂  "+deg(r).toFixed(1)+"°");
+    if(showLabels)text("refracted ray",refrEnd.x-4,refrEnd.y-17,10,"#95ddff","right",600);
+  }else{
+    const fade=ctx.createLinearGradient(hit.x,hit.y,hit.x+125,hit.y);
+    fade.addColorStop(0,"rgba(149,221,255,.38)");fade.addColorStop(1,"rgba(149,221,255,0)");
+    ctx.strokeStyle=fade;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(hit.x,hit.y+2);ctx.lineTo(hit.x+130,hit.y+2);ctx.stroke();
+
+    if(showLabels){
+      text("no transmitted ray",hit.x+84,hit.y+25,10,"#ff9b9b","center",600);
+      text("TOTAL INTERNAL REFLECTION",hit.x+120,hit.y-50,11,"#ffb0b0","center",700);
+    }
+  }
+
+  drawPulse(source,incDir,sourceDist,"#ffffff",0);
+  drawPulse(hit,reflDir,reflDist,p.tir?"#ffb0a8":"#ffd49d",22);
+
+  ctx.save();
+  const grd=ctx.createRadialGradient(hit.x,hit.y,0,hit.x,hit.y,24);
+  grd.addColorStop(0,"rgba(255,255,255,.58)");grd.addColorStop(1,"rgba(255,255,255,0)");
+  ctx.fillStyle=grd;ctx.beginPath();ctx.arc(hit.x,hit.y,24,0,Math.PI*2);ctx.fill();ctx.restore();
+
+  drawArc(hit.x,hit.y,52,Math.PI*1.5,Math.PI*1.5+i,"#ffffff","θ₁  "+deg(i).toFixed(0)+"°");
+  drawArc(hit.x,hit.y,78,Math.PI*1.5-i,Math.PI*1.5,"#ffc784","reflection");
+
+  if(showLabels){
+    text("incident ray",(source.x+hit.x)/2-10,(source.y+hit.y)/2-16,10,"#e8eaed","center",600);
+    text("reflected ray",(reflEnd.x+hit.x)/2+12,(reflEnd.y+hit.y)/2-16,10,"#ffc784","center",600);
+
+    if(p.critical!==null){
+      const delta=deg(p.i)-deg(p.critical);
+      const msg=p.tir?"θ₁ is "+Math.abs(delta).toFixed(1)+"° above critical":"θ₁ is "+Math.abs(delta).toFixed(1)+"° below critical";
+      text("critical angle = "+deg(p.critical).toFixed(1)+"°",w-28,h-55,10,"#aeb4bb","right",600);
+      text(msg,w-28,h-35,9,p.tir?"#ff9b9b":"#777d84","right",500);
+    }
+  }
+}
+
+function animate(now){
+  const dt=Math.min((now-last)/1000,.05);last=now;phase+=dt*Number(speed.value);draw();requestAnimationFrame(animate);
+}
+requestAnimationFrame(animate);
+
+})();
+</script>
+</body>
+</html>

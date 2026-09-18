@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ionization Energy Explorer</title>
+<style>
+  *{box-sizing:border-box;}
+  html,body{ margin:0; padding:0; width:100%; height:100%; background:#000; color:#fff;
+    font-family:'Times New Roman', Times, serif; overflow:hidden; }
+  #canvas-wrap{ position:fixed; inset:0; background:#000; }
+  canvas{ display:block; }
+
+  #panel{
+    position:fixed; top:16px; left:16px; width:265px;
+    background:rgba(255,255,255,0.08);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    backdrop-filter: blur(32px) saturate(180%);
+    border:1px solid rgba(255,255,255,0.22);
+    border-radius:26px;
+    padding:22px 22px 18px 22px; z-index:6;
+    box-shadow: 0 12px 36px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.28);
+  }
+  .panel-label{ font-size:13px; color:rgba(255,255,255,0.55); margin-bottom:9px; font-style:italic; }
+  .elem-row{ display:flex; flex-wrap:wrap; gap:7px; margin-bottom:18px; }
+  .elem-btn{
+    background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.14); color:#fff;
+    font-family:'Times New Roman', Times, serif; font-size:14px; padding:8px 13px;
+    border-radius:12px; cursor:pointer; transition: background .15s ease;
+  }
+  .elem-btn:hover{ background:rgba(255,255,255,0.14); }
+  .elem-btn.active{ background:rgba(255,255,255,0.24); font-weight:700; }
+
+  .action-btn{
+    width:100%; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2);
+    color:#fff; font-family:'Times New Roman', Times, serif; font-size:14.5px;
+    padding:10px 0; border-radius:14px; cursor:pointer; margin-bottom:8px; transition: background .15s ease;
+  }
+  .action-btn:hover{ background:rgba(255,255,255,0.2); }
+  .action-btn:disabled{ opacity:0.35; cursor:default; }
+  .action-btn:disabled:hover{ background:rgba(255,255,255,0.1); }
+
+  .note{ font-size:12px; line-height:1.6; color:rgba(255,255,255,0.4); margin-top:14px; }
+  .note .dot{ display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:7px; }
+
+  #hint{ position:fixed; top:24px; right:28px; font-size:14px; color:#fff; text-align:right;
+    line-height:1.9; z-index:6; pointer-events:none; font-family:'Times New Roman', Times, serif; }
+
+  #info{ position:fixed; left:16px; bottom:22px; max-width:420px; z-index:6; pointer-events:none;
+    color:rgba(255,255,255,0.62); font-family:'Times New Roman', Times, serif; }
+  #info .name{ font-size:24px; margin:0 0 6px 0; color:rgba(255,255,255,0.85); }
+  #info .qn{ font-size:14px; margin-bottom:8px; line-height:1.75; color:rgba(255,255,255,0.55); }
+  #info .qn b{ color:rgba(255,255,255,0.88); font-weight:700; }
+  #info .jump{ font-size:13.5px; color:#ffce5c; margin-bottom:8px; line-height:1.5; max-width:400px; }
+  #info .desc{ font-size:13px; line-height:1.5; color:rgba(255,255,255,0.5); max-width:400px; }
+
+  #graphWrap{
+    position:fixed; right:26px; bottom:26px; z-index:6;
+    background:rgba(255,255,255,0.07);
+    -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+    border:1px solid rgba(255,255,255,0.2); border-radius:18px; padding:14px 16px 10px 16px;
+  }
+  #graphTitle{ font-size:12.5px; color:rgba(255,255,255,0.55); margin-bottom:6px; font-style:italic; }
+
+  @media (max-width: 900px){
+    #panel{ width:210px; padding:16px; } #hint{ display:none; }
+    #info{ max-width:220px; } #info .name{ font-size:19px; }
+    #graphWrap{ display:none; }
+  }
+</style>
+</head>
+<body>
+
+<div id="canvas-wrap"></div>
+
+<div id="panel">
+  <div class="panel-label">Element</div>
+  <div class="elem-row" id="elemRow"></div>
+
+  <button class="action-btn" id="removeBtn">Remove Next Electron</button>
+  <button class="action-btn" id="resetBtn">Reset to Neutral Atom</button>
+
+  <div class="note">
+    <span class="dot" style="background:#4ad8ff;"></span>s subshell<br>
+    <span class="dot" style="background:#ff9a3c;"></span>p subshell<br>
+    <span class="dot" style="background:#ff4ad0;"></span>d subshell<br><br>
+    Electrons are arranged schematically by shell and subshell energy level here, not in their true 3D orbital shapes.
+  </div>
+</div>
+
+<div id="hint">
+  Drag to rotate<br>
+  Scroll to zoom<br>
+  Right-click to pan
+</div>
+
+<div id="info">
+  <div class="name" id="infoName">Sodium (Na)</div>
+  <div class="qn" id="infoStats"></div>
+  <div class="jump" id="infoJump"></div>
+  <div class="desc" id="infoDesc">Click "Remove Next Electron" to ionize the atom one electron at a time, always in the true physical order &mdash; outermost, least tightly bound electrons first. Watch how the energy required climbs with each removal from the same subshell, then jumps sharply the moment an electron must be pulled from a complete inner shell.</div>
+</div>
+
+<div id="graphWrap">
+  <div id="graphTitle">Successive Ionization Energy (log scale)</div>
+  <canvas id="graphCanvas" width="250" height="150"></canvas>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   DATA: real successive ionization energies (kJ/mol), always
+   listed in true physical removal order for each element. Note
+   the s-before-d order for iron -- 4s electrons are removed
+   before 3d electrons even though 4s filled first when the atom
+   was built up, because once the ion forms, 3d drops below 4s
+   in energy. Every "big jump" below marks the point where
+   removal crosses from an outer, valence shell into a complete,
+   more tightly-bound inner shell.
+   ============================================================ */
+
+var SUBCOLOR = { s:0x4ad8ff, p:0xff9a3c, d:0xff4ad0 };
+
+var ELEMENTS = {
+  Na: { name:"Sodium", Z:11, config:[["1s",2],["2s",2],["2p",6],["3s",1]],
+    removal:[ {sub:"3s",n:3,ie:496}, {sub:"2p",n:2,ie:4562}, {sub:"2p",n:2,ie:6912}, {sub:"2p",n:2,ie:9543},
+      {sub:"2p",n:2,ie:13353}, {sub:"2p",n:2,ie:16610}, {sub:"2p",n:2,ie:20115}, {sub:"2s",n:2,ie:25490}, {sub:"2s",n:2,ie:28934} ],
+    tail:"The remaining 1s core electrons require over 140,000 kJ/mol each \u2014 not shown here." },
+  Mg: { name:"Magnesium", Z:12, config:[["1s",2],["2s",2],["2p",6],["3s",2]],
+    removal:[ {sub:"3s",n:3,ie:738}, {sub:"3s",n:3,ie:1451}, {sub:"2p",n:2,ie:7733}, {sub:"2p",n:2,ie:10540},
+      {sub:"2p",n:2,ie:13630}, {sub:"2p",n:2,ie:17995}, {sub:"2p",n:2,ie:21704}, {sub:"2p",n:2,ie:25656}, {sub:"2s",n:2,ie:31653}, {sub:"2s",n:2,ie:35458} ],
+    tail:"The 1s core lies far beyond this scale." },
+  Al: { name:"Aluminum", Z:13, config:[["1s",2],["2s",2],["2p",6],["3s",2],["3p",1]],
+    removal:[ {sub:"3p",n:3,ie:577}, {sub:"3s",n:3,ie:1817}, {sub:"3s",n:3,ie:2745}, {sub:"2p",n:2,ie:11577},
+      {sub:"2p",n:2,ie:14842}, {sub:"2p",n:2,ie:18379}, {sub:"2p",n:2,ie:23326}, {sub:"2p",n:2,ie:27465}, {sub:"2p",n:2,ie:31853}, {sub:"2s",n:2,ie:38473} ],
+    tail:"The single 3p electron goes first \u2014 higher energy than 3s within the same shell." },
+  K: { name:"Potassium", Z:19, config:[["1s",2],["2s",2],["2p",6],["3s",2],["3p",6],["4s",1]],
+    removal:[ {sub:"4s",n:4,ie:419}, {sub:"3p",n:3,ie:3051}, {sub:"3p",n:3,ie:4411}, {sub:"3p",n:3,ie:5877},
+      {sub:"3p",n:3,ie:7975}, {sub:"3p",n:3,ie:9590}, {sub:"3p",n:3,ie:11343}, {sub:"3s",n:3,ie:14944}, {sub:"3s",n:3,ie:16963} ],
+    tail:"One of the largest relative jumps of any element: over 7x from IE1 to IE2." },
+  Ca: { name:"Calcium", Z:20, config:[["1s",2],["2s",2],["2p",6],["3s",2],["3p",6],["4s",2]],
+    removal:[ {sub:"4s",n:4,ie:590}, {sub:"4s",n:4,ie:1145}, {sub:"3p",n:3,ie:4912}, {sub:"3p",n:3,ie:6491},
+      {sub:"3p",n:3,ie:8153}, {sub:"3p",n:3,ie:10496}, {sub:"3p",n:3,ie:12270}, {sub:"3p",n:3,ie:14206}, {sub:"3s",n:3,ie:18191}, {sub:"3s",n:3,ie:20385} ],
+    tail:"Both 4s electrons are lost readily before the 3p core is touched." },
+  Fe: { name:"Iron", Z:26, config:[["1s",2],["2s",2],["2p",6],["3s",2],["3p",6],["3d",6],["4s",2]],
+    removal:[ {sub:"4s",n:4,ie:762.5}, {sub:"4s",n:4,ie:1561.9}, {sub:"3d",n:3,ie:2957}, {sub:"3d",n:3,ie:5290} ],
+    tail:"Both 4s electrons leave first, even though 4s filled before 3d when the neutral atom was built up \u2014 once the ion forms, 3d drops below 4s in energy. Fe\u00B2\u207A is therefore [Ar]3d\u2076, not [Ar]3d\u2074 4s\u00B2." }
+};
+
+var ELEM_ORDER = ["Na","Mg","Al","K","Ca","Fe"];
+
+/* ============================================================
+   SCENE SETUP
+   ============================================================ */
+
+var wrap = document.getElementById('canvas-wrap');
+var scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000000);
+
+var camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.05, 300);
+camera.position.set(2.5, 6, 9);
+
+var renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+wrap.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.rotateSpeed = 0.6;
+controls.zoomSpeed = 0.8;
+controls.minDistance = 1.5;
+controls.maxDistance = 60;
+controls.target.set(0,0,0);
+
+window.addEventListener('resize', function(){
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+var keyLight = new THREE.DirectionalLight(0xffffff, 0.75);
+keyLight.position.set(5,9,6);
+scene.add(keyLight);
+var fillLight = new THREE.DirectionalLight(0xaeccff, 0.3);
+fillLight.position.set(-5,-3,-4);
+scene.add(fillLight);
+
+var nucleusMat = new THREE.MeshStandardMaterial({ color:0xfff0c0, emissive:0x552a00, metalness:0.3, roughness:0.4 });
+var nucleus = new THREE.Mesh(new THREE.SphereGeometry(0.5,32,24), nucleusMat);
+scene.add(nucleus);
+
+/* faint shell rings */
+var ringGroup = new THREE.Group();
+scene.add(ringGroup);
+function shellRadius(n){ return 1.7 + (n-1)*1.5; }
+function buildRings(maxN){
+  while(ringGroup.children.length) ringGroup.remove(ringGroup.children[0]);
+  for(var n=1;n<=maxN;n++){
+    var geo = new THREE.RingGeometry(shellRadius(n)-0.01, shellRadius(n)+0.01, 80);
+    var mat = new THREE.MeshBasicMaterial({ color:0xffffff, transparent:true, opacity:0.12, side:THREE.DoubleSide });
+    var ring = new THREE.Mesh(geo, mat);
+    ring.rotation.x = Math.PI/2;
+    ringGroup.add(ring);
+  }
+}
+
+/* ============================================================
+   ATOM STATE + ELECTRON MESHES
+   ============================================================ */
+
+var currentKey = "Na";
+var stepIndex = 0; // how many electrons removed so far
+var electronMeshes = []; // {mesh, sub, n}
+var flyingAway = [];
+
+function subOffset(sub){ return sub[1]==="s" ? 0 : (sub[1]==="p" ? 0.34 : 0.62); }
+
+function buildAtom(key){
+  electronMeshes.forEach(function(e){ scene.remove(e.mesh); e.mesh.geometry.dispose(); e.mesh.material.dispose(); });
+  electronMeshes = [];
+  flyingAway.forEach(function(f){ scene.remove(f.mesh); f.mesh.geometry.dispose(); f.mesh.material.dispose(); });
+  flyingAway = [];
+
+  var el = ELEMENTS[key];
+  var maxN = 0;
+  el.config.forEach(function(c){ maxN = Math.max(maxN, parseInt(c[0][0])); });
+  buildRings(maxN);
+
+  el.config.forEach(function(c){
+    var subName = c[0], count = c[1];
+    var n = parseInt(subName[0]);
+    var l = subName[1];
+    var radius = shellRadius(n) + subOffset(subName);
+    for(var i=0;i<count;i++){
+      var ang = (i/count)*Math.PI*2 + n*0.7;
+      var geo = new THREE.SphereGeometry(0.115, 16, 12);
+      var mat = new THREE.MeshStandardMaterial({ color:SUBCOLOR[l], emissive:new THREE.Color(SUBCOLOR[l]).multiplyScalar(0.5), metalness:0.2, roughness:0.35 });
+      var mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(Math.cos(ang)*radius, 0, Math.sin(ang)*radius);
+      scene.add(mesh);
+      electronMeshes.push({ mesh:mesh, sub:l, n:n, radius:radius, angle:ang });
+    }
+  });
+
+  stepIndex = 0;
+  updateInfo(null);
+  drawGraph();
+}
+
+function removeNextElectron(){
+  var el = ELEMENTS[currentKey];
+  if(stepIndex >= el.removal.length) return;
+  var step = el.removal[stepIndex];
+
+  // find a remaining electron mesh matching this subshell+n
+  var idx = -1;
+  for(var i=0;i<electronMeshes.length;i++){
+    if(electronMeshes[i].sub===step.sub[1] && electronMeshes[i].n===step.n){ idx=i; break; }
+  }
+  if(idx>=0){
+    var e = electronMeshes.splice(idx,1)[0];
+    var dir = new THREE.Vector3(Math.cos(e.angle), 0.15, Math.sin(e.angle)).normalize();
+    flyingAway.push({ mesh:e.mesh, dir:dir, life:0 });
+  }
+
+  var prevN = stepIndex>0 ? el.removal[stepIndex-1].n : null;
+  var isJump = prevN!==null && step.n < prevN;
+
+  stepIndex++;
+  updateInfo({ step:step, isJump:isJump, stepNum:stepIndex });
+  drawGraph();
+}
+
+function resetAtom(){ buildAtom(currentKey); }
+
+/* ============================================================
+   UI
+   ============================================================ */
+
+var elemButtons = {};
+function buildElemButtons(){
+  var row = document.getElementById('elemRow');
+  ELEM_ORDER.forEach(function(key){
+    var btn=document.createElement('button');
+    btn.className='elem-btn';
+    btn.textContent=key;
+    btn.addEventListener('click', function(){
+      currentKey = key;
+      Object.keys(elemButtons).forEach(function(k){ elemButtons[k].classList.toggle('active', k===key); });
+      buildAtom(key);
+    });
+    row.appendChild(btn);
+    elemButtons[key]=btn;
+  });
+  elemButtons[currentKey].classList.add('active');
+}
+
+document.getElementById('removeBtn').addEventListener('click', removeNextElectron);
+document.getElementById('resetBtn').addEventListener('click', resetAtom);
+
+function updateInfo(result){
+  var el = ELEMENTS[currentKey];
+  document.getElementById('infoName').textContent = el.name+' ('+currentKey+')';
+  var removed = stepIndex;
+  var charge = removed>0 ? '+'+removed : '0';
+  var totalSoFar = 0;
+  for(var i=0;i<stepIndex;i++) totalSoFar += el.removal[i].ie;
+
+  document.getElementById('infoStats').innerHTML =
+    'Ion charge: <b>'+currentKey+(removed>0?'<sup>'+charge+'</sup>':'')+'</b>   \u00B7   '+
+    'Electrons removed: <b>'+removed+' / '+el.removal.length+' shown</b>   \u00B7   '+
+    'Cumulative energy: <b>'+totalSoFar.toLocaleString()+' kJ/mol</b>';
+
+  var jumpEl = document.getElementById('infoJump');
+  if(result && result.isJump){
+    jumpEl.textContent = '\u26A1 Big jump at step '+result.stepNum+': this electron came from a complete inner shell (n='+result.step.n+'), far more tightly bound than the valence electrons removed before it.';
+  } else if(result){
+    jumpEl.textContent = 'Step '+result.stepNum+': removed a '+result.step.n+result.step.sub[1]+' electron for '+result.step.ie.toLocaleString()+' kJ/mol.';
+  } else {
+    jumpEl.textContent = '';
+  }
+
+  document.getElementById('infoDesc').textContent = (stepIndex>=el.removal.length)
+    ? el.tail
+    : 'Click "Remove Next Electron" to ionize the atom one electron at a time, always in the true physical order \u2014 outermost, least tightly bound electrons first.';
+
+  document.getElementById('removeBtn').disabled = stepIndex>=el.removal.length;
+}
+
+/* ============================================================
+   GRAPH
+   ============================================================ */
+
+var gCanvas = document.getElementById('graphCanvas');
+var gCtx = gCanvas.getContext('2d');
+var GW=gCanvas.width, GH=gCanvas.height, PAD=28;
+
+function drawGraph(){
+  gCtx.clearRect(0,0,GW,GH);
+  var el = ELEMENTS[currentKey];
+  var n = el.removal.length;
+  var maxLog = Math.log10(Math.max.apply(null, el.removal.map(function(r){return r.ie;})))+0.3;
+  var minLog = 2.3;
+
+  gCtx.strokeStyle='rgba(255,255,255,0.3)'; gCtx.lineWidth=1;
+  gCtx.beginPath(); gCtx.moveTo(PAD,6); gCtx.lineTo(PAD,GH-PAD); gCtx.lineTo(GW-6,GH-PAD); gCtx.stroke();
+
+  var barW = (GW-PAD-14)/n;
+  el.removal.forEach(function(r,i){
+    var logV = Math.log10(r.ie);
+    var h = ((logV-minLog)/(maxLog-minLog))*(GH-PAD-10);
+    h = Math.max(2,h);
+    var x = PAD+i*barW+2;
+    var y = GH-PAD-h;
+    var active = i < stepIndex;
+    var col = new THREE.Color(SUBCOLOR[r.sub[1]]);
+    gCtx.fillStyle = active ? 'rgba('+Math.round(col.r*255)+','+Math.round(col.g*255)+','+Math.round(col.b*255)+',0.95)'
+                             : 'rgba('+Math.round(col.r*255)+','+Math.round(col.g*255)+','+Math.round(col.b*255)+',0.28)';
+    gCtx.fillRect(x,y,barW-3,h);
+    if(i === stepIndex-1){
+      gCtx.strokeStyle='#ffffff'; gCtx.lineWidth=1.4;
+      gCtx.strokeRect(x,y,barW-3,h);
+    }
+  });
+
+  gCtx.fillStyle='rgba(255,255,255,0.4)'; gCtx.font='9.5px Times New Roman';
+  gCtx.fillText('IE #', GW-30, GH-PAD+13);
+}
+
+/* ============================================================
+   RENDER LOOP
+   ============================================================ */
+
+function animate(now){
+  requestAnimationFrame(animate);
+  var dt = 1/60;
+
+  for(var i=flyingAway.length-1;i>=0;i--){
+    var f = flyingAway[i];
+    f.life += dt;
+    f.mesh.position.addScaledVector(f.dir, dt*4.5);
+    f.mesh.material.opacity = Math.max(0, 1-f.life*1.1);
+    f.mesh.material.transparent = true;
+    if(f.life>1.1){
+      scene.remove(f.mesh); f.mesh.geometry.dispose(); f.mesh.material.dispose();
+      flyingAway.splice(i,1);
+    }
+  }
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+buildElemButtons();
+buildAtom(currentKey);
+requestAnimationFrame(animate);
+
+})();
+</script>
+</body>
+</html>

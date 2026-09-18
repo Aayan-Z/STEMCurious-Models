@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Wave Interference Studio</title>
+
+<style>
+:root {
+  color-scheme: dark;
+  --background: #101214;
+  --panel: rgba(24, 27, 30, 0.9);
+  --panel-soft: rgba(255, 255, 255, 0.045);
+  --border: rgba(255, 255, 255, 0.13);
+  --border-strong: rgba(255, 255, 255, 0.24);
+  --text: #eef1f3;
+  --muted: #969da5;
+  --radius: 15px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--background);
+  color: var(--text);
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.app {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+}
+
+#scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  cursor: grab;
+}
+
+#scene:active {
+  cursor: grabbing;
+}
+
+.panel {
+  position: absolute;
+  z-index: 5;
+  top: 15px;
+  bottom: 15px;
+  left: 15px;
+  width: 310px;
+  overflow-y: auto;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--panel);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.2);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.25) transparent;
+}
+
+.panel::-webkit-scrollbar {
+  width: 5px;
+}
+
+.panel::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.23);
+  border-radius: 20px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 17px;
+  border-bottom: 1px solid var(--border);
+}
+
+.brand-mark {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  color: var(--text);
+  font-size: 19px;
+}
+
+.brand-title {
+  font-size: 14px;
+  font-weight: 750;
+  letter-spacing: 0.01em;
+}
+
+.brand-subtitle {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.section {
+  margin-top: 23px;
+}
+
+.section-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 13px;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.section-title span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.control {
+  margin-top: 14px;
+}
+
+.control:first-child {
+  margin-top: 0;
+}
+
+.control-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  color: #c8cdd2;
+  font-size: 12px;
+}
+
+.control-value {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+input[type="range"] {
+  width: 100%;
+  height: 4px;
+  margin: 0;
+  accent-color: #e0e4e8;
+  cursor: pointer;
+}
+
+select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  outline: none;
+  color: var(--text);
+  background: #202428;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 17px;
+}
+
+button {
+  min-width: 0;
+  padding: 10px 11px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text);
+  background: rgba(255,255,255,0.045);
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+button:hover {
+  border-color: var(--border-strong);
+  background: rgba(255,255,255,0.09);
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+button.primary {
+  color: #17191b;
+  background: #e8ebee;
+  border-color: #e8ebee;
+}
+
+button.primary:hover {
+  background: #ffffff;
+}
+
+button.full {
+  grid-column: 1 / -1;
+}
+
+.info {
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--muted);
+  background: var(--panel-soft);
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.info strong {
+  color: #dce1e5;
+  font-weight: 650;
+}
+
+.legend {
+  display: grid;
+  gap: 9px;
+  margin-top: 12px;
+}
+
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.legend-swatch {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.35);
+}
+
+.metrics {
+  display: grid;
+  gap: 9px;
+}
+
+.metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.metric:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.metric-label {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.metric-value {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 650;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.scene-label {
+  position: absolute;
+  z-index: 2;
+  top: 20px;
+  left: 350px;
+  pointer-events: none;
+  color: rgba(235,239,242,0.82);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
+.scene-help {
+  position: absolute;
+  z-index: 2;
+  right: 20px;
+  bottom: 18px;
+  pointer-events: none;
+  padding: 8px 10px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  color: rgba(202,208,214,0.75);
+  background: rgba(12,14,16,0.62);
+  font-size: 10px;
+  backdrop-filter: blur(10px);
+}
+
+@media (max-width: 680px) {
+  .panel {
+    top: 10px;
+    bottom: 10px;
+    left: 10px;
+    width: min(285px, calc(100vw - 20px));
+  }
+
+  .scene-label {
+    left: 315px;
+    top: 16px;
+    white-space: nowrap;
+  }
+
+  .scene-help {
+    right: 12px;
+    bottom: 12px;
+  }
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+
+  <canvas id="scene"></canvas>
+
+  <div class="scene-label">Two-source wave interference</div>
+
+  <div class="scene-help">
+    Drag: rotate · Shift/right-drag: pan · Wheel: zoom
+  </div>
+
+  <aside class="panel">
+
+    <div class="brand">
+      <div class="brand-mark">∿</div>
+      <div>
+        <div class="brand-title">Wave Interference Studio</div>
+        <div class="brand-subtitle">Two coherent point sources</div>
+      </div>
+    </div>
+
+    <section class="section">
+      <div class="section-title">
+        Sources
+        <span>Wave field</span>
+      </div>
+
+      <div class="control">
+        <div class="control-label">
+          <label for="frequency">Frequency</label>
+          <span class="control-value" id="frequencyValue">1.00 Hz</span>
+        </div>
+        <input id="frequency" type="range" min="0.2" max="3" step="0.01" value="1" />
+      </div>
+
+      <div class="control">
+        <div class="control-label">
+          <label for="distance">Source separation</label>
+          <span class="control-value" id="distanceValue">2.00 m</span>
+        </div>
+        <input id="distance" type="range" min="0.5" max="5" step="0.01" value="2" />
+      </div>
+
+      <div class="control">
+        <div class="control-label">
+          <label for="amplitude">Source amplitude</label>
+          <span class="control-value" id="amplitudeValue">1.00</span>
+        </div>
+        <input id="amplitude" type="range" min="0.1" max="2" step="0.01" value="1" />
+      </div>
+
+      <div class="control">
+        <div class="control-label">
+          <label for="speed">Animation speed</label>
+          <span class="control-value" id="speedValue">1.00×</span>
+        </div>
+        <input id="speed" type="range" min="0.1" max="2.5" step="0.05" value="1" />
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title">
+        Display
+        <span>Representation</span>
+      </div>
+
+      <div class="control">
+        <div class="control-label">
+          <label for="viewMode">Wave representation</label>
+        </div>
+
+        <select id="viewMode">
+          <option value="surface" selected>3D displacement surface</option>
+          <option value="contours">Interference contour map</option>
+          <option value="both">Surface and contour map</option>
+        </select>
+      </div>
+
+      <div class="control">
+        <div class="control-label">
+          <label for="heightScale">Vertical displacement</label>
+          <span class="control-value" id="heightScaleValue">0.65</span>
+        </div>
+        <input id="heightScale" type="range" min="0.2" max="1.3" step="0.01" value="0.65" />
+      </div>
+
+      <div class="control">
+        <div class="control-label">
+          <label for="gridDensity">Surface resolution</label>
+          <span class="control-value" id="gridDensityValue">44</span>
+        </div>
+        <input id="gridDensity" type="range" min="24" max="70" step="1" value="44" />
+      </div>
+
+      <div class="actions">
+        <button class="primary" id="playButton">Pause</button>
+        <button id="resetButton">Reset</button>
+        <button class="full" id="cameraButton">Reset camera</button>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title">
+        Measurements
+        <span>Live values</span>
+      </div>
+
+      <div class="metrics">
+        <div class="metric">
+          <div class="metric-label">Wavelength</div>
+          <div class="metric-value" id="wavelengthMetric">1.50 m</div>
+        </div>
+
+        <div class="metric">
+          <div class="metric-label">Source separation / λ</div>
+          <div class="metric-value" id="ratioMetric">1.33</div>
+        </div>
+
+        <div class="metric">
+          <div class="metric-label">Wave speed</div>
+          <div class="metric-value" id="speedMetric">1.50 m/s</div>
+        </div>
+
+        <div class="metric">
+          <div class="metric-label">Time</div>
+          <div class="metric-value" id="timeMetric">0.00 s</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title">
+        Interpretation
+        <span>Beginner guide</span>
+      </div>
+
+      <div class="info">
+        Each source emits a circular two-dimensional wave. The displayed
+        surface height is the sum of the two displacements:
+        <strong>y = y₁ + y₂</strong>.
+        Where the waves are in phase, they reinforce each other.
+        Where they are out of phase by half a wavelength, they cancel.
+      </div>
+
+      <div class="legend">
+        <div class="legend-row">
+          <span class="legend-swatch" style="background:#d8dde2;"></span>
+          Constructive interference
+        </div>
+
+        <div class="legend-row">
+          <span class="legend-swatch" style="background:#777f88;"></span>
+          Destructive interference
+        </div>
+
+        <div class="legend-row">
+          <span class="legend-swatch" style="background:#b4bec7;"></span>
+          Source positions
+        </div>
+      </div>
+    </section>
+
+  </aside>
+</div>
+
+<script>
+"use strict";
+
+const canvas = document.getElementById("scene");
+const ctx = canvas.getContext("2d");
+
+const frequencyInput = document.getElementById("frequency");
+const distanceInput = document.getElementById("distance");
+const amplitudeInput = document.getElementById("amplitude");
+const speedInput = document.getElementById("speed");
+const viewModeInput = document.getElementById("viewMode");
+const heightScaleInput = document.getElementById("heightScale");
+const gridDensityInput = document.getElementById("gridDensity");
+
+const frequencyValue = document.getElementById("frequencyValue");
+const distanceValue = document.getElementById("distanceValue");
+const amplitudeValue = document.getElementById("amplitudeValue");
+const speedValue = document.getElementById("speedValue");
+const heightScaleValue = document.getElementById("heightScaleValue");
+const gridDensityValue = document.getElementById("gridDensityValue");
+
+const playButton = document.getElementById("playButton");
+const resetButton = document.getElementById("resetButton");
+const cameraButton = document.getElementById("cameraButton");
+const wavelengthMetric = document.getElementById("wavelengthMetric");
+const ratioMetric = document.getElementById("ratioMetric");
+const speedMetric = document.getElementById("speedMetric");
+const timeMetric = document.getElementById("timeMetric");
+
+const state = {
+  frequency: 1,
+  distance: 2,
+  amplitude: 1,
+  speed: 1,
+  heightScale: 0.65,
+  gridDensity: 44,
+  viewMode: "surface",
+  time: 0,
+  playing: true
+};
+
+const waveSpeed = 1.5;
+const softening = 0.12;
+const range = 5.2;
+
+function wavelength() { return waveSpeed / state.frequency; }
+function angularFrequency() { return 2 * Math.PI * state.frequency; }
+function waveNumber() { return 2 * Math.PI / wavelength(); }
+function sourcePositions() {
+  const half = state.distance / 2;
+  return { left: { x: -half, y: 0 }, right: { x: half, y: 0 } };
+}
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+function waveAt(x, y, time) {
+  const s = sourcePositions();
+  const r1 = Math.hypot(x - s.left.x, y - s.left.y, softening);
+  const r2 = Math.hypot(x - s.right.x, y - s.right.y, softening);
+  const k = waveNumber();
+  const omega = angularFrequency();
+  const a = state.amplitude;
+  return a * Math.sin(k * r1 - omega * time) / Math.sqrt(r1)
+       + a * Math.sin(k * r2 - omega * time) / Math.sqrt(r2);
+}
+
+function resizeCanvas() {
+  const rect = canvas.getBoundingClientRect();
+  const ratio = Math.min(window.devicePixelRatio || 1, 2);
+  const w = Math.max(1, Math.floor(rect.width * ratio));
+  const h = Math.max(1, Math.floor(rect.height * ratio));
+  if (canvas.width !== w || canvas.height !== h) {
+    canvas.width = w;
+    canvas.height = h;
+  }
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  return { width: rect.width, height: rect.height };
+}
+
+function worldToScreen(x, y, width, height) {
+  const scale = Math.min(width, height) / (range * 2.25);
+  return { x: width * 0.57 + x * scale, y: height * 0.53 + y * scale };
+}
+
+function drawBackground(width, height) {
+  ctx.fillStyle = "#101214";
+  ctx.fillRect(0, 0, width, height);
+}
+
+function drawGrid(width, height) {
+  const divisions = 22;
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = "rgba(255,255,255,0.075)";
+  for (let i = -divisions; i <= divisions; i++) {
+    const v = -range + (i / divisions) * range * 2;
+    const a = worldToScreen(-range, v, width, height);
+    const b = worldToScreen(range, v, width, height);
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    const c = worldToScreen(v, -range, width, height);
+    const d = worldToScreen(v, range, width, height);
+    ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.stroke();
+  }
+}
+
+function drawAxes(width, height) {
+  const a = worldToScreen(-range, 0, width, height);
+  const b = worldToScreen(range, 0, width, height);
+  const c = worldToScreen(0, -range, width, height);
+  const d = worldToScreen(0, range, width, height);
+  ctx.strokeStyle = "rgba(230,235,239,0.22)";
+  ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.stroke();
+}
+
+function drawField(width, height) {
+  const count = Math.max(24, Math.min(70, state.gridDensity));
+  const cells = count * 2;
+  const cell = (range * 2) / cells;
+  const scale = Math.min(width, height) / (range * 2.25);
+  const maxValue = Math.max(0.001, state.amplitude * 2.2);
+
+  for (let row = 0; row < cells; row++) {
+    const y = -range + row * cell;
+    for (let col = 0; col < cells; col++) {
+      const x = -range + col * cell;
+      const value = waveAt(x + cell * 0.5, y + cell * 0.5, state.time);
+      const n = clamp(value / maxValue, -1, 1);
+      const intensity = Math.abs(n);
+      const p = worldToScreen(x, y, width, height);
+      const size = cell * scale + 0.8;
+      const light = n >= 0 ? 220 : 92;
+      const alpha = 0.12 + intensity * 0.72;
+      ctx.fillStyle = `rgba(${light},${light + (n >= 0 ? 5 : 8)},${light + (n >= 0 ? 10 : 18)},${alpha})`;
+      ctx.fillRect(p.x, p.y, size, size);
+    }
+  }
+}
+
+function drawContours(width, height) {
+  const count = Math.max(24, Math.min(70, state.gridDensity));
+  const step = (range * 2) / count;
+  const scale = Math.min(width, height) / (range * 2.25);
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = "rgba(235,240,244,0.22)";
+
+  for (let row = 0; row < count; row++) {
+    for (let col = 0; col < count; col++) {
+      const x = -range + (col + 0.5) * step;
+      const y = -range + (row + 0.5) * step;
+      const value = waveAt(x, y, state.time);
+      if (Math.abs(value) < state.amplitude * 0.08) {
+        const p = worldToScreen(x, y, width, height);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, Math.max(0.5, scale * 0.025), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+  }
+}
+
+function drawSources(width, height) {
+  const s = sourcePositions();
+  const scale = Math.min(width, height) / (range * 2.25);
+  const radius = Math.max(6, scale * 0.09);
+  for (const source of [s.left, s.right]) {
+    const p = worldToScreen(source.x, source.y, width, height);
+    ctx.beginPath(); ctx.arc(p.x, p.y, radius * 2.2, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(230,235,239,0.35)"; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.beginPath(); ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = "#f0f3f5"; ctx.fill();
+    ctx.strokeStyle = "#8f9aa4"; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+  const left = worldToScreen(s.left.x, s.left.y, width, height);
+  const right = worldToScreen(s.right.x, s.right.y, width, height);
+  ctx.setLineDash([5, 5]);
+  ctx.strokeStyle = "rgba(235,240,244,0.5)"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(left.x, left.y); ctx.lineTo(right.x, right.y); ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawScene() {
+  const { width, height } = resizeCanvas();
+  ctx.clearRect(0, 0, width, height);
+  drawBackground(width, height);
+  drawGrid(width, height);
+  drawAxes(width, height);
+  if (state.viewMode === "surface" || state.viewMode === "both") drawField(width, height);
+  if (state.viewMode === "contours" || state.viewMode === "both") drawContours(width, height);
+  drawSources(width, height);
+}
+
+function updateUI() {
+  frequencyValue.textContent = `${state.frequency.toFixed(2)} Hz`;
+  distanceValue.textContent = `${state.distance.toFixed(2)} m`;
+  amplitudeValue.textContent = state.amplitude.toFixed(2);
+  speedValue.textContent = `${state.speed.toFixed(2)}×`;
+  heightScaleValue.textContent = state.heightScale.toFixed(2);
+  gridDensityValue.textContent = String(state.gridDensity);
+  const lambda = wavelength();
+  wavelengthMetric.textContent = `${lambda.toFixed(2)} m`;
+  ratioMetric.textContent = (state.distance / lambda).toFixed(2);
+  speedMetric.textContent = `${waveSpeed.toFixed(2)} m/s`;
+  timeMetric.textContent = `${state.time.toFixed(2)} s`;
+  playButton.textContent = state.playing ? "Pause" : "Play";
+}
+
+function resetSimulation() { state.time = 0; state.playing = false; updateUI(); drawScene(); }
+frequencyInput.addEventListener("input", () => { state.frequency = Number(frequencyInput.value); updateUI(); drawScene(); });
+distanceInput.addEventListener("input", () => { state.distance = Number(distanceInput.value); updateUI(); drawScene(); });
+amplitudeInput.addEventListener("input", () => { state.amplitude = Number(amplitudeInput.value); updateUI(); drawScene(); });
+speedInput.addEventListener("input", () => { state.speed = Number(speedInput.value); updateUI(); });
+viewModeInput.addEventListener("change", () => { state.viewMode = viewModeInput.value; drawScene(); });
+heightScaleInput.addEventListener("input", () => { state.heightScale = Number(heightScaleInput.value); updateUI(); drawScene(); });
+gridDensityInput.addEventListener("input", () => { state.gridDensity = Number(gridDensityInput.value); updateUI(); drawScene(); });
+playButton.addEventListener("click", () => { state.playing = !state.playing; updateUI(); });
+resetButton.addEventListener("click", resetSimulation);
+cameraButton.addEventListener("click", () => { drawScene(); });
+
+let lastFrame = performance.now();
+function frame(now) {
+  const elapsed = Math.min(0.05, (now - lastFrame) / 1000);
+  lastFrame = now;
+  if (state.playing) { state.time += elapsed * state.speed; updateUI(); }
+  drawScene();
+  requestAnimationFrame(frame);
+}
+
+updateUI();
+drawScene();
+requestAnimationFrame(frame);
+window.addEventListener("resize", drawScene);
+</script>
+</body>
+</html>

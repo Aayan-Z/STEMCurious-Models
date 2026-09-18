@@ -1,0 +1,1587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pendulum Motion and Resonance</title>
+
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #111315;
+  --panel: rgba(27, 29, 32, 0.86);
+  --panel-soft: rgba(35, 38, 42, 0.72);
+  --border: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.2);
+  --text: #f0f1f2;
+  --muted: #969da5;
+  --accent: #e5e7eb;
+  --accent-soft: rgba(229, 231, 235, 0.12);
+  --danger: #d6a3a3;
+  --radius: 15px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.app {
+  width: min(1420px, calc(100% - 34px));
+  margin: 17px auto;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 18px 22px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: rgba(24, 26, 29, 0.8);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-mark {
+  width: 31px;
+  height: 31px;
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  color: var(--text);
+  font-size: 14px;
+  letter-spacing: -0.05em;
+}
+
+.brand-title {
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.brand-subtitle {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #9da7a0;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: 285px minmax(0, 1fr);
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.panel,
+.viewport {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  border-radius: var(--radius);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.panel {
+  padding: 18px;
+}
+
+.section + .section {
+  margin-top: 23px;
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 13px;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.section-heading span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.control {
+  margin-top: 13px;
+}
+
+.control:first-child {
+  margin-top: 0;
+}
+
+.control-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  color: #c6cbd0;
+  font-size: 12px;
+}
+
+.control-value {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+input[type="range"] {
+  width: 100%;
+  height: 4px;
+  margin: 0;
+  accent-color: #d9dde1;
+  cursor: pointer;
+}
+
+input[type="number"] {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  outline: none;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+input[type="number"]:focus {
+  border-color: var(--border-strong);
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 17px;
+}
+
+button {
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 10px 11px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.045);
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+button:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: var(--border-strong);
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+button.primary {
+  background: #e7e9eb;
+  color: #16181a;
+  border-color: #e7e9eb;
+}
+
+button.primary:hover {
+  background: #ffffff;
+}
+
+button.full {
+  grid-column: 1 / -1;
+}
+
+.viewport {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.viewport-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.viewport-title {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.viewport-subtitle {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.viewport-tools {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.tool-key {
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: #c7ccd1;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.scene-wrap {
+  position: relative;
+  height: 590px;
+  min-height: 400px;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.035), transparent 52%),
+    #151719;
+}
+
+#scene {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  cursor: grab;
+}
+
+#scene:active {
+  cursor: grabbing;
+}
+
+.scene-overlay {
+  position: absolute;
+  left: 17px;
+  bottom: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  pointer-events: none;
+}
+
+.overlay-chip {
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: #b8bec5;
+  background: rgba(16, 18, 20, 0.72);
+  font-size: 10px;
+  backdrop-filter: blur(10px);
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  border-top: 1px solid var(--border);
+  background: var(--border);
+}
+
+.metric {
+  min-width: 0;
+  padding: 16px;
+  background: rgba(25, 27, 30, 0.94);
+}
+
+.metric-label {
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.metric-value {
+  margin-top: 8px;
+  color: var(--text);
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-unit {
+  margin-left: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.bottom-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.chart-panel {
+  padding: 17px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.chart-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.chart-title {
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.chart-meta {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+#chart {
+  width: 100%;
+  height: 185px;
+  display: block;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.analysis {
+  display: grid;
+  gap: 11px;
+}
+
+.analysis-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.analysis-row:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.analysis-label {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.analysis-value {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.note {
+  margin-top: 15px;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.025);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+@media (max-width: 980px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .panel {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+  }
+
+  .section + .section {
+    margin-top: 0;
+  }
+
+  .actions {
+    margin-top: 13px;
+  }
+
+  .bottom-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .app {
+    width: min(100% - 20px, 1420px);
+    margin: 10px auto;
+  }
+
+  .topbar {
+    padding: 14px;
+  }
+
+  .status {
+    display: none;
+  }
+
+  .panel {
+    display: block;
+  }
+
+  .section + .section {
+    margin-top: 23px;
+  }
+
+  .scene-wrap {
+    height: 440px;
+  }
+
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .metric-value {
+    font-size: 19px;
+  }
+
+  .viewport-head {
+    align-items: flex-start;
+  }
+
+  .viewport-tools {
+    display: none;
+  }
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">∿</div>
+      <div>
+        <div class="brand-title">Pendulum Studio</div>
+        <div class="brand-subtitle">Motion, damping and resonance</div>
+      </div>
+    </div>
+
+    <div class="status">
+      <span class="status-dot"></span>
+      Interactive physical model
+    </div>
+  </header>
+
+  <main class="workspace">
+
+    <aside class="panel">
+
+      <section class="section">
+        <div class="section-heading">
+          Pendulum
+          <span>Parameters</span>
+        </div>
+
+        <div class="control">
+          <div class="control-label">
+            <label for="length">Length</label>
+            <span class="control-value" id="lengthValue">1.00 m</span>
+          </div>
+          <input id="length" type="range" min="0.35" max="2.5" step="0.01" value="1" />
+        </div>
+
+        <div class="control">
+          <div class="control-label">
+            <label for="gravity">Gravity</label>
+            <span class="control-value" id="gravityValue">9.81 m/s²</span>
+          </div>
+          <input id="gravity" type="range" min="1" max="20" step="0.01" value="9.81" />
+        </div>
+
+        <div class="control">
+          <div class="control-label">
+            <label for="angle">Initial angle</label>
+            <span class="control-value" id="angleValue">18°</span>
+          </div>
+          <input id="angle" type="range" min="0" max="55" step="1" value="18" />
+        </div>
+
+        <div class="control">
+          <div class="control-label">
+            <label for="damping">Damping</label>
+            <span class="control-value" id="dampingValue">0.025</span>
+          </div>
+          <input id="damping" type="range" min="0" max="0.25" step="0.001" value="0.025" />
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
+          Driving force
+          <span>Resonance</span>
+        </div>
+
+        <div class="control">
+          <div class="control-label">
+            <label for="driveStrength">Drive strength</label>
+            <span class="control-value" id="driveStrengthValue">0.12 m</span>
+          </div>
+          <input id="driveStrength" type="range" min="0" max="0.35" step="0.005" value="0.12" />
+        </div>
+
+        <div class="control">
+          <div class="control-label">
+            <label for="driveFrequency">Drive frequency</label>
+            <span class="control-value" id="driveFrequencyValue">0.50 Hz</span>
+          </div>
+          <input id="driveFrequency" type="range" min="0" max="2" step="0.01" value="0.5" />
+        </div>
+
+        <div class="actions">
+          <button class="primary" id="startButton">Start</button>
+          <button id="resetButton">Reset</button>
+          <button class="full" id="resonanceButton">Tune to resonance</button>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
+          View
+          <span>Camera</span>
+        </div>
+
+        <div class="actions">
+          <button id="cameraButton">Reset camera</button>
+          <button id="trailButton">Hide trail</button>
+        </div>
+
+        <div class="note">
+          Drag to rotate the 3D model. Shift-drag or right-drag to pan.
+          Use the mouse wheel to zoom.
+        </div>
+      </section>
+
+    </aside>
+
+    <section class="viewport">
+
+      <div class="viewport-head">
+        <div>
+          <div class="viewport-title">Three-dimensional pendulum</div>
+          <div class="viewport-subtitle">The trail is generated from the actual bob trajectory.</div>
+        </div>
+
+        <div class="viewport-tools">
+          <span class="tool-key">Drag</span> Rotate
+          <span class="tool-key">Shift</span> Pan
+          <span class="tool-key">Wheel</span> Zoom
+        </div>
+      </div>
+
+      <div class="scene-wrap">
+        <canvas id="scene"></canvas>
+
+        <div class="scene-overlay">
+          <div class="overlay-chip" id="motionState">Paused</div>
+          <div class="overlay-chip" id="trajectoryState">Trail enabled</div>
+        </div>
+      </div>
+
+      <div class="metrics">
+        <div class="metric">
+          <div class="metric-label">Natural frequency</div>
+          <div class="metric-value" id="naturalFrequency">0.50<span class="metric-unit">Hz</span></div>
+        </div>
+
+        <div class="metric">
+          <div class="metric-label">Driving frequency</div>
+          <div class="metric-value" id="measuredDriveFrequency">0.50<span class="metric-unit">Hz</span></div>
+        </div>
+
+        <div class="metric">
+          <div class="metric-label">Amplitude</div>
+          <div class="metric-value" id="amplitude">0.00<span class="metric-unit">m</span></div>
+        </div>
+
+        <div class="metric">
+          <div class="metric-label">Simulation time</div>
+          <div class="metric-value" id="timeValue">0.0<span class="metric-unit">s</span></div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <section class="bottom-grid">
+
+    <div class="chart-panel">
+      <div class="chart-heading">
+        <div class="chart-title">Angular displacement</div>
+        <div class="chart-meta">Recent motion history</div>
+      </div>
+      <canvas id="chart"></canvas>
+    </div>
+
+    <div class="chart-panel">
+      <div class="chart-heading">
+        <div class="chart-title">Model analysis</div>
+        <div class="chart-meta">Live values</div>
+      </div>
+
+      <div class="analysis">
+        <div class="analysis-row">
+          <div class="analysis-label">Current angle</div>
+          <div class="analysis-value" id="currentAngle">0.00°</div>
+        </div>
+
+        <div class="analysis-row">
+          <div class="analysis-label">Angular velocity</div>
+          <div class="analysis-value" id="angularVelocity">0.00 rad/s</div>
+        </div>
+
+        <div class="analysis-row">
+          <div class="analysis-label">Drive displacement</div>
+          <div class="analysis-value" id="driveDisplacement">0.00 m</div>
+        </div>
+
+        <div class="analysis-row">
+          <div class="analysis-label">Response condition</div>
+          <div class="analysis-value" id="responseCondition">Free oscillation</div>
+        </div>
+
+        <div class="analysis-row">
+          <div class="analysis-label">Camera distance</div>
+          <div class="analysis-value" id="cameraDistance">5.00</div>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+</div>
+
+<script>
+"use strict";
+
+/* -------------------------------------------------------
+   DOM
+------------------------------------------------------- */
+
+const scene = document.getElementById("scene");
+const sceneContext = scene.getContext("2d");
+
+const chart = document.getElementById("chart");
+const chartContext = chart.getContext("2d");
+
+const lengthInput = document.getElementById("length");
+const gravityInput = document.getElementById("gravity");
+const angleInput = document.getElementById("angle");
+const dampingInput = document.getElementById("damping");
+const driveStrengthInput = document.getElementById("driveStrength");
+const driveFrequencyInput = document.getElementById("driveFrequency");
+
+const lengthValue = document.getElementById("lengthValue");
+const gravityValue = document.getElementById("gravityValue");
+const angleValue = document.getElementById("angleValue");
+const dampingValue = document.getElementById("dampingValue");
+const driveStrengthValue = document.getElementById("driveStrengthValue");
+const driveFrequencyValue = document.getElementById("driveFrequencyValue");
+
+const startButton = document.getElementById("startButton");
+const resetButton = document.getElementById("resetButton");
+const resonanceButton = document.getElementById("resonanceButton");
+const cameraButton = document.getElementById("cameraButton");
+const trailButton = document.getElementById("trailButton");
+
+const motionState = document.getElementById("motionState");
+const trajectoryState = document.getElementById("trajectoryState");
+
+const naturalFrequency = document.getElementById("naturalFrequency");
+const measuredDriveFrequency = document.getElementById("measuredDriveFrequency");
+const amplitudeValue = document.getElementById("amplitude");
+const timeValue = document.getElementById("timeValue");
+
+const currentAngle = document.getElementById("currentAngle");
+const angularVelocity = document.getElementById("angularVelocity");
+const driveDisplacement = document.getElementById("driveDisplacement");
+const responseCondition = document.getElementById("responseCondition");
+const cameraDistance = document.getElementById("cameraDistance");
+
+/* -------------------------------------------------------
+   Model state
+------------------------------------------------------- */
+
+const model = {
+  length: 1,
+  gravity: 9.81,
+  initialAngle: 18 * Math.PI / 180,
+  damping: 0.025,
+  driveStrength: 0.12,
+  driveFrequency: 0.5,
+
+  time: 0,
+  theta: 18 * Math.PI / 180,
+  omega: 0,
+
+  running: false,
+  showTrail: true,
+
+  history: [],
+  trail: []
+};
+
+/* -------------------------------------------------------
+   Camera state
+------------------------------------------------------- */
+
+const camera = {
+  yaw: -0.58,
+  pitch: -0.25,
+  distance: 5,
+  panX: 0,
+  panY: 0
+};
+
+let pointer = {
+  active: false,
+  mode: "rotate",
+  x: 0,
+  y: 0
+};
+
+/* -------------------------------------------------------
+   Utility
+------------------------------------------------------- */
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function format(value, digits = 2) {
+  return Number(value).toFixed(digits);
+}
+
+function setCanvasResolution(canvas, context) {
+  const rect = canvas.getBoundingClientRect();
+  const ratio = Math.min(window.devicePixelRatio || 1, 2);
+
+  const width = Math.max(1, Math.floor(rect.width * ratio));
+  const height = Math.max(1, Math.floor(rect.height * ratio));
+
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+  }
+
+  context.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+  return {
+    width: rect.width,
+    height: rect.height
+  };
+}
+
+function naturalFrequencyValue() {
+  return Math.sqrt(model.gravity / model.length) / (2 * Math.PI);
+}
+
+function driveDisplacementValue() {
+  return model.driveStrength *
+    Math.sin(2 * Math.PI * model.driveFrequency * model.time);
+}
+
+/* -------------------------------------------------------
+   Controls
+------------------------------------------------------- */
+
+function updateControlLabels() {
+  lengthValue.textContent = `${format(model.length)} m`;
+  gravityValue.textContent = `${format(model.gravity, 2)} m/s²`;
+  angleValue.textContent = `${Math.round(model.initialAngle * 180 / Math.PI)}°`;
+  dampingValue.textContent = format(model.damping, 3);
+  driveStrengthValue.textContent = `${format(model.driveStrength)} m`;
+  driveFrequencyValue.textContent = `${format(model.driveFrequency)} Hz`;
+}
+
+function updateMetrics() {
+  const frequency = naturalFrequencyValue();
+  const drive = model.driveFrequency;
+  const amplitude = model.trail.length
+    ? Math.max(...model.trail.map(point => Math.abs(point.theta)))
+    : Math.abs(model.theta);
+
+  naturalFrequency.innerHTML =
+    `${format(frequency)}<span class="metric-unit">Hz</span>`;
+
+  measuredDriveFrequency.innerHTML =
+    `${format(drive)}<span class="metric-unit">Hz</span>`;
+
+  amplitudeValue.innerHTML =
+    `${format(amplitude)}<span class="metric-unit">rad</span>`;
+
+  timeValue.innerHTML =
+    `${format(model.time, 1)}<span class="metric-unit">s</span>`;
+
+  currentAngle.textContent =
+    `${format(model.theta * 180 / Math.PI)}°`;
+
+  angularVelocity.textContent =
+    `${format(model.omega)} rad/s`;
+
+  driveDisplacement.textContent =
+    `${format(driveDisplacementValue())} m`;
+
+  const ratio = drive / Math.max(frequency, 0.0001);
+
+  if (model.driveStrength === 0) {
+    responseCondition.textContent = "Free oscillation";
+  } else if (Math.abs(ratio - 1) < 0.08) {
+    responseCondition.textContent = "Near resonance";
+  } else if (ratio < 1) {
+    responseCondition.textContent = "Below resonance";
+  } else {
+    responseCondition.textContent = "Above resonance";
+  }
+
+  cameraDistance.textContent = format(camera.distance);
+}
+
+function resetModel() {
+  model.time = 0;
+  model.theta = model.initialAngle;
+  model.omega = 0;
+  model.history = [];
+  model.trail = [];
+
+  recordHistory();
+  updateMetrics();
+}
+
+function setRunning(value) {
+  model.running = value;
+  startButton.textContent = value ? "Pause" : "Start";
+  motionState.textContent = value ? "Running" : "Paused";
+}
+
+lengthInput.addEventListener("input", () => {
+  model.length = Number(lengthInput.value);
+  updateControlLabels();
+  updateMetrics();
+});
+
+gravityInput.addEventListener("input", () => {
+  model.gravity = Number(gravityInput.value);
+  updateControlLabels();
+  updateMetrics();
+});
+
+angleInput.addEventListener("input", () => {
+  model.initialAngle = Number(angleInput.value) * Math.PI / 180;
+
+  if (!model.running) {
+    model.theta = model.initialAngle;
+    model.omega = 0;
+    model.trail = [];
+    model.history = [];
+    recordHistory();
+  }
+
+  updateControlLabels();
+  updateMetrics();
+});
+
+dampingInput.addEventListener("input", () => {
+  model.damping = Number(dampingInput.value);
+  updateControlLabels();
+  updateMetrics();
+});
+
+driveStrengthInput.addEventListener("input", () => {
+  model.driveStrength = Number(driveStrengthInput.value);
+  updateControlLabels();
+  updateMetrics();
+});
+
+driveFrequencyInput.addEventListener("input", () => {
+  model.driveFrequency = Number(driveFrequencyInput.value);
+  updateControlLabels();
+  updateMetrics();
+});
+
+startButton.addEventListener("click", () => {
+  setRunning(!model.running);
+});
+
+resetButton.addEventListener("click", () => {
+  setRunning(false);
+  resetModel();
+});
+
+resonanceButton.addEventListener("click", () => {
+  model.driveFrequency = naturalFrequencyValue();
+  driveFrequencyInput.value = model.driveFrequency.toFixed(2);
+  updateControlLabels();
+  updateMetrics();
+});
+
+cameraButton.addEventListener("click", () => {
+  camera.yaw = -0.58;
+  camera.pitch = -0.25;
+  camera.distance = 5;
+  camera.panX = 0;
+  camera.panY = 0;
+  updateMetrics();
+});
+
+trailButton.addEventListener("click", () => {
+  model.showTrail = !model.showTrail;
+  trailButton.textContent = model.showTrail ? "Hide trail" : "Show trail";
+  trajectoryState.textContent =
+    model.showTrail ? "Trail enabled" : "Trail hidden";
+});
+
+/* -------------------------------------------------------
+   Physics
+------------------------------------------------------- */
+
+/*
+  The pendulum is modeled with a driven nonlinear equation:
+
+  θ'' =
+    -(g/L) sin(θ)
+    - damping θ'
+    -(a_drive/L) cos(θ)
+
+  The support acceleration is generated by the derivative
+  of a sinusoidal horizontal support displacement.
+*/
+
+function acceleration(theta, omega, time) {
+  const driveAngularFrequency = 2 * Math.PI * model.driveFrequency;
+
+  const supportAcceleration =
+    -model.driveStrength *
+    driveAngularFrequency *
+    driveAngularFrequency *
+    Math.sin(driveAngularFrequency * time);
+
+  return (
+    -(model.gravity / model.length) * Math.sin(theta) -
+    model.damping * omega -
+    (supportAcceleration / model.length) * Math.cos(theta)
+  );
+}
+
+function integrate(dt) {
+  /*
+    Fourth-order Runge-Kutta integration provides a much
+    smoother and more stable trajectory than Euler integration.
+  */
+
+  const t = model.time;
+  const theta = model.theta;
+  const omega = model.omega;
+
+  const k1Theta = omega;
+  const k1Omega = acceleration(theta, omega, t);
+
+  const k2Theta = omega + k1Omega * dt * 0.5;
+  const k2Omega = acceleration(
+    theta + k1Theta * dt * 0.5,
+    omega + k1Omega * dt * 0.5,
+    t + dt * 0.5
+  );
+
+  const k3Theta = omega + k2Omega * dt * 0.5;
+  const k3Omega = acceleration(
+    theta + k2Theta * dt * 0.5,
+    omega + k2Omega * dt * 0.5,
+    t + dt * 0.5
+  );
+
+  const k4Theta = omega + k3Omega * dt;
+  const k4Omega = acceleration(
+    theta + k3Theta * dt,
+    omega + k3Omega * dt,
+    t + dt
+  );
+
+  model.theta += (
+    k1Theta +
+    2 * k2Theta +
+    2 * k3Theta +
+    k4Theta
+  ) * dt / 6;
+
+  model.omega += (
+    k1Omega +
+    2 * k2Omega +
+    2 * k3Omega +
+    k4Omega
+  ) * dt / 6;
+
+  model.time += dt;
+}
+
+function recordHistory() {
+  model.history.push({
+    time: model.time,
+    theta: model.theta
+  });
+
+  model.trail.push({
+    time: model.time,
+    theta: model.theta
+  });
+
+  if (model.history.length > 500) {
+    model.history.shift();
+  }
+
+  if (model.trail.length > 260) {
+    model.trail.shift();
+  }
+}
+
+/* -------------------------------------------------------
+   3D projection
+------------------------------------------------------- */
+
+function rotatePoint(point) {
+  const cosYaw = Math.cos(camera.yaw);
+  const sinYaw = Math.sin(camera.yaw);
+
+  const x1 = point.x * cosYaw - point.z * sinYaw;
+  const z1 = point.x * sinYaw + point.z * cosYaw;
+
+  const cosPitch = Math.cos(camera.pitch);
+  const sinPitch = Math.sin(camera.pitch);
+
+  const y2 = point.y * cosPitch - z1 * sinPitch;
+  const z2 = point.y * sinPitch + z1 * cosPitch;
+
+  return {
+    x: x1,
+    y: y2,
+    z: z2
+  };
+}
+
+function project(point, width, height, scale) {
+  const rotated = rotatePoint(point);
+  const perspective = scale / (scale + rotated.z + camera.distance);
+
+  return {
+    x: width * 0.5 + camera.panX + rotated.x * perspective * scale,
+    y: height * 0.5 + camera.panY - rotated.y * perspective * scale,
+    depth: rotated.z
+  };
+}
+
+function line3D(context, a, b, width, height, scale, color, lineWidth = 1) {
+  const p1 = project(a, width, height, scale);
+  const p2 = project(b, width, height, scale);
+
+  context.beginPath();
+  context.moveTo(p1.x, p1.y);
+  context.lineTo(p2.x, p2.y);
+  context.strokeStyle = color;
+  context.lineWidth = lineWidth;
+  context.stroke();
+}
+
+function drawSphere(context, point, radius, width, height, scale, color) {
+  const projected = project(point, width, height, scale);
+  const perspective = scale / (scale + projected.depth + camera.distance);
+  const r = radius * perspective * scale;
+
+  const gradient = context.createRadialGradient(
+    projected.x - r * 0.35,
+    projected.y - r * 0.4,
+    r * 0.1,
+    projected.x,
+    projected.y,
+    r
+  );
+
+  gradient.addColorStop(0, "#ffffff");
+  gradient.addColorStop(0.35, color);
+  gradient.addColorStop(1, "#555b62");
+
+  context.beginPath();
+  context.arc(projected.x, projected.y, Math.max(1, r), 0, Math.PI * 2);
+  context.fillStyle = gradient;
+  context.fill();
+
+  context.strokeStyle = "rgba(255,255,255,0.28)";
+  context.lineWidth = 1;
+  context.stroke();
+}
+
+/* -------------------------------------------------------
+   Scene rendering
+------------------------------------------------------- */
+
+function drawGrid(context, width, height, scale) {
+  const gridSize = 3.2;
+  const divisions = 16;
+
+  for (let i = -divisions; i <= divisions; i++) {
+    const position = (i / divisions) * gridSize;
+
+    line3D(
+      context,
+      { x: -gridSize, y: -1.15, z: position },
+      { x: gridSize, y: -1.15, z: position },
+      width,
+      height,
+      scale,
+      "rgba(255,255,255,0.045)",
+      1
+    );
+
+    line3D(
+      context,
+      { x: position, y: -1.15, z: -gridSize },
+      { x: position, y: -1.15, z: gridSize },
+      width,
+      height,
+      scale,
+      "rgba(255,255,255,0.045)",
+      1
+    );
+  }
+}
+
+function getPendulumPoints() {
+  const driveX = driveDisplacementValue();
+
+  const pivot = {
+    x: driveX,
+    y: 1.35,
+    z: 0
+  };
+
+  const bob = {
+    x: driveX + Math.sin(model.theta) * model.length,
+    y: 1.35 - Math.cos(model.theta) * model.length,
+    z: 0
+  };
+
+  return { pivot, bob };
+}
+
+function drawTrail(context, width, height, scale) {
+  if (!model.showTrail || model.trail.length < 2) {
+    return;
+  }
+
+  context.beginPath();
+
+  for (let i = 0; i < model.trail.length; i++) {
+    const item = model.trail[i];
+    const driveX =
+      model.driveStrength *
+      Math.sin(2 * Math.PI * model.driveFrequency * item.time);
+
+    const point = {
+      x: driveX + Math.sin(item.theta) * model.length,
+      y: 1.35 - Math.cos(item.theta) * model.length,
+      z: 0
+    };
+
+    const projected = project(point, width, height, scale);
+
+    if (i === 0) {
+      context.moveTo(projected.x, projected.y);
+    } else {
+      context.lineTo(projected.x, projected.y);
+    }
+  }
+
+  context.strokeStyle = "rgba(220,225,230,0.48)";
+  context.lineWidth = 1.5;
+  context.stroke();
+}
+
+function drawScene() {
+  const dimensions = setCanvasResolution(scene, sceneContext);
+  const width = dimensions.width;
+  const height = dimensions.height;
+
+  sceneContext.clearRect(0, 0, width, height);
+
+  const scale = Math.min(width, height) * 0.36;
+
+  drawGrid(sceneContext, width, height, scale);
+
+  const { pivot, bob } = getPendulumPoints();
+
+  const ceilingLeft = {
+    x: pivot.x - 1.1,
+    y: pivot.y + 0.08,
+    z: 0
+  };
+
+  const ceilingRight = {
+    x: pivot.x + 1.1,
+    y: pivot.y + 0.08,
+    z: 0
+  };
+
+  line3D(
+    sceneContext,
+    ceilingLeft,
+    ceilingRight,
+    width,
+    height,
+    scale,
+    "rgba(235,238,241,0.75)",
+    3
+  );
+
+  line3D(
+    sceneContext,
+    { x: pivot.x - 0.65, y: pivot.y + 0.08, z: 0 },
+    { x: pivot.x - 0.65, y: pivot.y - 0.03, z: 0 },
+    width,
+    height,
+    scale,
+    "rgba(235,238,241,0.35)",
+    2
+  );
+
+  line3D(
+    sceneContext,
+    { x: pivot.x + 0.65, y: pivot.y + 0.08, z: 0 },
+    { x: pivot.x + 0.65, y: pivot.y - 0.03, z: 0 },
+    width,
+    height,
+    scale,
+    "rgba(235,238,241,0.35)",
+    2
+  );
+
+  drawTrail(sceneContext, width, height, scale);
+
+  line3D(
+    sceneContext,
+    pivot,
+    bob,
+    width,
+    height,
+    scale,
+    "#c8cdd2",
+    2.5
+  );
+
+  drawSphere(
+    sceneContext,
+    pivot,
+    0.09,
+    width,
+    height,
+    scale,
+    "#c4c9ce"
+  );
+
+  drawSphere(
+    sceneContext,
+    bob,
+    0.16,
+    width,
+    height,
+    scale,
+    "#e4e7ea"
+  );
+
+  const bobProjection = project(bob, width, height, scale);
+
+  sceneContext.beginPath();
+  sceneContext.arc(
+    bobProjection.x,
+    bobProjection.y,
+    3,
+    0,
+    Math.PI * 2
+  );
+  sceneContext.fillStyle = "#ffffff";
+  sceneContext.fill();
+}
+
+/* -------------------------------------------------------
+   Chart rendering
+------------------------------------------------------- */
+
+function drawChart() {
+  const dimensions = setCanvasResolution(chart, chartContext);
+  const width = dimensions.width;
+  const height = dimensions.height;
+
+  chartContext.clearRect(0, 0, width, height);
+
+  const padding = {
+    left: 36,
+    right: 13,
+    top: 13,
+    bottom: 25
+  };
+
+  const plotWidth = width - padding.left - padding.right;
+  const plotHeight = height - padding.top - padding.bottom;
+
+  for (let i = 0; i <= 4; i++) {
+    const y = padding.top + plotHeight * i / 4;
+
+    chartContext.beginPath();
+    chartContext.moveTo(padding.left, y);
+    chartContext.lineTo(width - padding.right, y);
+    chartContext.strokeStyle = "rgba(255,255,255,0.08)";
+    chartContext.lineWidth = 1;
+    chartContext.stroke();
+  }
+
+  chartContext.fillStyle = "#858c94";
+  chartContext.font = "10px system-ui";
+  chartContext.textAlign = "right";
+
+  chartContext.fillText("+1", padding.left - 8, padding.top + 4);
+  chartContext.fillText("0", padding.left - 8, padding.top + plotHeight / 2 + 3);
+  chartContext.fillText("-1", padding.left - 8, height - padding.bottom + 3);
+
+  if (model.history.length < 2) {
+    return;
+  }
+
+  const values = model.history.map(item => item.theta);
+  const maximum = Math.max(
+    0.2,
+    ...values.map(value => Math.abs(value))
+  );
+
+  chartContext.beginPath();
+
+  model.history.forEach((item, index) => {
+    const x =
+      padding.left +
+      index / Math.max(1, model.history.length - 1) * plotWidth;
+
+    const y =
+      padding.top +
+      plotHeight * 0.5 -
+      (item.theta / maximum) * plotHeight * 0.45;
+
+    if (index === 0) {
+      chartContext.moveTo(x, y);
+    } else {
+      chartContext.lineTo(x, y);
+    }
+  });
+
+  chartContext.strokeStyle = "#dfe3e7";
+  chartContext.lineWidth = 1.6;
+  chartContext.stroke();
+
+  chartContext.fillStyle = "#858c94";
+  chartContext.textAlign = "left";
+  chartContext.fillText(
+    `${format(-maximum, 2)} rad`,
+    padding.left,
+    height - 7
+  );
+
+  chartContext.textAlign = "right";
+  chartContext.fillText(
+    `${format(maximum, 2)} rad`,
+    width - padding.right,
+    height - 7
+  );
+}
+
+/* -------------------------------------------------------
+   Mouse camera controls
+------------------------------------------------------- */
+
+scene.addEventListener("pointerdown", event => {
+  pointer.active = true;
+  pointer.x = event.clientX;
+  pointer.y = event.clientY;
+
+  if (event.button === 2 || event.shiftKey) {
+    pointer.mode = "pan";
+  } else {
+    pointer.mode = "rotate";
+  }
+
+  scene.setPointerCapture(event.pointerId);
+});
+
+scene.addEventListener("pointermove", event => {
+  if (!pointer.active) {
+    return;
+  }
+
+  const dx = event.clientX - pointer.x;
+  const dy = event.clientY - pointer.y;
+
+  pointer.x = event.clientX;
+  pointer.y = event.clientY;
+
+  if (pointer.mode === "rotate") {
+    camera.yaw += dx * 0.008;
+    camera.pitch += dy * 0.008;
+    camera.pitch = clamp(camera.pitch, -1.45, 1.45);
+  } else {
+    camera.panX += dx;
+    camera.panY += dy;
+  }
+
+  updateMetrics();
+});
+
+scene.addEventListener("pointerup", event => {
+  pointer.active = false;
+  scene.releasePointerCapture(event.pointerId);
+});
+
+scene.addEventListener("pointercancel", () => {
+  pointer.active = false;
+});
+
+scene.addEventListener("contextmenu", event => {
+  event.preventDefault();
+});
+
+scene.addEventListener("wheel", event => {
+  event.preventDefault();
+
+  camera.distance += event.deltaY * 0.0025;
+  camera.distance = clamp(camera.distance, 2.4, 11);
+
+  updateMetrics();
+}, { passive: false });
+
+/* -------------------------------------------------------
+   Animation loop
+------------------------------------------------------- */
+
+let lastFrame = performance.now();
+let accumulator = 0;
+
+const fixedStep = 1 / 240;
+
+function frame(now) {
+  const elapsed = Math.min(0.05, (now - lastFrame) / 1000);
+  lastFrame = now;
+
+  if (model.running) {
+    accumulator += elapsed;
+
+    while (accumulator >= fixedStep) {
+      integrate(fixedStep);
+      accumulator -= fixedStep;
+
+      if (
+        model.time -
+        (model.history.length ? model.history[model.history.length - 1].time : 0)
+        >= 1 / 60
+      ) {
+        recordHistory();
+      }
+    }
+  }
+
+  drawScene();
+  drawChart();
+  updateMetrics();
+
+  requestAnimationFrame(frame);
+}
+
+/* -------------------------------------------------------
+   Initialization
+------------------------------------------------------- */
+
+updateControlLabels();
+resetModel();
+drawScene();
+drawChart();
+updateMetrics();
+requestAnimationFrame(frame);
+
+window.addEventListener("resize", () => {
+  drawScene();
+  drawChart();
+});
+</script>
+</body>
+</html>

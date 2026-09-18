@@ -1,0 +1,653 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fractional Distillation · Interactive Model</title>
+<style>
+:root{
+ --bg:#050608;
+ --panel:rgba(24,26,31,.72);
+ --glass:rgba(255,255,255,.055);
+ --glass2:rgba(255,255,255,.09);
+ --line:rgba(255,255,255,.12);
+ --text:#f5f5f7;
+ --muted:#92959e;
+ --blue:#8ebaff;
+ --hot:#ff9b58;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{overflow-x:hidden}
+button,input{font:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid #8ebaff;outline-offset:3px}
+.app{min-height:100vh;display:grid;grid-template-columns:290px minmax(0,1fr);gap:16px;padding:16px}
+.glass{background:linear-gradient(135deg,rgba(255,255,255,.09),rgba(255,255,255,.025));
+border:1px solid var(--line);box-shadow:inset 0 1px rgba(255,255,255,.07),0 20px 70px #0008;
+backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px)}
+.sidebar{border-radius:28px;padding:20px;display:flex;flex-direction:column;gap:20px;min-width:0}
+.eyebrow{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:#999da6;font-weight:700}
+h1{font-size:24px;line-height:1.08;letter-spacing:-.04em;margin:9px 0 10px}
+.intro{font-size:12px;line-height:1.6;color:var(--muted);margin:0}
+.rule{height:1px;background:var(--line)}
+.section-title{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#858a94;font-weight:700;margin-bottom:12px}
+button{border:1px solid var(--line);color:var(--text);background:var(--glass2);border-radius:13px}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.controls button{height:42px;font-size:12px}
+.controls .main{grid-column:1/-1;background:#f4f4f5;color:#090a0c;border-color:#fff;font-weight:700}
+.row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.value{font-size:12px;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:#dce8ff;cursor:pointer}
+.timeline{margin-top:12px}
+.timeline-label{font-size:11px;color:#8e929b;display:flex;justify-content:space-between;margin-bottom:8px}
+.speed{display:flex;gap:6px}
+.speed button{flex:1;height:34px;font-size:11px}
+.speed button.active{background:#e8edf6;color:#111;border-color:#fff}
+.info{border:1px solid var(--line);border-radius:17px;padding:13px;background:rgba(255,255,255,.025)}
+.info strong{display:block;font-size:12px;margin-bottom:5px}
+.info p{font-size:11px;line-height:1.55;color:#a3a6ae;margin:0}
+.legend{display:grid;gap:9px}
+.legend-item{display:flex;align-items:center;gap:8px;font-size:11px;color:#a2a5ae}
+.dot{width:9px;height:9px;border-radius:50%;flex:none}
+.sidebar-footer{margin-top:auto;font-size:10px;color:#696e78;line-height:1.6}
+.main{min-width:0;display:flex;flex-direction:column;gap:16px}
+.stage{border-radius:28px;overflow:hidden;position:relative;min-height:calc(100vh - 32px);display:flex;flex-direction:column}
+.stage-top{padding:19px 24px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:20px;align-items:center}
+.stage-title{font-size:13px;font-weight:650}
+.stage-sub{font-size:11px;color:#8b909a;margin-top:5px}
+.badge{font-size:10px;color:#a6acb7;border:1px solid var(--line);border-radius:99px;padding:8px 11px;white-space:nowrap}
+.scene{position:relative;flex:1;min-height:650px;overflow:hidden;background:
+radial-gradient(ellipse at 48% 45%,rgba(30,50,73,.14),transparent 60%),
+radial-gradient(ellipse at 50% 100%,rgba(143,68,25,.09),transparent 50%)}
+.scene svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.scene-label{position:absolute;left:22px;top:20px;color:#696e79;font-size:10px;letter-spacing:.07em;text-transform:uppercase}
+.scene-label.right{left:auto;right:22px;text-align:right}
+.legend-scene{position:absolute;bottom:18px;left:24px;right:24px;display:flex;justify-content:center;gap:18px;flex-wrap:wrap;font-size:10px;color:#858b96}
+.legend-scene span{display:flex;align-items:center;gap:6px}
+.legend-scene i{width:7px;height:7px;border-radius:50%}
+.detail{border-top:1px solid var(--line);padding:18px 24px;background:rgba(0,0,0,.22)}
+.detail-head{display:flex;justify-content:space-between;align-items:flex-start;gap:15px}
+.detail-name{font-size:21px;font-weight:700;letter-spacing:-.035em;margin:5px 0}
+.detail-range{font-size:11px;color:#8d929c}
+.detail-body{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px}
+.detail p{font-size:12px;color:#a2a6af;line-height:1.6;margin:0}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat{padding:11px;border:1px solid var(--line);border-radius:13px;background:rgba(255,255,255,.025)}
+.stat small{display:block;color:#777d87;font-size:9px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.stat b{font-size:12px}
+.use{margin-top:12px;display:flex;gap:6px;flex-wrap:wrap}
+.use span{font-size:10px;border:1px solid var(--line);border-radius:8px;padding:6px 8px;color:#b0b4bd}
+@media(max-width:950px){
+ .app{grid-template-columns:230px minmax(0,1fr);padding:10px;gap:10px}
+ .sidebar{padding:15px;border-radius:20px}
+ h1{font-size:20px}
+ .stage{border-radius:22px}
+}
+@media(max-width:680px){
+ .app{grid-template-columns:1fr}
+ .sidebar{order:0}
+ .stage{min-height:0}
+ .scene{min-height:570px}
+ .stage-top{padding:15px}
+ .detail{padding:15px}
+ .detail-body{grid-template-columns:1fr}
+ .sidebar-footer{margin-top:0}
+}
+@media(prefers-reduced-motion:reduce){
+ *{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar glass">
+ <div>
+  <div class="eyebrow">Chemistry · Process model</div>
+  <h1>Fractional<br>distillation.</h1>
+  <p class="intro">Explore how crude petroleum separates into useful fractions through boiling, rising vapour and condensation.</p>
+ </div>
+
+ <div class="rule"></div>
+
+ <section>
+  <div class="section-title">Simulation controls</div>
+  <div class="controls">
+   <button class="main" id="play">▶ Start simulation</button>
+   <button id="restart">↺ Restart</button>
+   <button id="reset">Reset</button>
+  </div>
+  <div class="timeline">
+   <div class="timeline-label"><span>Process time</span><span id="time">0:00</span></div>
+   <input id="seek" type="range" min="0" max="100" value="0" aria-label="Simulation progress">
+   <div class="timeline-label"><span>Beginning</span><span id="pct">0%</span><span>End</span></div>
+  </div>
+ </section>
+
+ <section>
+  <div class="section-title">Playback speed</div>
+  <div class="speed">
+   <button data-speed=".5">0.5×</button>
+   <button data-speed="1" class="active">1×</button>
+   <button data-speed="2">2×</button>
+  </div>
+ </section>
+
+ <div class="rule"></div>
+
+ <section>
+  <div class="section-title">Current process</div>
+  <div class="info">
+   <strong id="process">Ready to begin</strong>
+   <p id="processText">Start the model to see crude petroleum move into the furnace.</p>
+  </div>
+ </section>
+
+ <section>
+  <div class="section-title">Visual key</div>
+  <div class="legend">
+   <div class="legend-item"><i class="dot" style="background:#a9c9ef"></i>Cooling vapour</div>
+   <div class="legend-item"><i class="dot" style="background:#e3ae69"></i>Condensing hydrocarbons</div>
+   <div class="legend-item"><i class="dot" style="background:#d98243"></i>Hot crude / vapour</div>
+   <div class="legend-item"><i class="dot" style="background:#71604e"></i>Collected liquid</div>
+  </div>
+ </section>
+
+ <div class="sidebar-footer">
+  Educational model · approximate refinery conditions.<br>
+  Actual crude petroleum contains many hydrocarbons and real separation is continuous.
+ </div>
+</aside>
+
+<main class="main">
+<section class="stage glass">
+ <div class="stage-top">
+  <div>
+   <div class="eyebrow">Live cross-section</div>
+   <div class="stage-title" id="stageTitle">Fractionating column</div>
+   <div class="stage-sub">Hot at the bottom · progressively cooler toward the top</div>
+  </div>
+  <div class="badge" id="status">Ready</div>
+ </div>
+
+ <div class="scene">
+  <div class="scene-label">Temperature profile</div>
+  <div class="scene-label right">Continuous separation</div>
+
+  <svg id="svg" viewBox="0 0 900 680" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Animated cross-section of a fractionating column with vapour rising, condensation on trays, liquid flowing downward and receivers filling.">
+   <defs>
+    <linearGradient id="columnMetal" x1="0" x2="1">
+     <stop offset="0" stop-color="#424750" stop-opacity=".55"/>
+     <stop offset=".25" stop-color="#d5dae3" stop-opacity=".20"/>
+     <stop offset=".52" stop-color="#ffffff" stop-opacity=".09"/>
+     <stop offset=".82" stop-color="#727985" stop-opacity=".35"/>
+     <stop offset="1" stop-color="#20242b" stop-opacity=".65"/>
+    </linearGradient>
+    <linearGradient id="temp" x1="0" y1="1" x2="0" y2="0">
+     <stop offset="0" stop-color="#d66b35"/>
+     <stop offset=".32" stop-color="#d6a15f"/>
+     <stop offset=".65" stop-color="#9eb7da"/>
+     <stop offset="1" stop-color="#6f9edc"/>
+    </linearGradient>
+    <linearGradient id="crude" x1="0" y1="0" x2="1" y2="0">
+     <stop stop-color="#4a3327"/>
+     <stop offset=".5" stop-color="#a56c3c"/>
+     <stop offset="1" stop-color="#4d3527"/>
+    </linearGradient>
+    <linearGradient id="vapour" x1="0" y1="1" x2="0" y2="0">
+     <stop stop-color="#e69a54" stop-opacity=".35"/>
+     <stop offset="1" stop-color="#b4d4fa" stop-opacity=".10"/>
+    </linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="3"/></filter>
+    <clipPath id="towerClip">
+     <rect x="335" y="55" width="230" height="530" rx="48"/>
+    </clipPath>
+   </defs>
+
+   <!-- Temperature gradient behind the tower -->
+   <rect x="320" y="55" width="260" height="530" rx="55" fill="url(#temp)" opacity=".07"/>
+   <rect x="315" y="55" width="5" height="530" rx="2.5" fill="url(#temp)" opacity=".8"/>
+   <g fill="#858b96" font-size="10" text-anchor="end">
+    <text x="300" y="70">25°C</text>
+    <text x="300" y="170">100°C</text>
+    <text x="300" y="275">180°C</text>
+    <text x="300" y="380">250°C</text>
+    <text x="300" y="485">320°C</text>
+    <text x="300" y="585">370°C+</text>
+   </g>
+   <g stroke="#ffffff" stroke-opacity=".09" stroke-dasharray="3 8">
+    <path d="M305 70H585M305 170H585M305 275H585M305 380H585M305 485H585M305 585H585"/>
+   </g>
+
+   <!-- Feed tank -->
+   <g id="feed">
+    <rect x="30" y="492" width="118" height="118" rx="18" fill="url(#columnMetal)" stroke="#ffffff" stroke-opacity=".20"/>
+    <rect x="36" y="535" width="106" height="69" rx="12" fill="url(#crude)"/>
+    <path d="M36 535Q89 522 142 535" fill="none" stroke="#d9a16c" stroke-opacity=".5"/>
+    <text x="89" y="635" fill="#858b96" font-size="11" text-anchor="middle">Crude petroleum</text>
+   </g>
+
+   <!-- Furnace -->
+   <g id="furnace">
+    <rect x="190" y="485" width="115" height="125" rx="20" fill="url(#columnMetal)" stroke="#ffffff" stroke-opacity=".18"/>
+    <rect x="203" y="500" width="89" height="83" rx="14" fill="#301c13" stroke="#ffffff" stroke-opacity=".09"/>
+    <rect id="fire" x="208" y="505" width="79" height="73" rx="12" fill="#f19a4b" opacity=".10"/>
+    <path d="M245 568C225 548 248 535 250 519C270 541 281 548 265 568Z" fill="#ffb15d" opacity=".85"/>
+    <path d="M249 569C238 552 254 540 254 531C266 548 268 558 260 569Z" fill="#fff0b5" opacity=".75"/>
+    <text x="247" y="635" fill="#858b96" font-size="11" text-anchor="middle">Furnace</text>
+   </g>
+
+   <!-- Feed pipes -->
+   <path d="M148 550H190" stroke="#727985" stroke-width="16" stroke-linecap="round"/>
+   <path d="M148 550H190" stroke="#a56c3c" stroke-width="8" stroke-linecap="round" id="feedLiquid"/>
+   <path d="M305 550H335" stroke="#727985" stroke-width="16" stroke-linecap="round"/>
+   <path d="M305 550H335" stroke="#d98243" stroke-width="8" stroke-linecap="round" id="feedHot"/>
+
+   <!-- Tower -->
+   <rect x="335" y="55" width="230" height="530" rx="48" fill="url(#columnMetal)" stroke="#ffffff" stroke-opacity=".25"/>
+   <rect x="344" y="65" width="212" height="510" rx="39" fill="#ffffff" fill-opacity=".018" stroke="#ffffff" stroke-opacity=".07"/>
+
+   <!-- Vapour area -->
+   <g clip-path="url(#towerClip)">
+    <rect x="345" y="65" width="210" height="510" fill="url(#vapour)" opacity=".4"/>
+    <g id="vapours"></g>
+    <g id="trayLiquids"></g>
+   </g>
+
+   <!-- Trays -->
+   <g id="trays" stroke="#aeb5c0" stroke-opacity=".45" stroke-width="2">
+    <path d="M355 125H545"/>
+    <path d="M355 190H545"/>
+    <path d="M355 255H545"/>
+    <path d="M355 320H545"/>
+    <path d="M355 385H545"/>
+    <path d="M355 450H545"/>
+    <path d="M355 515H545"/>
+   </g>
+   <g fill="#cbd3df" fill-opacity=".12" stroke="#ffffff" stroke-opacity=".13">
+    <rect x="355" y="119" width="190" height="12" rx="5"/>
+    <rect x="355" y="184" width="190" height="12" rx="5"/>
+    <rect x="355" y="249" width="190" height="12" rx="5"/>
+    <rect x="355" y="314" width="190" height="12" rx="5"/>
+    <rect x="355" y="379" width="190" height="12" rx="5"/>
+    <rect x="355" y="444" width="190" height="12" rx="5"/>
+    <rect x="355" y="509" width="190" height="12" rx="5"/>
+   </g>
+
+   <!-- Liquid flowing down -->
+   <g id="downflow" fill="none" stroke-linecap="round" stroke-width="4"></g>
+
+   <!-- Bottom residue -->
+   <rect id="residue" x="345" y="565" width="210" height="20" rx="8" fill="#49382d" opacity=".8"/>
+
+   <!-- Vapour entering column -->
+   <path d="M450 585V550" stroke="#d98243" stroke-width="13" stroke-linecap="round" opacity=".25"/>
+   <path d="M450 585V550" stroke="#d98243" stroke-width="5" stroke-linecap="round" id="entryVapour"/>
+
+   <!-- Outlets -->
+   <g id="outlets"></g>
+
+   <!-- Condenser -->
+   <g id="condenser">
+    <rect x="605" y="35" width="160" height="66" rx="16" fill="url(#columnMetal)" stroke="#ffffff" stroke-opacity=".18"/>
+    <path d="M620 55H750M620 68H750M620 81H750" stroke="#ffffff" stroke-opacity=".15"/>
+    <text x="685" y="122" fill="#858b96" font-size="10" text-anchor="middle">Overhead condenser</text>
+   </g>
+   <path d="M565 87H605" stroke="#727985" stroke-width="13" stroke-linecap="round"/>
+   <path id="overheadFluid" d="M565 87H605" stroke="#a9c9ef" stroke-width="6" stroke-linecap="round" opacity=".8"/>
+
+   <!-- Side arrows -->
+   <g stroke="#ffffff" stroke-opacity=".4" stroke-width="1.5" fill="none">
+    <path d="M310 520l-8 0m8 0l-4 -4m4 4l-4 4"/>
+    <path d="M310 520l-8 0m8 0l-4 -4m4 4l-4 4"/>
+   </g>
+   <text x="450" y="33" fill="#858b96" font-size="10" text-anchor="middle">Light hydrocarbons</text>
+   <text x="450" y="615" fill="#858b96" font-size="10" text-anchor="middle">Heavy hydrocarbons</text>
+  </svg>
+
+  <div class="legend-scene">
+   <span><i style="background:#a9c9ef"></i>Rising vapour</span>
+   <span><i style="background:#e3ae69"></i>Condensation</span>
+   <span><i style="background:#d98243"></i>Hot feed</span>
+   <span><i style="background:#71604e"></i>Liquid collection</span>
+  </div>
+ </div>
+
+ <div class="detail">
+  <div class="detail-head">
+   <div>
+    <div class="eyebrow">Selected fraction</div>
+    <div class="detail-name" id="detailName">Petrol / gasoline</div>
+    <div class="detail-range" id="detailRange">Approx. boiling range: 40–100°C</div>
+   </div>
+   <div class="badge" id="detailLocation">Upper column</div>
+  </div>
+  <div class="detail-body">
+   <p id="detailDescription">Petrol contains relatively small hydrocarbon molecules. Its vapours rise high into the column before condensing in the cooler upper region.</p>
+   <div>
+    <div class="stats">
+     <div class="stat"><small>Volatility</small><b id="volatility">High</b></div>
+     <div class="stat"><small>Viscosity</small><b id="viscosity">Low</b></div>
+    </div>
+    <div class="use" id="uses"></div>
+   </div>
+  </div>
+ </div>
+</section>
+</main>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------------------------------------------------------
+   FRACTIONS
+
+   The ranges are approximate educational refinery cut ranges.
+   Real crude oils and refinery columns have overlapping cuts.
+--------------------------------------------------------- */
+
+const fractions=[
+ {id:"gases",name:"Refinery gases",range:"Below about 40°C",top:0.05,
+  color:"#a9c9ef",vol:"Very high",vis:"Very low",location:"Top / overhead",
+  description:"Small hydrocarbon molecules remain gaseous and leave from the top of the column. They are not normally collected as a liquid inside the main tower.",
+  uses:["LPG","Refinery fuel","Petrochemical feedstock"]},
+ {id:"petrol",name:"Petrol / gasoline",range:"About 40–100°C",top:0.17,
+  color:"#e3c27f",vol:"High",vis:"Very low",location:"Upper column",
+  description:"Small hydrocarbons rise into the cooler upper part of the column. When the local temperature enters their boiling range, some vapour condenses on trays and is collected.",
+  uses:["Car fuel","Small engines","Petrochemical feedstock"]},
+ {id:"naphtha",name:"Naphtha",range:"About 100–180°C",top:0.30,
+  color:"#d8ad70",vol:"High–moderate",vis:"Low",location:"Upper-middle",
+  description:"Naphtha contains hydrocarbons larger than those in petrol. It condenses lower in the tower where the temperature is higher.",
+  uses:["Petrochemical feedstock","Solvents","Gasoline production"]},
+ {id:"kerosene",name:"Kerosene",range:"About 180–250°C",top:0.43,
+  color:"#c9975b",vol:"Moderate",vis:"Low–moderate",location:"Middle column",
+  description:"Kerosene contains medium-sized hydrocarbons. These vapours rise and condense around the middle of the column.",
+  uses:["Jet fuel","Heating fuel","Lighting fuel"]},
+ {id:"diesel",name:"Diesel / gas oil",range:"About 250–320°C",top:0.56,
+  color:"#b57d48",vol:"Low–moderate",vis:"Moderate",location:"Lower-middle",
+  description:"Diesel-range hydrocarbons have higher boiling points. They condense lower down, where the tower is still relatively hot.",
+  uses:["Diesel engines","Heating","Industrial fuel"]},
+ {id:"fuel",name:"Fuel oil",range:"About 320–370°C",top:0.69,
+  color:"#926341",vol:"Low",vis:"High",location:"Lower column",
+  description:"Large hydrocarbon molecules with high boiling points condense in the hot lower region. Some heavy material may remain in the bottoms.",
+  uses:["Ships","Industrial furnaces","Power generation"]},
+ {id:"residue",name:"Bitumen / residue",range:"Above about 370°C",top:0.83,
+  color:"#71604e",vol:"Very low",vis:"Very high",location:"Column base",
+  description:"The heaviest hydrocarbons do not vaporise significantly under normal atmospheric column conditions. They remain as liquid residue at the bottom.",
+  uses:["Road surfacing","Roofing","Heavy residual products"]}
+];
+
+const $=id=>document.getElementById(id);
+const svg=$("svg"),vapours=$("vapours"),downflow=$("downflow"),outlets=$("outlets");
+
+let progress=0,running=false,speed=1,last=null,selected="petrol",raf=0;
+
+const DURATION=70000;
+
+/* ---------------------------------------------------------
+   SVG construction
+--------------------------------------------------------- */
+
+function el(tag,attrs,parent){
+ const n=document.createElementNS("http://www.w3.org/2000/svg",tag);
+ for(const [k,v] of Object.entries(attrs))n.setAttribute(k,v);
+ if(parent)parent.appendChild(n);
+ return n;
+}
+
+function buildScene(){
+ /* Vapour particles are individual molecules / vapour packets.
+    Their speed is proportional to the animation speed. */
+ for(let i=0;i<40;i++){
+  const x=365+(i*47)%170;
+  const y=540-(i*79)%440;
+  const c=i%3===0?"#e3ae69":"#a9c9ef";
+  const p=el("circle",{cx:x,cy:y,r:i%4===0?4:2.8,fill:c,"fill-opacity":".65",opacity:0},vapours);
+  p.dataset.x=x;p.dataset.y=y;p.dataset.i=i;
+ }
+ /* Liquid films on the trays */
+ [125,190,255,320,385,450,515].forEach((y,i)=>{
+  el("rect",{x:359,y:y-1,width:182,height:3,rx:1.5,fill:"#b88c57","fill-opacity":".15",id:"film"+i},downflow);
+ });
+ /* Downward liquid streams */
+ [380,430,480,520].forEach((x,i)=>{
+  el("path",{d:`M${x} 125V515`,stroke:"#d3a66e","stroke-opacity":".28","stroke-width":2.5,id:"stream"+i},downflow);
+ });
+ /* Receivers and their outlets */
+ fractions.forEach((f,i)=>{
+  const y=100+i*76;
+  const g=el("g",{id:"out"+f.id},outlets);
+  el("path",{d:`M565 ${y}H620`,stroke:"#727985","stroke-width":10,"stroke-linecap":"round"},g);
+  const fluid=el("path",{d:`M565 ${y}H620`,stroke:f.color,"stroke-width":5,"stroke-linecap":"round","stroke-opacity":".8",id:"fluid"+f.id},g);
+  const tank=el("rect",{x:625,y:y-22,width:94,height:44,rx:12,fill:"#ffffff","fill-opacity":".045",stroke:"#ffffff","stroke-opacity":".18"},g);
+  const liquid=el("rect",{x:630,y:y+15,width:84,height:0,rx:6,fill:f.color,"fill-opacity":".8",id:"liquid"+f.id},g);
+  el("text",{x:735,y:y-4,fill:"#b3b7c0","font-size":11,"font-weight":600},g).textContent=f.name;
+  el("text",{x:735,y:y+12,fill:"#727985","font-size":9},g).textContent=f.range;
+  g.style.cursor="pointer";
+  g.addEventListener("click",()=>select(f.id));
+ });
+}
+
+function select(id){
+ selected=id;
+ const f=fractions.find(x=>x.id===id);
+ if(!f)return;
+ $("detailName").textContent=f.name;
+ $("detailRange").textContent="Approx. boiling range: "+f.range;
+ $("detailLocation").textContent=f.location;
+ $("detailDescription").textContent=f.description;
+ $("volatility").textContent=f.vol;
+ $("viscosity").textContent=f.vis;
+ $("uses").innerHTML="";
+ f.uses.forEach(u=>{
+  const s=document.createElement("span");
+  s.textContent=u;
+  $("uses").appendChild(s);
+ });
+}
+
+/* ---------------------------------------------------------
+   Physics-inspired educational process
+
+   T bottom ≈ 370°C, T top ≈ 25°C.
+   Each fraction has an approximate condensation region.
+   Vapour rises continuously. When it enters its region,
+   condensation probability increases. Liquid returns down
+   the trays and may re-evaporate.
+--------------------------------------------------------- */
+
+function updateScene(p){
+ const feed=clamp((p-.01)/.17);
+ const heating=clamp((p-.06)/.15);
+ const established=clamp((p-.16)/.35);
+ const collection=clamp((p-.27)/.7);
+
+ $("feedLiquid").setAttribute("stroke-opacity",feed);
+ $("feedHot").setAttribute("stroke-opacity",heating);
+ $("fire").setAttribute("opacity",heating*.85);
+ $("entryVapour").setAttribute("opacity",established);
+ $("residue").setAttribute("height",String(20+established*20));
+ $("residue").setAttribute("y",String(585-(established*20)));
+ $("overheadFluid").setAttribute("opacity",clamp((p-.5)/.3));
+
+ /* A fraction gradually appears at its approximate tray
+    region, then its receiver fills. */
+ fractions.forEach((f,i)=>{
+  const start=.23+i*.055;
+  const amount=clamp((p-start)/.27);
+  const collectionAmount=clamp((p-(start+.13))/.48);
+  const fluid=$("fluid"+f.id);
+  const liquid=$("liquid"+f.id);
+  const g=$("out"+f.id);
+  if(!fluid||!liquid)return;
+  fluid.setAttribute("stroke-opacity",String(amount*.8));
+  liquid.setAttribute("height",String(collectionAmount*34));
+  liquid.setAttribute("y",String( yFor(i)+15-collectionAmount*34 ));
+  g.setAttribute("opacity",String(.35+amount*.65));
+ });
+
+ /* Rising vapour packets. Every packet travels from base
+    upward. Their vertical position is a continuous function
+    of the simulation progress, not a teleport between stages. */
+ [...vapours.children].forEach((v,i)=>{
+  const phase=(p*1.65+(i/40)*.82)%1;
+  const y=555-phase*475;
+  const x=365+(i*47)%170+Math.sin(p*12+i)*5;
+  v.setAttribute("cx",x);
+  v.setAttribute("cy",y);
+  const active=established>0;
+  const fade=Math.sin(phase*Math.PI);
+  v.setAttribute("opacity",active?fade*.85:0);
+  v.setAttribute("r",String(2.2+fade*1.8));
+ });
+
+ /* Trays show liquid films as condensation becomes active. */
+ [125,190,255,320,385,450,515].forEach((y,i)=>{
+  const film=$("film"+i);
+  const level=clamp((p-(.27+i*.045))/.25);
+  film.setAttribute("fill-opacity",String(level*.65));
+ });
+
+ /* Downward liquid streams appear after condensation begins. */
+ [0,1,2,3].forEach(i=>{
+  const stream=$("stream"+i);
+  const level=clamp((p-(.3+i*.05))/.3);
+  stream.setAttribute("stroke-opacity",String(level*.55));
+ });
+}
+
+function yFor(i){return 100+i*76}
+function clamp(v,a=0,b=1){return Math.max(a,Math.min(b,v))}
+
+/* ---------------------------------------------------------
+   Timeline / controls
+--------------------------------------------------------- */
+
+function formatTime(){
+ const seconds=Math.round(progress*DURATION/1000);
+ return `${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,"0")}`;
+}
+
+function updateUI(){
+ const p=progress;
+ $("seek").value=p*100;
+ $("pct").textContent=Math.round(p*100)+"%";
+ $("time").textContent=formatTime();
+
+ let title,text;
+ if(p<.06){
+  title="Crude petroleum enters the process";
+  text="Crude petroleum is a mixture of hydrocarbons. It is pumped toward the furnace.";
+ }else if(p<.18){
+  title="Heating in the furnace";
+  text="The crude is heated to approximately 350–400°C. A large proportion vaporises before entering the tower.";
+ }else if(p<.3){
+  title="Hot feed enters the column";
+  text="Hot liquid and vapour enter near the bottom. The tower is hotter at the base and cooler toward the top.";
+ }else if(p<.5){
+  title="Vapour rises through the trays";
+  text="Vapour rises while liquid flows downward. Repeated evaporation and condensation improve separation.";
+ }else if(p<.72){
+  title="Condensation at different heights";
+  text="Hydrocarbon groups condense when the surrounding temperature suits their boiling range. Heavier fractions condense lower down.";
+ }else if(p<.98){
+  title="Fractions are collected";
+  text="Liquid fractions are drawn from different heights. Light gases leave overhead, while heavy residue remains at the bottom.";
+ }else{
+  title="Continuous fractionation established";
+  text="The tower is operating as a continuous separation system. Different fractions are collected simultaneously.";
+ }
+ $("process").textContent=title;
+ $("processText").textContent=text;
+ $("stageTitle").textContent=title;
+ $("status").textContent=running?"Running":p>=1?"Complete":"Paused";
+ updateScene(p);
+}
+
+function setProgress(v){
+ progress=clamp(v);
+ updateUI();
+}
+
+function frame(t){
+ if(!running)return;
+ if(last===null)last=t;
+ const dt=t-last;
+ last=t;
+ progress+=dt/DURATION*speed;
+ if(progress>=1){
+  progress=1;
+  running=false;
+  last=null;
+  $("play").textContent="↻ Replay simulation";
+ }
+ updateUI();
+ if(running)raf=requestAnimationFrame(frame);
+}
+
+function play(){
+ if(progress>=1)progress=0;
+ running=true;
+ last=null;
+ $("play").textContent="Ⅱ Pause simulation";
+ $("status").textContent="Running";
+ cancelAnimationFrame(raf);
+ raf=requestAnimationFrame(frame);
+}
+
+function pause(){
+ running=false;
+ last=null;
+ cancelAnimationFrame(raf);
+ $("play").textContent=progress===0?"▶ Start simulation":"▶ Resume simulation";
+ updateUI();
+}
+
+$("play").addEventListener("click",()=>running?pause():play());
+$("restart").addEventListener("click",()=>{
+ pause();
+ setProgress(0);
+ $("play").textContent="▶ Start simulation";
+});
+$("reset").addEventListener("click",()=>{
+ pause();
+ setProgress(0);
+ select("petrol");
+ $("play").textContent="▶ Start simulation";
+});
+$("seek").addEventListener("input",()=>{
+ pause();
+ setProgress(Number($("seek").value)/100);
+});
+document.querySelectorAll("[data-speed]").forEach(b=>{
+ b.addEventListener("click",()=>{
+  speed=Number(b.dataset.speed);
+  document.querySelectorAll("[data-speed]").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active");
+ });
+});
+
+window.addEventListener("keydown",e=>{
+ if(e.code==="Space"&&document.activeElement.tagName!=="INPUT"){
+  e.preventDefault();
+  running?pause():play();
+ }
+ if(e.key.toLowerCase()==="r"){
+  pause();
+  setProgress(0);
+ }
+});
+
+/* Start */
+buildScene();
+select("petrol");
+setProgress(0);
+})();
+</script>
+</body>
+</html>

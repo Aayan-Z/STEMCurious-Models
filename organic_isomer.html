@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Organic Isomer 3D Model</title>
+<style>
+  :root{
+    --bg:#000;
+    --glass:rgba(255,255,255,.075);
+    --glass2:rgba(255,255,255,.035);
+    --line:rgba(255,255,255,.14);
+    --line2:rgba(255,255,255,.08);
+    --text:rgba(255,255,255,.9);
+    --muted:rgba(255,255,255,.52);
+    --soft:rgba(255,255,255,.68);
+    --accent:#a9c7ff;
+  }
+  *{box-sizing:border-box}
+  html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#000;color:var(--text);font-family:Georgia,"Times New Roman",serif}
+  body{touch-action:none}
+  #app{position:relative;width:100%;height:100%;overflow:hidden;background:
+    radial-gradient(circle at 71% 45%,rgba(80,100,150,.075),transparent 36%),
+    radial-gradient(circle at 86% 78%,rgba(170,70,70,.035),transparent 28%),#000}
+  canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+  canvas.dragging{cursor:grabbing}
+  .panel{
+    position:absolute;z-index:10;left:18px;top:18px;bottom:18px;
+    width:min(350px,calc(100vw - 36px));padding:22px 20px 18px;
+    overflow:auto;border:1px solid var(--line);border-radius:25px;
+    background:linear-gradient(145deg,var(--glass),var(--glass2));
+    backdrop-filter:blur(24px) saturate(125%);-webkit-backdrop-filter:blur(24px) saturate(125%);
+    box-shadow:0 22px 70px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.065)
+  }
+  .eyebrow{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+  h1{font-size:27px;font-weight:400;letter-spacing:-.5px;margin:0}
+  .intro{margin:7px 0 20px;color:var(--muted);font-size:12px;line-height:1.55}
+  .section{margin-top:18px}
+  .section-title{font-size:10px;letter-spacing:1.55px;text-transform:uppercase;color:var(--muted);margin-bottom:9px}
+  .carbon-grid,.series-grid{display:grid;gap:7px}
+  .carbon-grid{grid-template-columns:repeat(5,1fr)}
+  .series-grid{grid-template-columns:repeat(2,1fr)}
+  button{
+    border:1px solid var(--line2);background:rgba(255,255,255,.045);color:var(--soft);
+    border-radius:11px;padding:10px 9px;font:inherit;font-size:12px;cursor:pointer;
+    transition:background .15s ease,border-color .15s ease,transform .15s ease
+  }
+  button:hover{background:rgba(255,255,255,.085);border-color:rgba(255,255,255,.2)}
+  button:active{transform:translateY(1px)}
+  button.active{background:rgba(169,199,255,.14);border-color:rgba(169,199,255,.35);color:#e9efff}
+  .series-grid button{min-height:38px;text-align:left}
+  .series-name{display:block;font-size:12px}
+  .series-formula{display:block;margin-top:2px;font-size:10px;color:var(--muted)}
+  .selection-head{display:flex;justify-content:space-between;gap:12px;align-items:end;margin-bottom:8px}
+  .selection-title{font-size:14px;color:rgba(255,255,255,.86)}
+  .count{font-size:11px;color:var(--muted)}
+  .isomer-list{display:flex;flex-direction:column;gap:6px;max-height:205px;overflow:auto;padding-right:2px}
+  .isomer-btn{display:flex;justify-content:space-between;align-items:center;gap:8px;text-align:left;padding:9px 10px}
+  .isomer-btn .name{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tag{flex:none;font-size:9px;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);border:1px solid var(--line2);border-radius:8px;padding:3px 5px}
+  .info{margin-top:15px;padding:12px 13px;border:1px solid var(--line2);border-radius:14px;background:rgba(0,0,0,.22)}
+  .info-row{display:flex;justify-content:space-between;gap:12px;padding:4px 0;font-size:11px}
+  .info-row span:first-child{color:var(--muted)}
+  .info-row span:last-child{color:rgba(255,255,255,.82);text-align:right}
+  .explain{margin-top:10px;color:var(--muted);font-size:11px;line-height:1.55}
+  .hint{margin-top:14px;color:rgba(255,255,255,.38);font-size:10px;line-height:1.5}
+  .legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;color:var(--muted);font-size:10px}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .legend i{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .h-dot{background:#4f8fff}.c-dot{background:#d85252}.o-dot{background:#ff8b5a}.n-dot{background:#9e7bff}
+  .scope{margin-top:12px;color:rgba(255,255,255,.38);font-size:9.5px;line-height:1.5}
+  @media (max-width:720px){
+    .panel{left:10px;top:10px;bottom:auto;max-height:58vh;width:min(320px,calc(100vw - 20px));padding:18px}
+    h1{font-size:23px}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="scene" aria-label="Interactive 3D organic chemistry molecule viewer"></canvas>
+  <aside class="panel">
+    <div class="eyebrow">Organic chemistry · 3D explorer</div>
+    <h1>Isomers</h1>
+    <div class="intro">Choose a carbon count and a homologous series. The viewer then shows the constitutional isomers available in that family.</div>
+
+    <section class="section">
+      <div class="section-title">Number of carbons</div>
+      <div id="carbonGrid" class="carbon-grid"></div>
+    </section>
+
+    <section class="section">
+      <div class="section-title">Homologous series</div>
+      <div id="seriesGrid" class="series-grid"></div>
+    </section>
+
+    <section class="section">
+      <div class="selection-head">
+        <div class="selection-title" id="selectionTitle">Isomers</div>
+        <div class="count" id="isomerCount"></div>
+      </div>
+      <div id="isomerList" class="isomer-list"></div>
+    </section>
+
+    <div id="info" class="info"></div>
+
+    <div class="legend">
+      <span><i class="c-dot"></i> C</span>
+      <span><i class="h-dot"></i> H</span>
+      <span><i class="o-dot"></i> O</span>
+      <span><i class="n-dot"></i> N</span>
+    </div>
+
+    <div class="hint">Drag the molecule to rotate · Shift/right-drag to pan · scroll or pinch to zoom</div>
+    <div class="scope">This viewer focuses on constitutional (structural) isomers. Stereoisomers such as cis/trans forms are not counted as separate entries here. Molecular geometry is illustrative rather than a quantum-chemistry result.</div>
+  </aside>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const canvas = document.getElementById("scene");
+  const ctx = canvas.getContext("2d");
+  const carbonGrid = document.getElementById("carbonGrid");
+  const seriesGrid = document.getElementById("seriesGrid");
+  const isomerList = document.getElementById("isomerList");
+  const selectionTitle = document.getElementById("selectionTitle");
+  const isomerCount = document.getElementById("isomerCount");
+  const info = document.getElementById("info");
+
+  const state = {
+    dpr: Math.min(window.devicePixelRatio || 1, 2),
+    w: 0, h: 0,
+    carbonCount: 4,
+    series: "alkane",
+    selectedIndex: 0,
+    rotX: -0.30,
+    rotY: 0.62,
+    panX: 90,
+    panY: 10,
+    zoom: 1,
+    dragging: false,
+    mode: "rotate",
+    startX: 0,
+    startY: 0,
+    startRotX: 0,
+    startRotY: 0,
+    startPanX: 0,
+    startPanY: 0,
+    molecule: null
+  };
+
+  const SERIES = {
+    alkane: {label:"Alkane", formula:"CₙH₂ₙ₊₂"},
+    alkene: {label:"Alkene", formula:"CₙH₂ₙ"},
+    alkyne: {label:"Alkyne", formula:"CₙH₂ₙ₋₂"},
+    alcohol: {label:"Alcohol", formula:"CₙH₂ₙ₊₂O"},
+    acid: {label:"Carboxylic acid", formula:"CₙH₂ₙO₂"},
+    amine: {label:"Amine", formula:"CₙH₂ₙ₊₃N"}
+  };
+
+  const PREFIX = ["","meth-","eth-","prop-","but-","pent-"];
+
+  // Each entry describes one constitutional isomer in the supported scope.
+  // C = carbon, H/O/N are added automatically from valence.
+  const DATA = {};
+  function put(series, n, entries){
+    if(!DATA[series]) DATA[series] = {};
+    DATA[series][n] = entries;
+  }
+  function spec(name, type, edges, extra={}){
+    return {name,type,edges,extra};
+  }
+
+  put("alkane",1,[spec("Methane","parent",[])]);
+  put("alkane",2,[spec("Ethane","parent",[[0,1,1]])]);
+  put("alkane",3,[spec("Propane","parent",[[0,1,1],[1,2,1]])]);
+  put("alkane",4,[
+    spec("Butane","parent",[[0,1,1],[1,2,1],[2,3,1]]),
+    spec("2-methylpropane","chain",[[0,1,1],[1,2,1],[1,3,1]])
+  ]);
+  put("alkane",5,[
+    spec("Pentane","parent",[[0,1,1],[1,2,1],[2,3,1],[3,4,1]]),
+    spec("2-methylbutane","chain",[[0,1,1],[1,2,1],[2,3,1],[1,4,1]]),
+    spec("2,2-dimethylpropane","chain",[[0,1,1],[0,2,1],[0,3,1],[0,4,1]])
+  ]);
+
+  put("alkene",2,[spec("Ethene","parent",[[0,1,2]])]);
+  put("alkene",3,[spec("Propene","parent",[[0,1,2],[1,2,1]])]);
+  put("alkene",4,[
+    spec("But-1-ene","position",[[0,1,2],[1,2,1],[2,3,1]]),
+    spec("But-2-ene","position",[[0,1,1],[1,2,2],[2,3,1]]),
+    spec("2-methylpropene","chain",[[0,1,2],[1,2,1],[1,3,1]])
+  ]);
+  put("alkene",5,[
+    spec("Pent-1-ene","position",[[0,1,2],[1,2,1],[2,3,1],[3,4,1]]),
+    spec("Pent-2-ene","position",[[0,1,1],[1,2,2],[2,3,1],[3,4,1]]),
+    spec("2-methylbut-1-ene","chain",[[0,1,2],[1,2,1],[2,3,1],[1,4,1]]),
+    spec("3-methylbut-1-ene","chain",[[0,1,2],[1,2,1],[2,3,1],[2,4,1]]),
+    spec("2-methylbut-2-ene","chain",[[0,1,1],[1,2,2],[2,3,1],[1,4,1]])
+  ]);
+
+  put("alkyne",2,[spec("Ethyne","parent",[[0,1,3]])]);
+  put("alkyne",3,[spec("Propyne","parent",[[0,1,3],[1,2,1]])]);
+  put("alkyne",4,[
+    spec("But-1-yne","position",[[0,1,3],[1,2,1],[2,3,1]]),
+    spec("But-2-yne","position",[[0,1,1],[1,2,3],[2,3,1]])
+  ]);
+  put("alkyne",5,[
+    spec("Pent-1-yne","position",[[0,1,3],[1,2,1],[2,3,1],[3,4,1]]),
+    spec("Pent-2-yne","position",[[0,1,1],[1,2,3],[2,3,1],[3,4,1]]),
+    spec("3-methylbut-1-yne","chain",[[0,1,3],[1,2,1],[2,3,1],[2,4,1]])
+  ]);
+
+  put("alcohol",1,[spec("Methanol","parent",[],{alcohol:0})]);
+  put("alcohol",2,[spec("Ethanol","parent",[[0,1,1]],{alcohol:1})]);
+  put("alcohol",3,[
+    spec("Propan-1-ol","position",[[0,1,1],[1,2,1]],{alcohol:0}),
+    spec("Propan-2-ol","position",[[0,1,1],[1,2,1]],{alcohol:1})
+  ]);
+  put("alcohol",4,[
+    spec("Butan-1-ol","position",[[0,1,1],[1,2,1],[2,3,1]],{alcohol:0}),
+    spec("Butan-2-ol","position",[[0,1,1],[1,2,1],[2,3,1]],{alcohol:1}),
+    spec("2-methylpropan-1-ol","chain",[[0,1,1],[1,2,1],[1,3,1]],{alcohol:0}),
+    spec("2-methylpropan-2-ol","chain",[[0,1,1],[1,2,1],[1,3,1]],{alcohol:1})
+  ]);
+  put("alcohol",5,[
+    spec("Pentan-1-ol","position",[[0,1,1],[1,2,1],[2,3,1],[3,4,1]],{alcohol:0}),
+    spec("Pentan-2-ol","position",[[0,1,1],[1,2,1],[2,3,1],[3,4,1]],{alcohol:1}),
+    spec("Pentan-3-ol","position",[[0,1,1],[1,2,1],[2,3,1],[3,4,1]],{alcohol:2}),
+    spec("2-methylbutan-1-ol","chain",[[0,1,1],[1,2,1],[2,3,1],[1,4,1]],{alcohol:0}),
+    spec("3-methylbutan-1-ol","chain",[[0,1,1],[1,2,1],[2,3,1],[2,4,1]],{alcohol:0}),
+    spec("3-methylbutan-2-ol","chain",[[0,1,1],[1,2,1],[2,3,1],[2,4,1]],{alcohol:1}),
+    spec("2-methylbutan-2-ol","chain",[[0,1,1],[1,2,1],[2,3,1],[1,4,1]],{alcohol:1}),
+    spec("2,2-dimethylpropan-1-ol","chain",[[0,1,1],[1,2,1],[1,3,1],[1,4,1]],{alcohol:0})
+  ]);
+
+  put("acid",1,[spec("Methanoic acid","parent",[],{acid:0})]);
+  put("acid",2,[spec("Ethanoic acid","parent",[[0,1,1]],{acid:0})]);
+  put("acid",3,[spec("Propanoic acid","parent",[[0,1,1],[1,2,1]],{acid:0})]);
+  put("acid",4,[
+    spec("Butanoic acid","parent",[[0,1,1],[1,2,1],[2,3,1]],{acid:0}),
+    spec("2-methylpropanoic acid","chain",[[0,1,1],[1,2,1],[1,3,1]],{acid:0})
+  ]);
+  put("acid",5,[
+    spec("Pentanoic acid","parent",[[0,1,1],[1,2,1],[2,3,1],[3,4,1]],{acid:0}),
+    spec("2-methylbutanoic acid","chain",[[0,1,1],[1,2,1],[2,3,1],[1,4,1]],{acid:0}),
+    spec("3-methylbutanoic acid","chain",[[0,1,1],[1,2,1],[2,3,1],[2,4,1]],{acid:0}),
+    spec("2,2-dimethylpropanoic acid","chain",[[0,1,1],[1,2,1],[1,3,1],[1,4,1]],{acid:0})
+  ]);
+
+  // Acyclic saturated monoamines are included through C4 because the number of
+  // constitutional amine isomers expands quickly. These entries include primary,
+  // secondary and tertiary amines, all with the same molecular formula at fixed C.
+  put("amine",1,[spec("Methylamine","primary",[],{amine:[0]})]);
+  put("amine",2,[spec("Ethylamine","primary",[[0,1,1]],{amine:[1]})]);
+  put("amine",3,[
+    spec("Propan-1-amine","position",[[0,1,1],[1,2,1]],{amine:[0]}),
+    spec("Propan-2-amine","position",[[0,1,1],[1,2,1]],{amine:[1]}),
+    spec("Ethylmethylamine","secondary",[[0,1,1]],{amine:[0,2]}),
+    spec("Trimethylamine","tertiary",[],{amine:[0,1,2]})
+  ]);
+  put("amine",4,[
+    spec("Butan-1-amine","primary",[[0,1,1],[1,2,1],[2,3,1]],{amine:[0]}),
+    spec("Butan-2-amine","primary",[[0,1,1],[1,2,1],[2,3,1]],{amine:[1]}),
+    spec("2-methylpropan-1-amine","primary",[[0,1,1],[1,2,1],[1,3,1]],{amine:[0]}),
+    spec("2-methylpropan-2-amine","primary",[[0,1,1],[1,2,1],[1,3,1]],{amine:[1]}),
+    spec("N-methylpropan-1-amine","secondary",[[0,1,1],[1,2,1]],{amine:[0,3]}),
+    spec("N-methylpropan-2-amine","secondary",[[0,1,1],[1,2,1]],{amine:[1,3]}),
+    spec("Diethylamine","secondary",[[0,1,1],[2,3,1]],{amine:[0,2]}),
+    spec("N,N-dimethylethanamine","tertiary",[[0,1,1]],{amine:[0,2,3]})
+  ]);
+
+  function atom(el, x,y,z){ return {el,x,y,z}; }
+  function bond(a,b,order=1){ return {a,b,order}; }
+
+  function buildMolecule(entry, series, n){
+    const heavy = Array.from({length:n},(_,i)=>atom("C",0,0,0));
+    const bonds = [];
+    for(const e of entry.edges) bonds.push(bond(e[0],e[1],e[2]));
+
+    // Hetero atoms used by the functional group.
+    if(entry.extra && entry.extra.alcohol !== undefined){
+      const c = entry.extra.alcohol;
+      heavy.push(atom("O",0,0,0));
+      const o = heavy.length-1;
+      bonds.push(bond(c,o,1));
+      heavy.push(atom("H",0,0,0));
+      bonds.push(bond(o,heavy.length-1,1));
+    }
+    if(entry.extra && entry.extra.acid !== undefined){
+      const c = entry.extra.acid;
+      heavy.push(atom("O",0,0,0));
+      const o1 = heavy.length-1;
+      heavy.push(atom("O",0,0,0));
+      const o2 = heavy.length-1;
+      heavy.push(atom("H",0,0,0));
+      const h = heavy.length-1;
+      bonds.push(bond(c,o1,2),bond(c,o2,1),bond(o2,h,1));
+    }
+    if(entry.extra && entry.extra.amine){
+      const anchors = entry.extra.amine;
+      heavy.push(atom("N",0,0,0));
+      const ni = heavy.length-1;
+      for(const c of anchors) bonds.push(bond(c,ni,1));
+    }
+
+    layoutHeavyAtoms(heavy,bonds,n);
+    addImplicitHydrogens(heavy,bonds);
+    const center = centerOf(heavy);
+    for(const a of heavy){ a.x-=center.x; a.y-=center.y; a.z-=center.z; }
+    scaleToFit(heavy,2.1);
+    return {atoms:heavy,bonds,entry,series,n};
+  }
+
+  function layoutHeavyAtoms(atoms,bonds,carbonCount){
+    // Start carbon skeleton on an easy-to-read zig-zag, then relax the structure
+    // with target bond lengths. Hetero atoms are positioned from their attached atom.
+    const adj = new Map();
+    for(let i=0;i<atoms.length;i++) adj.set(i,[]);
+    for(const b of bonds){ adj.get(b.a).push(b); adj.get(b.b).push(b); }
+
+    // Initial positions: carbon tree in a zig-zag with branches separated in z/y.
+    const carbonAdj = new Map();
+    for(let i=0;i<carbonCount;i++) carbonAdj.set(i,[]);
+    for(const b of bonds){
+      if(b.a<carbonCount && b.b<carbonCount){carbonAdj.get(b.a).push(b.b);carbonAdj.get(b.b).push(b.a);}
+    }
+    const visited = new Set();
+    let cursor = 0;
+    function dfs(i,depth,parent,offset){
+      visited.add(i);
+      atoms[i].x = depth * 1.36;
+      atoms[i].y = offset;
+      atoms[i].z = ((depth%2)*0.25) + (i%3-1)*0.14;
+      const children = carbonAdj.get(i).filter(j=>j!==parent);
+      const step = children.length>1 ? 0.72 : 0;
+      children.forEach((j,k)=>dfs(j,depth+1,parent===undefined?i:i,offset+(k-(children.length-1)/2)*0.85));
+    }
+    dfs(0,0,undefined,0);
+    // Disconnected amine methyl groups: arrange any unvisited carbon components.
+    for(let i=0;i<carbonCount;i++){
+      if(!visited.has(i)){
+        dfs(i,0,undefined,0);
+        atoms[i].x += ++cursor*1.6;
+      }
+    }
+
+    // Hetero initial positions from their bonded neighbor.
+    for(let i=carbonCount;i<atoms.length;i++){
+      const b = adj.get(i)[0];
+      if(!b) continue;
+      const other = b.a===i?b.b:b.a;
+      atoms[i].x = atoms[other].x + 1.15;
+      atoms[i].y = atoms[other].y + (i%2?0.45:-0.45);
+      atoms[i].z = atoms[other].z + 0.15;
+    }
+
+    const movable=atoms;
+    for(let iter=0;iter<95;iter++){
+      const forces = movable.map(()=>({x:0,y:0,z:0}));
+      for(const b of bonds){
+        const a=atoms[b.a],c=atoms[b.b];
+        let dx=c.x-a.x,dy=c.y-a.y,dz=c.z-a.z;
+        const d=Math.hypot(dx,dy,dz)||.001;
+        const target=1.24 + (b.order===1?.08:b.order===2?-.03:-.08);
+        const f=(d-target)*.18;
+        dx/=d;dy/=d;dz/=d;
+        forces[b.a].x+=f*dx;forces[b.a].y+=f*dy;forces[b.a].z+=f*dz;
+        forces[b.b].x-=f*dx;forces[b.b].y-=f*dy;forces[b.b].z-=f*dz;
+      }
+      for(let i=0;i<atoms.length;i++){
+        for(let j=i+1;j<atoms.length;j++){
+          const a=atoms[i],b=atoms[j];
+          const dx=b.x-a.x,dy=b.y-a.y,dz=b.z-a.z;
+          const d2=dx*dx+dy*dy+dz*dz;
+          if(d2>0 && d2<1.25){
+            const d=Math.sqrt(d2), f=(1.25-d)*.03;
+            const ux=dx/d,uy=dy/d,uz=dz/d;
+            forces[i].x-=f*ux;forces[i].y-=f*uy;forces[i].z-=f*uz;
+            forces[j].x+=f*ux;forces[j].y+=f*uy;forces[j].z+=f*uz;
+          }
+        }
+      }
+      for(let i=0;i<atoms.length;i++){
+        atoms[i].x+=forces[i].x; atoms[i].y+=forces[i].y; atoms[i].z+=forces[i].z;
+      }
+    }
+  }
+
+  function addImplicitHydrogens(atoms,bonds){
+    const valence = {C:4,O:2,N:3,H:1};
+    const heavyCount=atoms.length;
+    const degree = Array.from({length:heavyCount},()=>0);
+    for(const b of bonds){degree[b.a]+=b.order;degree[b.b]+=b.order;}
+    const additions=[];
+    for(let i=0;i<heavyCount;i++){
+      const a=atoms[i];
+      if(a.el==="H") continue;
+      let remaining=(valence[a.el]??0)-degree[i];
+      if(remaining<=0) continue;
+      const neighbors=bonds.filter(b=>b.a===i||b.b===i).map(b=>{
+        const j=b.a===i?b.b:b.a; return atoms[j];
+      });
+      const dirs=hydrogenDirections(a,neighbors,remaining);
+      for(let k=0;k<remaining;k++){
+        const d=dirs[k%dirs.length];
+        additions.push({atom:atom("H",a.x+d.x*.72,a.y+d.y*.72,a.z+d.z*.72), parent:i});
+      }
+    }
+    for(const x of additions){
+      const idx=atoms.length;atoms.push(x.atom);bonds.push(bond(x.parent,idx,1));
+    }
+  }
+
+  function hydrogenDirections(a,neighbors,count){
+    if(count===1){
+      if(neighbors.length===1){
+        const v=norm({x:a.x-neighbors[0].x,y:a.y-neighbors[0].y,z:a.z-neighbors[0].z});
+        return [v];
+      }
+      const s=norm({x:2*a.x-neighbors.reduce((q,n)=>q+n.x,0),y:2*a.y-neighbors.reduce((q,n)=>q+n.y,0),z:2*a.z-neighbors.reduce((q,n)=>q+n.z,0)});
+      return [s];
+    }
+    if(count===2){
+      const base=neighbors.length
+        ? norm({x:a.x-neighbors[0].x,y:a.y-neighbors[0].y,z:a.z-neighbors[0].z})
+        : {x:1,y:0,z:0};
+      const p=perp(base);
+      return [normalize({x:base.x*.35+p.x*.94,y:base.y*.35+p.y*.94,z:base.z*.35+p.z*.94}),normalize({x:base.x*.35-p.x*.94,y:base.y*.35-p.y*.94,z:base.z*.35-p.z*.94})];
+    }
+    if(count===3){
+      const base=neighbors.length?norm({x:a.x-neighbors[0].x,y:a.y-neighbors[0].y,z:a.z-neighbors[0].z}):{x:1,y:0,z:0};
+      const p=perp(base),q=cross(base,p);
+      return [
+        normalize({x:base.x*.38+p.x*.88,y:base.y*.38+p.y*.88,z:base.z*.38+p.z*.88}),
+        normalize({x:base.x*.38-p.x*.44+q.x*.76,y:base.y*.38-p.y*.44+q.y*.76,z:base.z*.38-p.z*.44+q.z*.76}),
+        normalize({x:base.x*.38-p.x*.44-q.x*.76,y:base.y*.38-p.y*.44-q.y*.76,z:base.z*.38-p.z*.44-q.z*.76})
+      ];
+    }
+    const base={x:1,y:0,z:0};
+    const p=perp(base),q=cross(base,p);
+    return [
+      normalize({x:base.x*.5+p.x*.58+q.x*.58,y:base.y*.5+p.y*.58+q.y*.58,z:base.z*.5+p.z*.58+q.z*.58}),
+      normalize({x:base.x*.5+p.x*.58-q.x*.58,y:base.y*.5+p.y*.58-q.y*.58,z:base.z*.5+p.z*.58-q.z*.58}),
+      normalize({x:base.x*.5-p.x*.58+q.x*.58,y:base.y*.5-p.y*.58+q.y*.58,z:base.z*.5-p.z*.58+q.z*.58}),
+      normalize({x:base.x*.5-p.x*.58-q.x*.58,y:base.y*.5-p.y*.58-q.y*.58,z:base.z*.5-p.z*.58-q.z*.58})
+    ];
+  }
+
+  function centerOf(atoms){
+    const c={x:0,y:0,z:0};
+    if(!atoms.length) return c;
+    for(const a of atoms){c.x+=a.x;c.y+=a.y;c.z+=a.z}
+    c.x/=atoms.length;c.y/=atoms.length;c.z/=atoms.length;return c;
+  }
+  function scaleToFit(atoms,target){
+    let r=0;for(const a of atoms) r=Math.max(r,Math.hypot(a.x,a.y,a.z));
+    const s=target/(r||1);for(const a of atoms){a.x*=s;a.y*=s;a.z*=s}
+  }
+  function norm(v){const d=Math.hypot(v.x,v.y,v.z)||1;return {x:v.x/d,y:v.y/d,z:v.z/d}}
+  function normalize(v){return norm(v)}
+  function cross(a,b){return {x:a.y*b.z-a.z*b.y,y:a.z*b.x-a.x*b.z,z:a.x*b.y-a.y*b.x}}
+  function perp(v){let p=cross(v,{x:0,y:1,z:0});if(Math.hypot(p.x,p.y,p.z)<.2)p=cross(v,{x:0,z:1,y:0});return norm(p)}
+
+  function molecularFormula(mol){
+    const counts={C:0,H:0,O:0,N:0};
+    for(const a of mol.atoms) counts[a.el]=(counts[a.el]||0)+1;
+    return `C${sub(counts.C)}H${sub(counts.H)}${counts.O?`O${sub(counts.O)}`:""}${counts.N?`N${sub(counts.N)}`:""}`;
+  }
+  function sub(n){return n===1?"":String(n)}
+
+  function renderCarbonButtons(){
+    carbonGrid.innerHTML="";
+    for(let n=1;n<=5;n++){
+      const b=document.createElement("button");
+      b.textContent=`${PREFIX[n]} ${n}`;
+      b.className=n===state.carbonCount?"active":"";
+      b.addEventListener("click",()=>{state.carbonCount=n;state.selectedIndex=0;refresh();});
+      carbonGrid.appendChild(b);
+    }
+  }
+  function renderSeriesButtons(){
+    seriesGrid.innerHTML="";
+    Object.entries(SERIES).forEach(([key,val])=>{
+      const b=document.createElement("button");
+      b.className=key===state.series?"active":"";
+      b.innerHTML=`<span class="series-name">${val.label}</span><span class="series-formula">${val.formula}</span>`;
+      b.addEventListener("click",()=>{state.series=key;state.selectedIndex=0;refresh();});
+      seriesGrid.appendChild(b);
+    });
+  }
+
+  function currentEntries(){ return (DATA[state.series]&&DATA[state.series][state.carbonCount])||[]; }
+
+  function renderIsomerList(){
+    const entries=currentEntries();
+    selectionTitle.textContent=`${PREFIX[state.carbonCount]} family · ${SERIES[state.series].label.toLowerCase()}`;
+    isomerCount.textContent=`${entries.length} structure${entries.length===1?"":"s"}`;
+    isomerList.innerHTML="";
+    entries.forEach((entry,i)=>{
+      const b=document.createElement("button");
+      b.className="isomer-btn"+(i===state.selectedIndex?" active":"");
+      const tag = entry.type==="position"?"position":entry.type==="chain"?"chain":entry.type==="secondary"?"secondary":entry.type==="tertiary"?"tertiary":"parent";
+      b.innerHTML=`<span class="name">${entry.name}</span><span class="tag">${tag}</span>`;
+      b.addEventListener("click",()=>{state.selectedIndex=i;state.rotX=-.30;state.rotY=.62;state.zoom=1;refresh();});
+      isomerList.appendChild(b);
+    });
+  }
+
+  function renderInfo(){
+    const entries=currentEntries();
+    if(!entries.length){
+      state.molecule=null;
+      info.innerHTML=`<div class="explain">This combination is outside the complete dataset in this version. Choose another carbon count or series.</div>`;
+      return;
+    }
+    const entry=entries[state.selectedIndex];
+    state.molecule=buildMolecule(entry,state.series,state.carbonCount);
+    const formula=molecularFormula(state.molecule);
+    let why="Different carbon skeleton from another member of this formula family.";
+    if(entry.type==="position") why="Same carbon skeleton, but the multiple bond or functional group is in a different position.";
+    if(entry.type==="secondary") why="A constitutional isomer with two carbon groups attached to nitrogen.";
+    if(entry.type==="tertiary") why="A constitutional isomer with three carbon groups attached to nitrogen.";
+    if(entry.type==="parent") why="The unbranched reference structure for this carbon count.";
+    info.innerHTML=`
+      <div class="info-row"><span>Name</span><span>${entry.name}</span></div>
+      <div class="info-row"><span>Formula</span><span>${formula}</span></div>
+      <div class="info-row"><span>Isomer type</span><span>${entry.type==='position'?'position':entry.type==='chain'?'chain':entry.type==='secondary'?'constitutional':'parent'}</span></div>
+      <div class="explain">${why}</div>`;
+  }
+
+  function refresh(){
+    renderCarbonButtons();renderSeriesButtons();renderIsomerList();renderInfo();draw();
+  }
+
+  // ---------- 3D canvas renderer ----------
+  const atomStyle={
+    C:{r:16,base:"#cf4d4d",edge:"#7d2020"},
+    H:{r:9,base:"#518fff",edge:"#173f8e"},
+    O:{r:15,base:"#ff885c",edge:"#8f3f25"},
+    N:{r:15,base:"#9b7aff",edge:"#51398c"}
+  };
+
+  function resize(){
+    state.w=window.innerWidth;state.h=window.innerHeight;
+    canvas.width=Math.floor(state.w*state.dpr);canvas.height=Math.floor(state.h*state.dpr);
+    ctx.setTransform(state.dpr,0,0,state.dpr,0,0);draw();
+  }
+
+  function rotatePoint(p){
+    const cy=Math.cos(state.rotY),sy=Math.sin(state.rotY),cx=Math.cos(state.rotX),sx=Math.sin(state.rotX);
+    const x=cy*p.x+sy*p.z;
+    const z=-sy*p.x+cy*p.z;
+    const y=cx*p.y-sx*z;
+    const zz=sx*p.y+cx*z;
+    return {x,y,z:zz};
+  }
+
+  function project(p){
+    const q=rotatePoint(p);
+    const perspective=1/(1+q.z*.12);
+    const areaW=state.w-390;
+    const cx=390+areaW*.5+state.panX;
+    const cy=state.h*.53+state.panY;
+    return {x:cx+q.x*150*state.zoom*perspective,y:cy+q.y*150*state.zoom*perspective,z:q.z,scale:perspective};
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,state.w,state.h);
+    if(!state.molecule){drawEmpty();return;}
+    drawSoftBackdrop();
+    drawMolecule(state.molecule);
+    drawTitle();
+  }
+
+  function drawSoftBackdrop(){
+    const rg=ctx.createRadialGradient(state.w*.7,state.h*.47,20,state.w*.7,state.h*.47,Math.min(state.w,state.h)*.55);
+    rg.addColorStop(0,"rgba(120,140,190,.045)");rg.addColorStop(1,"rgba(0,0,0,0)");
+    ctx.fillStyle=rg;ctx.fillRect(0,0,state.w,state.h);
+  }
+
+  function drawEmpty(){
+    ctx.save();ctx.fillStyle="rgba(255,255,255,.42)";ctx.textAlign="center";ctx.font="16px Georgia";
+    ctx.fillText("Choose a carbon count and a homologous series",state.w*.63,state.h*.53);ctx.restore();
+  }
+
+  function drawTitle(){
+    const entry=state.molecule.entry;
+    const formula=molecularFormula(state.molecule);
+    const x=390+(state.w-390)*.5;
+    ctx.save();ctx.textAlign="center";
+    ctx.fillStyle="rgba(255,255,255,.82)";ctx.font="20px Georgia";ctx.fillText(entry.name,x,45);
+    ctx.fillStyle="rgba(255,255,255,.42)";ctx.font="12px Georgia";ctx.fillText(formula,x,66);
+    ctx.restore();
+  }
+
+  function drawMolecule(mol){
+    const projected=mol.atoms.map(project);
+    const bondItems=mol.bonds.map(b=>({b,a:projected[b.a],c:projected[b.b],depth:(projected[b.a].z+projected[b.b].z)/2})).sort((u,v)=>u.depth-v.depth);
+    for(const item of bondItems) drawBond(item.a,item.c,item.b.order,item.b, projected);
+    const atomItems=mol.atoms.map((a,i)=>({a,p:projected[i]})).sort((u,v)=>u.p.z-v.p.z);
+    for(const item of atomItems) drawAtom(item.a,item.p);
+  }
+
+  function drawBond(a,b,order,bondData,projected){
+    const x1=a.x,y1=a.y,x2=b.x,y2=b.y;
+    const dx=x2-x1,dy=y2-y1,L=Math.hypot(dx,dy)||1;
+    const nx=-dy/L,ny=dx/L;
+    const offsets=order===1?[0]:order===2?[-4.2,4.2]:[-7,0,7];
+    for(const off of offsets){
+      const ox=nx*off,oy=ny*off;
+      ctx.save();
+      const grad=ctx.createLinearGradient(x1+ox,y1+oy,x2+ox,y2+oy);
+      grad.addColorStop(0,"#7c8794");grad.addColorStop(.45,"#e9eef3");grad.addColorStop(.7,"#a8b0ba");grad.addColorStop(1,"#59636e");
+      ctx.strokeStyle=grad;ctx.lineWidth=4.7;ctx.lineCap="round";
+      ctx.beginPath();ctx.moveTo(x1+ox,y1+oy);ctx.lineTo(x2+ox,y2+oy);ctx.stroke();
+      ctx.strokeStyle="rgba(255,255,255,.35)";ctx.lineWidth=.8;
+      ctx.beginPath();ctx.moveTo(x1+ox-1,y1+oy-1);ctx.lineTo(x2+ox-1,y2+oy-1);ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  function drawAtom(a,p){
+    const style=atomStyle[a.el]||atomStyle.C;
+    const r=style.r*(p.scale||1)*state.zoom*.94;
+    const g=ctx.createRadialGradient(p.x-r*.35,p.y-r*.38,r*.08,p.x,p.y,r);
+    g.addColorStop(0,"rgba(255,255,255,.96)");
+    g.addColorStop(.18,style.base);
+    g.addColorStop(.72,style.base);
+    g.addColorStop(1,style.edge);
+    ctx.save();
+    ctx.fillStyle=g;ctx.shadowColor="rgba(0,0,0,.55)";ctx.shadowBlur=10;ctx.shadowOffsetY=5;
+    ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fill();
+    ctx.shadowColor="transparent";
+    ctx.strokeStyle="rgba(255,255,255,.25)";ctx.lineWidth=1;ctx.stroke();
+    ctx.fillStyle="rgba(255,255,255,.95)";ctx.textAlign="center";ctx.textBaseline="middle";
+    ctx.font=`${Math.max(9,r*.62)}px Georgia`;ctx.fillText(a.el,p.x,p.y+1);
+    ctx.restore();
+  }
+
+  // Interaction: drag rotates; Shift/right/middle drag pans; wheel/pinch zooms.
+  canvas.addEventListener("contextmenu",e=>e.preventDefault());
+  canvas.addEventListener("pointerdown",e=>{
+    state.dragging=true;state.startX=e.clientX;state.startY=e.clientY;
+    state.startRotX=state.rotX;state.startRotY=state.rotY;state.startPanX=state.panX;state.startPanY=state.panY;
+    state.mode=(e.shiftKey||e.button===1||e.button===2)?"pan":"rotate";
+    canvas.classList.add("dragging");canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener("pointermove",e=>{
+    if(!state.dragging)return;
+    const dx=e.clientX-state.startX,dy=e.clientY-state.startY;
+    if(state.mode==="rotate"){
+      state.rotY=state.startRotY+dx*.008;
+      state.rotX=Math.max(-1.45,Math.min(1.45,state.startRotX+dy*.008));
+    }else{
+      state.panX=state.startPanX+dx;state.panY=state.startPanY+dy;
+    }
+    draw();
+  });
+  canvas.addEventListener("pointerup",e=>{state.dragging=false;canvas.classList.remove("dragging");if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId)});
+  canvas.addEventListener("pointercancel",()=>{state.dragging=false;canvas.classList.remove("dragging")});
+  canvas.addEventListener("wheel",e=>{e.preventDefault();const factor=Math.exp(-e.deltaY*.001);state.zoom=Math.max(.45,Math.min(3.2,state.zoom*factor));draw()},{passive:false});
+
+  // Touch pinch zoom.
+  const touches=new Map();let pinchStart=0,pinchZoom=1;
+  canvas.addEventListener("touchstart",e=>{for(const t of e.changedTouches)touches.set(t.identifier,t);if(touches.size===2){const ts=[...touches.values()];pinchStart=Math.hypot(ts[0].clientX-ts[1].clientX,ts[0].clientY-ts[1].clientY);pinchZoom=state.zoom;}},{passive:false});
+  canvas.addEventListener("touchmove",e=>{for(const t of e.changedTouches)touches.set(t.identifier,t);if(touches.size===2){e.preventDefault();const ts=[...touches.values()];const d=Math.hypot(ts[0].clientX-ts[1].clientX,ts[0].clientY-ts[1].clientY);state.zoom=Math.max(.45,Math.min(3.2,pinchZoom*(d/(pinchStart||d))));draw()}},{passive:false});
+  canvas.addEventListener("touchend",e=>{for(const t of e.changedTouches)touches.delete(t.identifier)});
+
+  window.addEventListener("resize",resize);
+  refresh();resize();
+})();
+</script>
+</body>
+</html>

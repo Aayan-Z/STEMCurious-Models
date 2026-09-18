@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seesaw Balance &amp; Moments</title>
+<style>
+  *{box-sizing:border-box;}
+  html,body{ margin:0; padding:0; width:100%; height:100%; background:#000; color:#fff;
+    font-family:'Times New Roman', Times, serif; overflow:hidden; }
+  canvas#c{ position:fixed; inset:0; display:block; background:#000; }
+
+  #panel{
+    position:fixed; top:16px; left:16px; bottom:16px; width:280px;
+    background:rgba(255,255,255,0.08);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    backdrop-filter: blur(32px) saturate(180%);
+    border:1px solid rgba(255,255,255,0.22);
+    border-radius:26px;
+    padding:22px 22px 18px 22px; overflow-y:auto; z-index:6;
+    box-shadow: 0 12px 36px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.28);
+  }
+  #panel::-webkit-scrollbar{ width:5px; }
+  #panel::-webkit-scrollbar-thumb{ background:rgba(255,255,255,0.2); border-radius:3px; }
+
+  .action-btn{
+    width:100%; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2);
+    color:#fff; font-family:'Times New Roman', Times, serif; font-size:14px;
+    padding:10px 0; border-radius:14px; cursor:pointer; margin-bottom:9px; transition: background .15s ease;
+  }
+  .action-btn:hover{ background:rgba(255,255,255,0.2); }
+  .action-btn.primary{ background:rgba(255,211,92,0.22); border-color:rgba(255,211,92,0.4); }
+  .action-btn.primary:hover{ background:rgba(255,211,92,0.34); }
+
+  .divider{ height:1px; margin:14px 0; background:linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.2), rgba(255,255,255,0)); }
+  .panel-label{ font-size:13px; color:rgba(255,255,255,0.55); margin-bottom:9px; font-style:italic; }
+
+  .mass-row{ background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:14px;
+    padding:10px 12px; margin-bottom:8px; }
+  .mass-row-top{ display:flex; justify-content:space-between; align-items:center; font-size:13px; margin-bottom:6px; }
+  .mass-row-top b{ color:#ffd35c; }
+  .mini-btn{ background:rgba(255,255,255,0.1); border:none; color:#fff; width:22px; height:22px; border-radius:6px;
+    cursor:pointer; font-size:13px; line-height:1; }
+  .mini-btn:hover{ background:rgba(255,255,255,0.2); }
+  input[type=range].mass-slider{ -webkit-appearance:none; appearance:none; width:100%; height:18px; background:transparent; }
+  input[type=range].mass-slider::-webkit-slider-runnable-track{ height:4px; border-radius:2px;
+    background:linear-gradient(90deg, rgba(255,255,255,0.5), rgba(255,255,255,0.12)); }
+  input[type=range].mass-slider::-webkit-slider-thumb{ -webkit-appearance:none; width:15px; height:15px; border-radius:50%;
+    background:#fff; margin-top:-5.5px; cursor:pointer; }
+
+  .stat-line{ font-size:13px; line-height:1.9; color:rgba(255,255,255,0.6); }
+  .stat-line b{ color:rgba(255,255,255,0.9); font-weight:700; }
+  .balance-flag{ font-size:14px; font-weight:700; margin:8px 0; }
+
+  #calcBubble{
+    position:fixed; top:50%; left:50%; transform:translate(-50%,-50%) scale(0.9);
+    background:rgba(255,255,255,0.1);
+    -webkit-backdrop-filter: blur(40px) saturate(200%); backdrop-filter: blur(40px) saturate(200%);
+    border:1px solid rgba(255,255,255,0.3); border-radius:26px;
+    padding:26px 32px; min-width:360px; text-align:center; z-index:10;
+    box-shadow:0 24px 70px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.35);
+    opacity:0; pointer-events:none; transition: opacity .3s ease, transform .3s ease;
+  }
+  #calcBubble.show{ opacity:1; transform:translate(-50%,-50%) scale(1); }
+  #calcBubble .line{ font-size:16px; line-height:2; color:rgba(255,255,255,0.85); }
+  #calcBubble .line b{ color:#ffd35c; }
+  #calcBubble .total{ font-size:18px; margin-top:10px; color:#7cff8a; }
+
+  @media (max-width: 960px){
+    #panel{ width:220px; padding:16px; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+
+<div id="panel">
+  <button class="action-btn" id="addBtn">+ Add Mass</button>
+  <button class="action-btn primary" id="calcBtn">Show Moment Calculation</button>
+  <button class="action-btn" id="resetBtn">Reset</button>
+
+  <div class="divider"></div>
+  <div class="panel-label">Masses on the Bar</div>
+  <div id="massList"></div>
+
+  <div class="divider"></div>
+  <div class="balance-flag" id="balanceFlag"></div>
+  <div class="stat-line" id="stats"></div>
+</div>
+
+<div id="calcBubble">
+  <div class="line" id="calcLine">&nbsp;</div>
+  <div class="total" id="calcTotal"></div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   PHYSICS
+
+   Each mass sits at a fixed distance s (meters, signed, along
+   the bar) from the pivot. As the bar tilts to angle theta from
+   horizontal, gravity's torque on that mass about the pivot is
+       tau = -m*g*s*cos(theta)
+   -- the horizontal lever arm genuinely shrinks by cos(theta) as
+   the bar tilts, exactly as real torque (r x F) requires; this
+   is not a small-angle shortcut.
+
+   Total moment of inertia uses the parallel-axis theorem for
+   every point mass: I = I_bar + sum(m_i * s_i^2). Angular
+   acceleration alpha = tau_net / I is integrated with damping
+   (a real pivot has friction) and clamped so the bar physically
+   cannot rotate past the angle where one end would pass through
+   the ground -- it stops exactly there, like a real seesaw.
+   ============================================================ */
+
+var g = 9.81;
+var PIVOT_H = 2.0;
+var BAR_R = 4.3;
+var THETA_MAX = Math.asin(PIVOT_H/BAR_R);
+var I_BAR = 2.5;
+var DAMPING = 1.1;
+
+var masses = [];
+var nextId = 1;
+var theta = 0, omega = 0;
+var selectedId = null;
+var draggingId = null;
+
+function addMass(s, w){ masses.push({ id: nextId++, s: s, w: w }); }
+function resetAll(){
+  masses = [];
+  addMass(2.2, 3);
+  addMass(-1.5, 4);
+  theta = 0; omega = 0;
+  buildMassList();
+}
+
+function totalI(){
+  var I = I_BAR;
+  masses.forEach(function(m){ I += m.w*m.s*m.s; });
+  return I;
+}
+function netTorque(th){
+  var tau = 0;
+  masses.forEach(function(m){ tau += -m.w*g*m.s*Math.cos(th); });
+  return tau;
+}
+function centerOfMass(){
+  var sw=0, sm=0;
+  masses.forEach(function(m){ sw += m.w*m.s; sm += m.w; });
+  return sm>0 ? sw/sm : 0;
+}
+
+function stepPhysics(dt){
+  var sub = 6, h = dt/sub;
+  for(var i=0;i<sub;i++){
+    var tau = netTorque(theta);
+    var alpha = tau/totalI() - DAMPING*omega;
+    omega += alpha*h;
+    theta += omega*h;
+    if(theta > THETA_MAX){ theta = THETA_MAX; if(omega>0) omega=0; }
+    if(theta < -THETA_MAX){ theta = -THETA_MAX; if(omega<0) omega=0; }
+  }
+}
+
+/* ============================================================
+   CANVAS SETUP
+   ============================================================ */
+
+var canvas = document.getElementById('c');
+var ctx = canvas.getContext('2d');
+function resize(){ canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+window.addEventListener('resize', resize);
+resize();
+
+var PX_PER_M = 78;
+function groundY(){ return canvas.height*0.72; }
+function pivotXY(){ return { x: canvas.width/2, y: groundY()-PIVOT_H*PX_PER_M }; }
+
+function barPointAt(s){
+  var p = pivotXY();
+  return { x: p.x + s*PX_PER_M*Math.cos(theta), y: p.y - s*PX_PER_M*Math.sin(theta) };
+}
+function sFromWorld(px, py){
+  var p = pivotXY();
+  var dx = px-p.x, dy = py-p.y;
+  var s = dx*Math.cos(theta) - dy*Math.sin(theta);
+  return Math.max(-BAR_R+0.15, Math.min(BAR_R-0.15, s/PX_PER_M));
+}
+function massRadius(w){ return 14+6*Math.sqrt(w); }
+
+/* ---------- distance-from-pivot dimension line (used both live, faintly, and in the calc animation) ---------- */
+
+function drawDistanceLine(m, highlight){
+  var p = pivotXY();
+  var pt = barPointAt(m.s);
+  var offset = 34;
+  var nx = Math.sin(theta), ny = Math.cos(theta); // perpendicular to bar, pointing "above" it
+  var p1 = { x:p.x+nx*offset, y:p.y-ny*offset };
+  var p2 = { x:pt.x+nx*offset, y:pt.y-ny*offset };
+
+  ctx.strokeStyle = highlight ? 'rgba(255,211,92,0.95)' : 'rgba(255,255,255,0.22)';
+  ctx.lineWidth = highlight ? 2 : 1;
+  ctx.setLineDash(highlight ? [] : [4,4]);
+  ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p1.x,p1.y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(pt.x,pt.y); ctx.lineTo(p2.x,p2.y); ctx.stroke();
+  ctx.setLineDash([]);
+
+  if(highlight){
+    var midx=(p1.x+p2.x)/2, midy=(p1.y+p2.y)/2;
+    ctx.fillStyle='#ffd35c'; ctx.font='600 13px Times New Roman'; ctx.textAlign='center';
+    ctx.fillText('s = '+Math.abs(m.s).toFixed(2)+' m', midx, midy-8);
+    ctx.textAlign='start';
+  }
+}
+
+function draw(activeCalcId){
+  ctx.fillStyle='#000'; ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(0,groundY()); ctx.lineTo(canvas.width,groundY()); ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,0.04)';
+  ctx.fillRect(0,groundY(),canvas.width,canvas.height-groundY());
+
+  var p = pivotXY();
+  ctx.fillStyle='#5a5f6b';
+  ctx.beginPath();
+  ctx.moveTo(p.x,p.y); ctx.lineTo(p.x-55,groundY()); ctx.lineTo(p.x+55,groundY());
+  ctx.closePath(); ctx.fill();
+
+  var a = barPointAt(-BAR_R), b = barPointAt(BAR_R);
+  ctx.strokeStyle='#c9a36a'; ctx.lineWidth=16; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+  ctx.strokeStyle='rgba(0,0,0,0.25)'; ctx.lineWidth=16; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(a.x,a.y+3); ctx.lineTo(b.x,b.y+3); ctx.stroke();
+  ctx.strokeStyle='#c9a36a'; ctx.lineWidth=13; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+
+  ctx.fillStyle='#e8c25a';
+  ctx.beginPath(); ctx.arc(p.x,p.y,9,0,Math.PI*2); ctx.fill();
+
+  var cm = centerOfMass();
+  var cmPt = barPointAt(cm);
+  ctx.fillStyle='rgba(124,255,138,0.85)';
+  ctx.beginPath(); ctx.arc(cmPt.x, cmPt.y-14, 4, 0, Math.PI*2); ctx.fill();
+
+  masses.forEach(function(m){
+    if(activeCalcId!==undefined) drawDistanceLine(m, m.id===activeCalcId);
+    var pt = barPointAt(m.s);
+    var r = massRadius(m.w);
+    var grad = ctx.createRadialGradient(pt.x-r*0.3,pt.y-r*0.3-r,r*0.1, pt.x,pt.y-r,r);
+    var baseColor = m.id===selectedId ? ['#fff3c9','#e8a93a'] : ['#bcd2ff','#4a78d8'];
+    grad.addColorStop(0,baseColor[0]); grad.addColorStop(1,baseColor[1]);
+    ctx.fillStyle=grad;
+    ctx.beginPath(); ctx.arc(pt.x,pt.y-r,r,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.5)'; ctx.lineWidth=1.5; ctx.stroke();
+    ctx.fillStyle='#000'; ctx.font='600 12px Times New Roman'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(m.w.toFixed(1), pt.x, pt.y-r);
+  });
+  ctx.textAlign='start';
+}
+
+/* ============================================================
+   DRAG AND DROP
+   ============================================================ */
+
+function toXY(e){ var r=canvas.getBoundingClientRect(); return { x:(e.clientX-r.left), y:(e.clientY-r.top) }; }
+function hitTestMass(px,py){
+  for(var i=masses.length-1;i>=0;i--){
+    var m = masses[i];
+    var pt = barPointAt(m.s);
+    var r = massRadius(m.w);
+    var dx = px-pt.x, dy = py-(pt.y-r);
+    if(dx*dx+dy*dy <= (r+4)*(r+4)) return m.id;
+  }
+  return null;
+}
+canvas.addEventListener('pointerdown', function(e){
+  var pos = toXY(e);
+  var hit = hitTestMass(pos.x,pos.y);
+  if(hit!==null){ draggingId=hit; selectedId=hit; highlightMassRow(hit); }
+});
+canvas.addEventListener('pointermove', function(e){
+  if(draggingId===null) return;
+  var pos = toXY(e);
+  var m = masses.find(function(mm){ return mm.id===draggingId; });
+  if(m){ m.s = sFromWorld(pos.x,pos.y); }
+});
+window.addEventListener('pointerup', function(){ draggingId=null; });
+
+/* ============================================================
+   MASS LIST UI
+   ============================================================ */
+
+function buildMassList(){
+  var container = document.getElementById('massList');
+  container.innerHTML = '';
+  masses.forEach(function(m){
+    var row = document.createElement('div');
+    row.className='mass-row';
+    row.dataset.id = m.id;
+    row.innerHTML =
+      '<div class="mass-row-top"><span>Mass '+m.id+' &middot; <b>'+m.w.toFixed(1)+' kg</b></span>'+
+      '<button class="mini-btn" data-remove="'+m.id+'">&times;</button></div>'+
+      '<input type="range" class="mass-slider" min="0.5" max="10" step="0.1" value="'+m.w+'" data-weight="'+m.id+'">';
+    container.appendChild(row);
+  });
+  container.querySelectorAll('[data-weight]').forEach(function(el){
+    el.addEventListener('input', function(){
+      var id = parseFloat(el.dataset.weight);
+      var m = masses.find(function(mm){ return mm.id===id; });
+      if(m){ m.w = parseFloat(el.value); el.closest('.mass-row').querySelector('b').textContent = m.w.toFixed(1)+' kg'; }
+    });
+  });
+  container.querySelectorAll('[data-remove]').forEach(function(el){
+    el.addEventListener('click', function(){
+      var id = parseFloat(el.dataset.remove);
+      masses = masses.filter(function(mm){ return mm.id!==id; });
+      buildMassList();
+    });
+  });
+}
+function highlightMassRow(id){
+  document.querySelectorAll('.mass-row').forEach(function(r){
+    r.style.background = (parseFloat(r.dataset.id)===id) ? 'rgba(255,211,92,0.14)' : '';
+  });
+}
+
+document.getElementById('addBtn').addEventListener('click', function(){
+  addMass((Math.random()-0.5)*BAR_R*1.2, 2+Math.random()*3);
+  buildMassList();
+});
+document.getElementById('resetBtn').addEventListener('click', resetAll);
+
+/* ============================================================
+   MOMENT CALCULATION ANIMATION (with explicit distance-from-pivot lines)
+   ============================================================ */
+
+var calcRunning = false;
+var calcActiveId = undefined;
+
+function showMomentCalculation(){
+  if(calcRunning || masses.length===0) return;
+  calcRunning = true;
+  var bubble = document.getElementById('calcBubble');
+  bubble.classList.add('show');
+  var idx = 0;
+  var runningTotal = 0;
+
+  function step(){
+    if(idx < masses.length){
+      var m = masses[idx];
+      calcActiveId = m.id;
+      var tau = -m.w*g*m.s*Math.cos(theta);
+      runningTotal += tau;
+      document.getElementById('calcLine').innerHTML =
+        'Mass '+m.id+':  distance from pivot s = <b>'+Math.abs(m.s).toFixed(2)+' m</b> ('+(m.s>=0?'right':'left')+' side)<br>'+
+        '\u03C4 = m &middot; g &middot; s &middot; cos\u03B8 = '+m.w.toFixed(1)+' &times; 9.81 &times; '+m.s.toFixed(2)+' &times; cos('+(theta*180/Math.PI).toFixed(1)+'\u00B0)<br>'+
+        '<b>= '+tau.toFixed(2)+' N\u00B7m</b>  ('+(tau>=0?'counterclockwise':'clockwise')+')';
+      document.getElementById('calcTotal').textContent = '';
+      idx++;
+      setTimeout(step, 1700);
+    } else {
+      calcActiveId = undefined;
+      var cm = centerOfMass();
+      document.getElementById('calcLine').innerHTML = 'All moments summed about the pivot:';
+      document.getElementById('calcTotal').innerHTML =
+        'Net moment = <b>'+runningTotal.toFixed(2)+' N\u00B7m</b><br>'+
+        'Center of mass = <b>'+cm.toFixed(2)+' m</b> from pivot<br>'+
+        (Math.abs(runningTotal)<0.15 ? 'The seesaw is balanced.' : (runningTotal<0?'Net rotation: right side down.':'Net rotation: left side down.'));
+      setTimeout(function(){ bubble.classList.remove('show'); calcRunning=false; }, 2800);
+    }
+  }
+  step();
+}
+document.getElementById('calcBtn').addEventListener('click', showMomentCalculation);
+
+/* ============================================================
+   RENDER LOOP
+   ============================================================ */
+
+var lastNow = performance.now();
+function animate(now){
+  requestAnimationFrame(animate);
+  var dt = Math.min((now-lastNow)/1000, 0.033);
+  lastNow = now;
+
+  if(!calcRunning) stepPhysics(dt);
+  draw(calcRunning ? calcActiveId : undefined);
+
+  var tau = netTorque(theta);
+  var atLimit = Math.abs(theta) >= THETA_MAX-0.001;
+  var balanced = Math.abs(tau) < 0.2 && Math.abs(omega) < 0.02 && !atLimit;
+
+  document.getElementById('balanceFlag').innerHTML = balanced
+    ? '<span style="color:#7cff8a;">&#9679; Balanced</span>'
+    : (atLimit ? '<span style="color:#ff8a5a;">&#9679; Resting on ground</span>' : '<span style="color:#ffd35c;">&#9679; Tilting</span>');
+
+  document.getElementById('stats').innerHTML =
+    'Angle: <b>'+(theta*180/Math.PI).toFixed(1)+'\u00B0</b>   (max &plusmn;'+(THETA_MAX*180/Math.PI).toFixed(1)+'\u00B0)<br>'+
+    'Net moment about pivot: <b>'+tau.toFixed(2)+' N\u00B7m</b><br>'+
+    'Center of mass: <b>'+centerOfMass().toFixed(2)+' m</b> from pivot<br>'+
+    'Drag any mass along the bar; use its card slider to change weight.';
+}
+
+resetAll();
+lastNow = performance.now();
+requestAnimationFrame(animate);
+
+})();
+</script>
+</body>
+</html>

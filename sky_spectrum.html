@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Night Sky Across the Spectrum</title>
+<style>
+  *{box-sizing:border-box;}
+  html,body{ margin:0; padding:0; width:100%; height:100%; background:#000; color:#fff;
+    font-family:'Times New Roman', Times, serif; overflow:hidden; }
+  #canvas-wrap{ position:fixed; inset:0; background:#000; }
+  canvas{ display:block; }
+
+  #topbar{
+    position:fixed; top:16px; left:50%; transform:translateX(-50%);
+    display:flex; gap:4px;
+    background:rgba(255,255,255,0.08);
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    backdrop-filter: blur(30px) saturate(180%);
+    border:1px solid rgba(255,255,255,0.22);
+    border-radius:20px; padding:6px; z-index:6;
+    box-shadow: 0 10px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.25);
+  }
+  .band-btn{ background:transparent; border:none; color:rgba(255,255,255,0.72);
+    font-family:'Times New Roman', Times, serif; font-size:14.5px; padding:9px 15px;
+    border-radius:14px; cursor:pointer; transition: background .15s ease, color .15s ease; white-space:nowrap; }
+  .band-btn:hover{ background:rgba(255,255,255,0.1); color:#fff; }
+  .band-btn.active{ background:rgba(255,255,255,0.2); color:#fff; font-weight:700; }
+
+  #hint{ position:fixed; top:24px; right:28px; font-size:14px; color:#fff; text-align:right;
+    line-height:1.9; z-index:6; pointer-events:none; font-family:'Times New Roman', Times, serif;
+    text-shadow:0 1px 6px rgba(0,0,0,0.6); }
+
+  #info{ position:fixed; left:22px; bottom:24px; max-width:460px; z-index:6; pointer-events:none;
+    color:rgba(255,255,255,0.62); font-family:'Times New Roman', Times, serif; }
+  #info .name{ font-size:26px; margin:0 0 4px 0; color:rgba(255,255,255,0.85); }
+  #info .qn{ font-size:13.5px; margin-bottom:9px; color:rgba(255,255,255,0.48); }
+  #info .desc{ font-size:14px; line-height:1.55; color:rgba(255,255,255,0.58); max-width:440px; }
+
+  #loading{ position:fixed; inset:0; z-index:20; display:flex; align-items:center; justify-content:center;
+    flex-direction:column; background:#000; transition:opacity .4s ease; }
+  #loading .spinner{ width:26px; height:26px; border-radius:50%; border:1.5px solid rgba(255,255,255,0.2);
+    border-top-color:#ffffff; animation:spin 0.8s linear infinite; margin-bottom:16px; }
+  #loading .txt{ font-size:14px; color:rgba(255,255,255,0.7); font-style:italic; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .hidden{ opacity:0; pointer-events:none; }
+
+  @media (max-width:900px){
+    #topbar{ flex-wrap:wrap; max-width:94vw; justify-content:center; }
+    #hint{ display:none; } #info{ max-width:250px; } #info .name{ font-size:20px; }
+    .band-btn{ font-size:12.5px; padding:7px 10px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="canvas-wrap"></div>
+<div id="topbar"></div>
+<div id="hint">Drag to look around<br>Scroll to adjust field of view</div>
+
+<div id="info">
+  <div class="name" id="infoName">Visible Light</div>
+  <div class="qn" id="infoQn"></div>
+  <div class="desc" id="infoDesc"></div>
+</div>
+
+<div id="loading"><div class="spinner"></div><div class="txt">Rendering the sky in every light&hellip;</div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   BANDS: real EM-spectrum wavelength/frequency ranges. Thermal
+   starlight dominates the optical/IR/UV sky; extreme compact
+   objects (pulsars, accreting black holes, blazar jets) dominate
+   radio/X-ray/gamma; the Cosmic Microwave Background dominates
+   the microwave sky almost uniformly in every direction.
+   ============================================================ */
+
+var BANDS = {
+  radio: { label:"Radio", wl:"> 10 cm", freq:"< 3 GHz",
+    desc:"Dominated by synchrotron radiation from electrons spiraling in the Galaxy's magnetic field. Ordinary stars are essentially silent here \u2014 the sky instead glows along the galactic plane and around a handful of extreme compact sources like pulsars and distant radio galaxies.",
+    tex:{ bandWidth:16, planeBrightness:0.85, dustMode:"none", baseLevel:0.012, speckle:0.04,
+      stops:[[0,"#000000"],[0.25,"#0b1f6b"],[0.5,"#12897a"],[0.75,"#e0c22e"],[1,"#ff5a3c"]] },
+    starMode:"off", pointSources:{on:true, color:0xff8a5a, count:46} },
+  microwave: { label:"Microwave", wl:"1 mm \u2013 10 cm", freq:"3 \u2013 300 GHz",
+    desc:"At these wavelengths the sky is dominated not by our Galaxy but by the Cosmic Microwave Background \u2014 the cooled afterglow of the Big Bang, radiating almost uniformly from every direction at 2.725 K, with only faint mottling and a dim haze of foreground galactic dust.",
+    tex:{ bandWidth:9, planeBrightness:0.20, dustMode:"none", baseLevel:0.36, speckle:0.11,
+      stops:[[0,"#0b1440"],[0.4,"#2a4fae"],[0.62,"#d8d8d8"],[0.78,"#e8a23a"],[1,"#c23a2c"]] },
+    starMode:"off", pointSources:{on:false} },
+  infrared: { label:"Infrared", wl:"700 nm \u2013 1 mm", freq:"300 GHz \u2013 430 THz",
+    desc:"Heat radiation reveals what visible light cannot: the same interstellar dust that blocks starlight optically absorbs that energy and re-radiates it as infrared glow, so the dark lanes of the Milky Way become some of the brightest features in the sky.",
+    tex:{ bandWidth:13, planeBrightness:0.55, dustMode:"emit", dustStrength:1.0, dustEmit:1.15, baseLevel:0.02, speckle:0,
+      stops:[[0,"#020101"],[0.45,"#3a0f05"],[0.75,"#c24a12"],[1,"#ffd27a"]] },
+    starMode:"ir", pointSources:{on:false} },
+  visible: { label:"Visible", wl:"400 \u2013 700 nm", freq:"430 \u2013 750 THz",
+    desc:"The narrow window human eyes can detect. The Milky Way appears as a pale band of unresolved starlight, cut through by dark lanes of dust that block the light of more distant stars behind them.",
+    tex:{ bandWidth:11, planeBrightness:0.85, dustMode:"absorb", dustStrength:1.0, baseLevel:0.015, speckle:0,
+      stops:[[0,"#000003"],[0.5,"#0a0d18"],[1,"#e8e4d8"]] },
+    starMode:"thermal", pointSources:{on:false} },
+  ultraviolet: { label:"Ultraviolet", wl:"10 \u2013 400 nm", freq:"750 THz \u2013 30 PHz",
+    desc:"Only the hottest, youngest, most massive stars shine strongly here. The familiar constellations thin out dramatically, leaving scattered blue-white giants and hot stellar remnants standing alone against an otherwise darker sky.",
+    tex:{ bandWidth:7, planeBrightness:0.35, dustMode:"none", baseLevel:0.008, speckle:0.015,
+      stops:[[0,"#000000"],[0.5,"#1a1a6b"],[0.8,"#5a6bff"],[1,"#dfe6ff"]] },
+    starMode:"uv", pointSources:{on:false} },
+  xray: { label:"X-ray", wl:"0.01 \u2013 10 nm", freq:"30 PHz \u2013 30 EHz",
+    desc:"One of the most extreme skies of all. Ordinary starlight vanishes almost entirely; what remains are neutron stars, black hole accretion disks, and the hot shocked gas of supernova remnants and galaxy clusters, scattered thinly across an otherwise empty sky.",
+    tex:{ bandWidth:10, planeBrightness:0.06, dustMode:"none", baseLevel:0.004, speckle:0.008,
+      stops:[[0,"#000000"],[0.6,"#0a0a1a"],[1,"#bcd2ff"]] },
+    starMode:"off", pointSources:{on:true, color:0xcfe0ff, count:34} },
+  gamma: { label:"Gamma-ray", wl:"< 0.01 nm", freq:"> 30 EHz",
+    desc:"The most energetic light in the universe. A soft, broad glow traces the galactic plane where cosmic rays collide with interstellar gas, punctuated by a sparse scattering of pulsars and distant blazars \u2014 supermassive black holes firing particle jets almost directly at Earth.",
+    tex:{ bandWidth:14, planeBrightness:0.65, dustMode:"none", baseLevel:0.01, speckle:0.02,
+      stops:[[0,"#000000"],[0.35,"#2a0a3a"],[0.6,"#9a1a4a"],[0.8,"#ff7a2a"],[1,"#fff2c2"]] },
+    starMode:"off", pointSources:{on:true, color:0xffdf8c, count:40} }
+};
+var BAND_ORDER = ["radio","microwave","infrared","visible","ultraviolet","xray","gamma"];
+
+/* ============================================================
+   NOISE + GRADIENT HELPERS
+   ============================================================ */
+
+function makeGrid(cols, rows, seed){
+  var g = new Float32Array(cols*rows);
+  var s = seed>>>0;
+  function rnd(){ s=(s*1664525+1013904223)>>>0; return (s>>>8)/16777216; }
+  for(var i=0;i<cols*rows;i++) g[i]=rnd();
+  return { data:g, cols:cols, rows:rows };
+}
+function sampleGrid(grid,u,v){
+  var cols=grid.cols, rows=grid.rows, data=grid.data;
+  var fu=u*cols, fv=Math.max(0,Math.min(rows-1e-4,v*rows));
+  var iu0=Math.floor(fu)%cols; if(iu0<0) iu0+=cols;
+  var iu1=(iu0+1)%cols;
+  var iv0=Math.floor(fv); var iv1=Math.min(rows-1,iv0+1);
+  var tu=fu-Math.floor(fu), tv=fv-iv0;
+  tu=tu*tu*(3-2*tu); tv=tv*tv*(3-2*tv);
+  var a=data[iv0*cols+iu0], b=data[iv0*cols+iu1], c=data[iv1*cols+iu0], d=data[iv1*cols+iu1];
+  var top=a+(b-a)*tu, bot=c+(d-c)*tu;
+  return top+(bot-top)*tv;
+}
+function fbm2(gA,gB,u,v){ return sampleGrid(gA,u,v)*0.65 + sampleGrid(gB,(u*2.3)%1,v)*0.35; }
+function hexToRgb(hex){ var v=parseInt(hex.replace('#',''),16); return [((v>>16)&255)/255,((v>>8)&255)/255,(v&255)/255]; }
+function evalGradient(stops,t){
+  t=Math.max(0,Math.min(1,t));
+  for(var i=0;i<stops.length-1;i++){
+    var a=stops[i], b=stops[i+1];
+    if(t>=a[0] && t<=b[0]){
+      var lt=(b[0]-a[0])>1e-6 ? (t-a[0])/(b[0]-a[0]) : 0;
+      var ca=hexToRgb(a[1]), cb=hexToRgb(b[1]);
+      return [ca[0]+(cb[0]-ca[0])*lt, ca[1]+(cb[1]-ca[1])*lt, ca[2]+(cb[2]-ca[2])*lt];
+    }
+  }
+  return hexToRgb(stops[stops.length-1][1]);
+}
+
+/* ============================================================
+   PROCEDURAL SKY TEXTURE (galactic plane, per band)
+   ============================================================ */
+
+var planeGridA=makeGrid(48,20,101), planeGridB=makeGrid(19,9,202);
+var dustGridA=makeGrid(56,22,303), dustGridB=makeGrid(23,11,404);
+var speckleGridA=makeGrid(64,32,505), speckleGridB=makeGrid(31,15,606);
+
+function buildSkyTexture(params){
+  var w=1536, h=768;
+  var canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h;
+  var ctx=canvas.getContext('2d');
+  var img=ctx.createImageData(w,h);
+  var d=img.data;
+  for(var y=0;y<h;y++){
+    var v=y/h;
+    var b=(0.5-v)*180;
+    var planeFalloff=Math.exp(-(b*b)/(2*params.bandWidth*params.bandWidth));
+    for(var x=0;x<w;x++){
+      var u=x/w;
+      var struct=fbm2(planeGridA,planeGridB,u,v);
+      var plane=planeFalloff*(0.5+0.5*struct)*params.planeBrightness;
+      var intensity=params.baseLevel+plane;
+      if(params.dustMode==="absorb"||params.dustMode==="emit"){
+        var dustN=fbm2(dustGridA,dustGridB,(u*1.7)%1,v);
+        var dust=dustN*planeFalloff*(params.dustStrength||1);
+        if(params.dustMode==="absorb") intensity=params.baseLevel+plane*(1-Math.min(0.92,dust*0.95));
+        else intensity=params.baseLevel+plane*0.35+dust*(params.dustEmit||1);
+      }
+      if(params.speckle){
+        var sp=fbm2(speckleGridA,speckleGridB,u,v);
+        intensity += (sp-0.5)*2*params.speckle;
+      }
+      intensity=Math.max(0,Math.min(1,intensity));
+      var rgb=evalGradient(params.stops,intensity);
+      var idx=(y*w+x)*4;
+      d[idx]=Math.round(rgb[0]*255); d[idx+1]=Math.round(rgb[1]*255); d[idx+2]=Math.round(rgb[2]*255); d[idx+3]=255;
+    }
+  }
+  ctx.putImageData(img,0,0);
+  var tex=new THREE.CanvasTexture(canvas);
+  tex.wrapS=THREE.RepeatWrapping;
+  return tex;
+}
+
+/* ============================================================
+   SCENE SETUP
+   ============================================================ */
+
+var wrap=document.getElementById('canvas-wrap');
+var scene=new THREE.Scene();
+var camera=new THREE.PerspectiveCamera(62, window.innerWidth/window.innerHeight, 0.1, 1200);
+camera.position.set(0,0,0.001);
+
+var renderer=new THREE.WebGLRenderer({ antialias:true, alpha:false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.6));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputEncoding=THREE.sRGBEncoding;
+wrap.appendChild(renderer.domElement);
+
+var lookTarget=new THREE.Vector3(0.3,0.15,-1);
+var controls=new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping=true; controls.dampingFactor=0.09;
+controls.enablePan=false; controls.enableZoom=false;
+controls.rotateSpeed=-0.35;
+controls.minDistance=0.001; controls.maxDistance=0.002;
+controls.target.set(0,0,0);
+camera.lookAt(lookTarget);
+
+renderer.domElement.addEventListener('wheel', function(e){
+  e.preventDefault();
+  camera.fov=Math.max(24,Math.min(90,camera.fov+e.deltaY*0.04));
+  camera.updateProjectionMatrix();
+}, { passive:false });
+
+window.addEventListener('resize', function(){
+  camera.aspect=window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+var skyGeo=new THREE.SphereGeometry(500,64,40);
+var skyMat=new THREE.MeshBasicMaterial({ side:THREE.BackSide });
+scene.add(new THREE.Mesh(skyGeo, skyMat));
+var skyTextures={};
+
+/* ============================================================
+   STAR POPULATIONS
+   ============================================================ */
+
+function galacticToVec(lDeg,bDeg,radius){
+  var l=lDeg*Math.PI/180, b=bDeg*Math.PI/180;
+  return new THREE.Vector3(Math.cos(b)*Math.cos(l)*radius, Math.sin(b)*radius, Math.cos(b)*Math.sin(l)*radius);
+}
+function seededRand(seed){ var s=seed>>>0; return function(){ s=(s*1664525+1013904223)>>>0; return (s>>>8)/16777216; }; }
+
+var STAR_COUNT=4600;
+var rndStar=seededRand(7777);
+var starData=[];
+for(var i=0;i<STAR_COUNT;i++){
+  var b;
+  if(rndStar()<0.74){ b=(rndStar()-0.5)*44*Math.pow(rndStar(),1.7); } else { b=(rndStar()-0.5)*180; }
+  var l=rndStar()*360;
+  var t=Math.pow(rndStar(),1.6);
+  var tierRoll=rndStar();
+  var tier=tierRoll<0.045?2:(tierRoll<0.26?1:0);
+  starData.push({l:l,b:b,t:t,tier:tier});
+}
+function thermalColor(t){
+  var stops=[[0,"#ff6a3c"],[0.32,"#ffab5c"],[0.55,"#fff4d6"],[0.75,"#f5f7ff"],[1,"#9dc4ff"]];
+  var rgb=evalGradient(stops,t);
+  return new THREE.Color(rgb[0],rgb[1],rgb[2]);
+}
+
+var starGroups={0:null,1:null,2:null};
+var TIER_SIZE={0:1.1,1:1.9,2:3.0};
+
+function buildStarGroups(){
+  [0,1,2].forEach(function(tier){
+    var pts=starData.filter(function(s){ return s.tier===tier; });
+    var positions=new Float32Array(pts.length*3);
+    var colors=new Float32Array(pts.length*3);
+    pts.forEach(function(s,i){
+      var p=galacticToVec(s.l,s.b,480);
+      positions[i*3]=p.x; positions[i*3+1]=p.y; positions[i*3+2]=p.z;
+      colors[i*3]=1; colors[i*3+1]=1; colors[i*3+2]=1;
+    });
+    var geo=new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions,3));
+    geo.setAttribute('color', new THREE.BufferAttribute(colors,3));
+    var mat=new THREE.PointsMaterial({ size:TIER_SIZE[tier], vertexColors:true, transparent:true, opacity:1, sizeAttenuation:false, depthWrite:false, blending:THREE.AdditiveBlending });
+    var points=new THREE.Points(geo,mat);
+    points.userData.sourcePts=pts;
+    scene.add(points);
+    starGroups[tier]=points;
+  });
+}
+
+function updateStarColorsForBand(band){
+  [0,1,2].forEach(function(tier){
+    var points=starGroups[tier];
+    var pts=points.userData.sourcePts;
+    var colorAttr=points.geometry.getAttribute('color');
+    for(var i=0;i<pts.length;i++){
+      var s=pts[i];
+      var col, bright;
+      if(band.starMode==="thermal"){ col=thermalColor(s.t); bright=0.75; }
+      else if(band.starMode==="ir"){
+        var irStops=[[0,"#5c1a08"],[0.5,"#c24a12"],[1,"#ffd27a"]];
+        var rgb=evalGradient(irStops,1-s.t);
+        col=new THREE.Color(rgb[0],rgb[1],rgb[2]);
+        bright=0.35+(1-s.t)*0.75;
+      } else if(band.starMode==="uv"){
+        var uvStops=[[0,"#0a0a2a"],[0.6,"#3a3aff"],[1,"#eef0ff"]];
+        var rgb2=evalGradient(uvStops,s.t);
+        col=new THREE.Color(rgb2[0],rgb2[1],rgb2[2]);
+        bright=Math.max(0, Math.pow(s.t,2.4)*1.6-0.05);
+      } else { col=new THREE.Color(0,0,0); bright=0; }
+      colorAttr.setXYZ(i, col.r*bright, col.g*bright, col.b*bright);
+    }
+    colorAttr.needsUpdate=true;
+  });
+}
+
+var rndPS=seededRand(24680);
+var psPositions=[];
+for(var j=0;j<60;j++){
+  var b2;
+  if(rndPS()<0.6){ b2=(rndPS()-0.5)*30; } else { b2=(rndPS()-0.5)*180; }
+  var l2=rndPS()*360;
+  psPositions.push(galacticToVec(l2,b2,478));
+}
+var psGeo=new THREE.BufferGeometry();
+var psPosArr=new Float32Array(psPositions.length*3);
+psPositions.forEach(function(p,i){ psPosArr[i*3]=p.x; psPosArr[i*3+1]=p.y; psPosArr[i*3+2]=p.z; });
+psGeo.setAttribute('position', new THREE.BufferAttribute(psPosArr,3));
+var psMat=new THREE.PointsMaterial({ size:3.4, color:0xffffff, transparent:true, opacity:0, sizeAttenuation:false, depthWrite:false, blending:THREE.AdditiveBlending });
+var pointSourcePoints=new THREE.Points(psGeo,psMat);
+scene.add(pointSourcePoints);
+
+function updatePointSourcesForBand(band){
+  if(band.pointSources && band.pointSources.on){
+    psMat.color.setHex(band.pointSources.color);
+    psMat.opacity=1;
+    psGeo.setDrawRange(0, band.pointSources.count);
+  } else { psMat.opacity=0; }
+}
+
+/* ============================================================
+   BAND SWITCHING
+   ============================================================ */
+
+var buttons={};
+function setActiveButton(key){ Object.keys(buttons).forEach(function(k){ buttons[k].classList.toggle('active', k===key); }); }
+
+function applyBand(key){
+  var band=BANDS[key];
+  if(!band) return;
+  if(!skyTextures[key]) skyTextures[key]=buildSkyTexture(band.tex);
+  skyMat.map=skyTextures[key];
+  skyMat.needsUpdate=true;
+
+  updateStarColorsForBand(band);
+  updatePointSourcesForBand(band);
+
+  document.getElementById('infoName').textContent=band.label;
+  document.getElementById('infoQn').textContent='Wavelength: '+band.wl+'   \u00B7   Frequency: '+band.freq;
+  document.getElementById('infoDesc').textContent=band.desc;
+  setActiveButton(key);
+}
+
+function buildBandBar(){
+  var bar=document.getElementById('topbar');
+  BAND_ORDER.forEach(function(key){
+    var btn=document.createElement('button');
+    btn.className='band-btn';
+    btn.textContent=BANDS[key].label;
+    btn.addEventListener('click', function(){ applyBand(key); });
+    bar.appendChild(btn);
+    buttons[key]=btn;
+  });
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+buildBandBar();
+buildStarGroups();
+
+setTimeout(function(){
+  BAND_ORDER.forEach(function(key){ skyTextures[key]=buildSkyTexture(BANDS[key].tex); });
+  applyBand('visible');
+  animate();
+  document.getElementById('loading').classList.add('hidden');
+}, 30);
+
+})();
+</script>
+</body>
+</html>

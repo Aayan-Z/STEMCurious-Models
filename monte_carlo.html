@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monte Carlo Integration & Area Comparison</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body {
+            background-color: #050507;
+            color: #ffffff;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* --- LIQUID GLASS UI PANEL --- */
+        .sidebar {
+            width: 340px;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.025);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border-right: 1px solid rgba(255, 255, 255, 0.06);
+            display: flex;
+            flex-direction: column;
+            padding: 30px;
+            z-index: 10;
+            box-shadow: 20px 0 50px rgba(0, 0, 0, 0.8), inset -1px 0 0 rgba(255, 255, 255, 0.05);
+        }
+
+        .sidebar h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+            color: #f5f5f7;
+        }
+
+        .sidebar p {
+            font-size: 0.85rem;
+            color: #86868b;
+            line-height: 1.5;
+            margin-bottom: 25px;
+        }
+
+        .control-group {
+            margin-bottom: 22px;
+        }
+
+        .control-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #a1a1a6;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .control-group label span {
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        /* Glass Trackbars */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 3px;
+            outline: none;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+            transition: background 0.2s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ffffff, #c7c7cc);
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 12px rgba(255, 255, 255, 0.4);
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6), 0 0 18px rgba(255, 255, 255, 0.7);
+        }
+
+        /* Glass Buttons */
+        .btn-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.04);
+            color: #ffffff;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            transition: all 0.2s ease;
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.09);
+            border-color: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button.primary {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
+            color: #000000;
+            border-color: rgba(255, 255, 255, 0.8);
+            font-weight: 600;
+            box-shadow: 0 4px 20px rgba(255, 255, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+        }
+
+        button.primary:hover {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0.85));
+        }
+
+        /* Glass Stats Panel */
+        .stats-box {
+            margin-top: auto;
+            background: rgba(255, 255, 255, 0.015);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 14px;
+            padding: 16px;
+            font-size: 0.8rem;
+            backdrop-filter: blur(10px);
+            box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.05);
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            color: #86868b;
+        }
+
+        .stat-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .stat-row span {
+            color: #ffffff;
+            font-family: monospace;
+        }
+
+        /* --- MAIN CANVAS VIEWPORT --- */
+        .viewport {
+            flex: 1;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            background: radial-gradient(circle at center, #111118 0%, #030305 75%);
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- LEFT HAND LIQUID GLASS PANEL -->
+    <div class="sidebar">
+        <h1>Monte Carlo Integration</h1>
+        <p>Stochastic numerical estimation. Random sampling estimates area under curve $f(x) = \sin(x) + 1$ compared against analytical integration.</p>
+
+        <div class="control-group">
+            <label>Target Samples <span id="countVal">1000</span></label>
+            <input type="range" id="countRange" min="200" max="3000" step="100" value="1000">
+        </div>
+
+        <div class="control-group">
+            <label>Batch Speed <span id="speedVal">5</span></label>
+            <input type="range" id="speedRange" min="1" max="15" step="1" value="5">
+        </div>
+
+        <div class="btn-container">
+            <button id="resetBtn">Reset</button>
+            <button class="primary" id="startBtn">Start Sampling</button>
+        </div>
+
+        <div class="stats-box">
+            <div class="stat-row">Samples Dropped: <span id="statSamples">0</span></div>
+            <div class="stat-row">Estimated Area: <span id="statEst">-</span></div>
+            <div class="stat-row">Actual Area: <span id="statActual">-</span></div>
+            <div class="stat-row">Error Margin: <span id="statError">-</span></div>
+        </div>
+    </div>
+
+    <!-- CANVAS VIEWPORT -->
+    <div class="viewport">
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // UI Element mappings
+        const countRange = document.getElementById('countRange');
+        const countVal = document.getElementById('countVal');
+        const speedRange = document.getElementById('speedRange');
+        const speedVal = document.getElementById('speedVal');
+        const resetBtn = document.getElementById('resetBtn');
+        const startBtn = document.getElementById('startBtn');
+        
+        const statSamples = document.getElementById('statSamples');
+        const statEst = document.getElementById('statEst');
+        const statActual = document.getElementById('statActual');
+        const statError = document.getElementById('statError');
+
+        let isRunning = false;
+        let maxSamples = parseInt(countRange.value);
+        let batchSize = parseInt(speedRange.value);
+        
+        let points = []; 
+        let totalInside = 0;
+        let currentSamplesCount = 0;
+        
+        // Calculation phases & individual line alpha tracking
+        let calcPhase = 'sampling'; 
+        let lineAlpha = 0.0; // Fades in only the newly appeared line slowly
+
+        // Mathematical Function: f(x) = sin(x) + 1 on interval [0, PI]
+        const xMin = 0;
+        const xMax = Math.PI;
+        const yMin = 0;
+        const yMax = 2.2;
+
+        const actualIntegral = Math.PI + 2; // ≈ 5.14159265
+        const boundingBoxArea = (xMax - xMin) * yMax; // ≈ 6.9115
+
+        function f(x) {
+            return Math.sin(x) + 1;
+        }
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+
+        function toScreenX(x) {
+            const margin = 80;
+            const usableWidth = canvas.width - margin * 2;
+            return margin + ((x - xMin) / (xMax - xMin)) * usableWidth;
+        }
+
+        function toScreenY(y) {
+            const margin = 90;
+            const usableHeight = canvas.height - margin * 2;
+            return (canvas.height - margin) - ((y - yMin) / (yMax - yMin)) * usableHeight;
+        }
+
+        // UI Event Listeners
+        countRange.addEventListener('input', (e) => {
+            maxSamples = parseInt(e.target.value);
+            countVal.textContent = maxSamples;
+            resetSimulation();
+        });
+
+        speedRange.addEventListener('input', (e) => {
+            batchSize = parseInt(e.target.value);
+            speedVal.textContent = batchSize;
+        });
+
+        startBtn.addEventListener('click', () => {
+            if (calcPhase === 'completed') {
+                resetSimulation();
+            }
+            isRunning = !isRunning;
+            startBtn.textContent = isRunning ? "Pause" : "Resume";
+            startBtn.classList.toggle('primary', isRunning);
+        });
+
+        resetBtn.addEventListener('click', resetSimulation);
+
+        function resetSimulation() {
+            isRunning = false;
+            points = [];
+            totalInside = 0;
+            currentSamplesCount = 0;
+            calcPhase = 'sampling';
+            lineAlpha = 0.0;
+            startBtn.textContent = "Start Sampling";
+            startBtn.classList.add('primary');
+            updateStats();
+        }
+
+        function updateStats() {
+            statSamples.textContent = `${currentSamplesCount} / ${maxSamples}`;
+            if (currentSamplesCount > 0) {
+                let estimatedArea = boundingBoxArea * (totalInside / currentSamplesCount);
+                let error = Math.abs(estimatedArea - actualIntegral) / actualIntegral * 100;
+                statEst.textContent = estimatedArea.toFixed(4);
+                statActual.textContent = actualIntegral.toFixed(4);
+                statError.textContent = error.toFixed(2) + '%';
+            } else {
+                statEst.textContent = '-';
+                statActual.textContent = actualIntegral.toFixed(4);
+                statError.textContent = '-';
+            }
+        }
+
+        // Render Coordinate Grid & Centered Slow Step-by-Step Calculations
+        function drawScene() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const originX = toScreenX(xMin);
+            const originY = toScreenY(yMin);
+            const maxXScreen = toScreenX(xMax);
+            const maxYScreen = toScreenY(yMax);
+
+            // 1. Draw Bounding Box Region
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.012)';
+            ctx.fillRect(originX, maxYScreen, maxXScreen - originX, originY - maxYScreen);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(originX, maxYScreen, maxXScreen - originX, originY - maxYScreen);
+
+            // 2. Draw Area Under Curve Shading during sampling phase
+            if (calcPhase === 'sampling') {
+                ctx.beginPath();
+                ctx.moveTo(toScreenX(xMin), toScreenY(0));
+                let step = 0.01;
+                for (let x = xMin; x <= xMax; x += step) {
+                    ctx.lineTo(toScreenX(x), toScreenY(f(x)));
+                }
+                ctx.lineTo(toScreenX(xMax), toScreenY(0));
+                ctx.closePath();
+                ctx.fillStyle = 'rgba(56, 189, 248, 0.07)';
+                ctx.fill();
+            }
+
+            // 3. Render Sample Points normally (No flashing highlights)
+            for (let i = 0; i < points.length; i++) {
+                let p = points[i];
+                let sx = toScreenX(p.x);
+                let sy = toScreenY(p.y);
+
+                ctx.beginPath();
+                ctx.arc(sx, sy, 2.2, 0, Math.PI * 2);
+                ctx.fillStyle = p.inside ? 'rgba(56, 189, 248, 0.85)' : 'rgba(244, 63, 94, 0.35)';
+                ctx.fill();
+            }
+
+            // 4. Draw Mathematical Function Curve f(x) = sin(x) + 1
+            ctx.beginPath();
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 3;
+            ctx.shadowColor = 'rgba(56, 189, 248, 0.5)';
+            ctx.shadowBlur = 10;
+            let step = 0.01;
+            for (let x = xMin; x <= xMax; x += step) {
+                let sx = toScreenX(x);
+                let sy = toScreenY(f(x));
+                if (x === xMin) ctx.moveTo(sx, sy);
+                else ctx.lineTo(sx, sy);
+            }
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // 5. Draw Axis Labels & Ticks
+            ctx.fillStyle = '#86868b';
+            ctx.font = '13px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif';
+            ctx.fillText('0', originX - 10, originY + 20);
+            ctx.fillText('π', maxXScreen - 5, originY + 20);
+            ctx.fillText('f(x) = sin(x) + 1', originX + 15, maxYScreen - 15);
+
+            // 6. CENTERED CALCULATION BOX (Box and previous lines stay fully solid, only new line fades in slowly)
+            if (calcPhase !== 'sampling') {
+                let boxWidth = 520;
+                let boxHeight = 240;
+                let boxX = (canvas.width - boxWidth) / 2;
+                let boxY = (canvas.height - boxHeight) / 2;
+
+                // Advance smooth alpha specifically for the newly appearing line
+                lineAlpha = Math.min(1.0, lineAlpha + 0.01);
+
+                // Draw permanent solid glass container and previous text lines at full opacity
+                ctx.fillStyle = 'rgba(10, 10, 15, 0.94)';
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 18);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '16px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif';
+                ctx.textAlign = 'center';
+
+                let centerX = boxX + boxWidth / 2;
+                let currentLineY = boxY + 42;
+                let lineSpacing = 36;
+
+                let totalOutside = maxSamples - totalInside;
+                let est = boundingBoxArea * (totalInside / maxSamples);
+                let err = Math.abs(est - actualIntegral) / actualIntegral * 100;
+
+                // Line 1: Inside Dots (Fully solid once reached)
+                ctx.globalAlpha = (calcPhase === 'show_inside') ? lineAlpha : 1.0;
+                ctx.fillText(`Inside Dots (Curve Area): ${totalInside}`, centerX, currentLineY);
+
+                // Line 2: Outside Dots
+                currentLineY += lineSpacing;
+                if (calcPhase !== 'show_inside') {
+                    ctx.globalAlpha = (calcPhase === 'show_outside') ? lineAlpha : 1.0;
+                    ctx.fillText(`Outside Dots (Remainder): ${totalOutside}`, centerX, currentLineY);
+                }
+
+                // Line 3: Total Ratio
+                currentLineY += lineSpacing;
+                if (calcPhase !== 'show_inside' && calcPhase !== 'show_outside') {
+                    ctx.globalAlpha = (calcPhase === 'show_ratio') ? lineAlpha : 1.0;
+                    ctx.fillText(`Ratio = Inside / Total = ${totalInside} / ${maxSamples}`, centerX, currentLineY);
+                }
+
+                // Line 4: Box Area
+                currentLineY += lineSpacing;
+                if (calcPhase !== 'show_inside' && calcPhase !== 'show_outside' && calcPhase !== 'show_ratio') {
+                    ctx.globalAlpha = (calcPhase === 'show_box_area') ? lineAlpha : 1.0;
+                    ctx.fillText(`Box Area = (π - 0) × 2.2 = 6.9115`, centerX, currentLineY);
+                }
+
+                // Line 5: Final Estimated Area
+                currentLineY += lineSpacing;
+                if (calcPhase !== 'show_inside' && calcPhase !== 'show_outside' && calcPhase !== 'show_ratio' && calcPhase !== 'show_box_area') {
+                    ctx.globalAlpha = (calcPhase === 'show_final_est') ? lineAlpha : 1.0;
+                    ctx.font = 'bold 17px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif';
+                    ctx.fillText(`Estimated Area = ${est.toFixed(4)}`, centerX, currentLineY);
+                    ctx.font = '16px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif'; // reset
+                }
+
+                // Line 6: Actual Value Comparison
+                currentLineY += lineSpacing;
+                if (calcPhase === 'show_actual' || calcPhase === 'completed') {
+                    ctx.globalAlpha = (calcPhase === 'show_actual') ? lineAlpha : 1.0;
+                    ctx.font = 'bold 16px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif';
+                    ctx.fillText(`Actual Area (π + 2) = ${actualIntegral.toFixed(4)} (Error: ${err.toFixed(1)}%)`, centerX, currentLineY);
+                }
+
+                ctx.globalAlpha = 1.0; // reset
+                ctx.textAlign = 'left'; // reset alignment
+            }
+        }
+
+        // Master Animation Loop
+        function animate() {
+            if (isRunning) {
+                if (calcPhase === 'sampling') {
+                    let added = 0;
+                    while (added < batchSize && currentSamplesCount < maxSamples) {
+                        let rx = xMin + Math.random() * (xMax - xMin);
+                        let ry = yMin + Math.random() * (yMax - yMin);
+                        
+                        let curveY = f(rx);
+                        let isInside = ry <= curveY;
+
+                        points.push({ x: rx, y: ry, inside: isInside });
+                        if (isInside) totalInside++;
+
+                        currentSamplesCount++;
+                        added++;
+                    }
+                    updateStats();
+
+                    // Switch to slow, calm sequential calculation review lines
+                    if (currentSamplesCount >= maxSamples) {
+                        calcPhase = 'show_inside';
+                        lineAlpha = 0.0;
+                    }
+                } else {
+                    // Very slow, deliberate timing progression for each new text line fading in smoothly
+                    lineAlpha += 0.012; 
+                    if (lineAlpha >= 1.0) {
+                        lineAlpha = 0.0;
+                        if (calcPhase === 'show_inside') calcPhase = 'show_outside';
+                        else if (calcPhase === 'show_outside') calcPhase = 'show_ratio';
+                        else if (calcPhase === 'show_ratio') calcPhase = 'show_box_area';
+                        else if (calcPhase === 'show_box_area') calcPhase = 'show_final_est';
+                        else if (calcPhase === 'show_final_est') calcPhase = 'show_actual';
+                        else if (calcPhase === 'show_actual') {
+                            calcPhase = 'completed';
+                            isRunning = false;
+                            lineAlpha = 1.0;
+                            startBtn.textContent = "Restart Sampling";
+                            startBtn.classList.remove('primary');
+                        }
+                    }
+                }
+            }
+
+            drawScene();
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        updateStats();
+        animate();
+    </script>
+</body>
+</html>

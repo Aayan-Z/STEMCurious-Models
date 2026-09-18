@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Molecular Polarity & Electronegativity</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body {
+            background-color: #050507;
+            color: #ffffff;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* --- SLEEK LIQUID GLASS PANEL (LEFT SIDEBAR) --- */
+        .sidebar {
+            width: 360px;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            padding: 32px;
+            z-index: 10;
+            box-shadow: 20px 0 50px rgba(0, 0, 0, 0.9);
+        }
+
+        .sidebar h1 {
+            font-size: 1.15rem;
+            font-weight: 500;
+            letter-spacing: -0.3px;
+            margin-bottom: 6px;
+            color: #f5f5f7;
+        }
+
+        .sidebar p {
+            font-size: 0.8rem;
+            color: #86868b;
+            line-height: 1.5;
+            margin-bottom: 28px;
+        }
+
+        .section-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #6e6e73;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Molecule Selector Grid */
+        .molecule-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 28px;
+        }
+
+        .mol-btn {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            background: rgba(255, 255, 255, 0.02);
+            color: #86868b;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .mol-btn:hover {
+            background: rgba(255, 255, 255, 0.06);
+            color: #ffffff;
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .mol-btn.active {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Toggles */
+        .toggle-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 28px;
+        }
+
+        .toggle-btn {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            background: rgba(255, 255, 255, 0.02);
+            color: #86868b;
+            font-size: 0.78rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .toggle-btn span {
+            font-size: 0.7rem;
+            opacity: 0.5;
+        }
+
+        .toggle-btn.active {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+        }
+
+        .toggle-btn.active span {
+            opacity: 1;
+            color: #38bdf8;
+        }
+
+        /* Minimal Stats Panel */
+        .stats-box {
+            margin-top: auto;
+            background: rgba(255, 255, 255, 0.01);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 0.78rem;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            color: #86868b;
+        }
+
+        .stat-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .stat-row span {
+            color: #ffffff;
+            font-family: monospace;
+            font-weight: 500;
+        }
+
+        .status-polar {
+            color: #38bdf8 !important;
+        }
+
+        .status-nonpolar {
+            color: #a1a1a6 !important;
+        }
+
+        /* --- MAIN CANVAS VIEWPORT --- */
+        .viewport {
+            flex: 1;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            background: radial-gradient(circle at center, #121218 0%, #050507 80%);
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- LEFT HAND PANEL -->
+    <div class="sidebar">
+        <h1>Polarity & Electronegativity</h1>
+        <p>Inspect how unequal electron sharing across covalent bonds creates partial electrical charges and molecular dipole moments.</p>
+
+        <div class="section-title">Molecule</div>
+        <div class="molecule-grid">
+            <button class="mol-btn active" data-mol="H2O">H₂O</button>
+            <button class="mol-btn" data-mol="CO2">CO₂</button>
+            <button class="mol-btn" data-mol="HCl">HCl</button>
+            <button class="mol-btn" data-mol="CH4">CH₄</button>
+            <button class="mol-btn" data-mol="NH3">NH₃</button>
+            <button class="mol-btn" data-mol="HF">HF</button>
+        </div>
+
+        <div class="section-title">Display Options</div>
+        <div class="toggle-container">
+            <button class="toggle-btn active" id="toggleElectrons">Bond Electron Pairs <span>●●</span></button>
+            <button class="toggle-btn active" id="toggleCharges">Partial Charges <span>δ+/δ-</span></button>
+            <button class="toggle-btn active" id="toggleVectors">Dipole Vectors <span>→</span></button>
+        </div>
+
+        <div class="stats-box">
+            <div class="stat-row">Geometry: <span id="statGeom">Bent</span></div>
+            <div class="stat-row">Max EN: <span id="statEN">3.44 (O)</span></div>
+            <div class="stat-row">Status: <span id="statStatus" class="status-polar">POLAR</span></div>
+        </div>
+    </div>
+
+    <!-- CANVAS VIEWPORT -->
+    <div class="viewport">
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        const molBtns = document.querySelectorAll('.mol-btn');
+        const toggleElectronsBtn = document.getElementById('toggleElectrons');
+        const toggleChargesBtn = document.getElementById('toggleCharges');
+        const toggleVectorsBtn = document.getElementById('toggleVectors');
+
+        const statGeom = document.getElementById('statGeom');
+        const statEN = document.getElementById('statEN');
+        const statStatus = document.getElementById('statStatus');
+
+        let showElectrons = true;
+        let showCharges = true;
+        let showVectors = true;
+
+        // Expanded, larger, and more spacious molecular coordinates with modern flat design colors
+        const molecules = {
+            H2O: {
+                name: "Water (H₂O)",
+                geometry: "Bent (104.5°)",
+                status: "POLAR",
+                maxEN: "3.44 (Oxygen)",
+                isPolar: true,
+                explanation: "Oxygen has a higher electronegativity (3.44) than Hydrogen (2.20). Bonding electrons are pulled closer to Oxygen, creating partial negative charge (δ⁻) on Oxygen and partial positive (δ⁺) on Hydrogens. Because the molecule is bent, vectors do not cancel.",
+                atoms: [
+                    { symbol: 'O', x: 0, y: -40, radius: 56, color: '#f43f5e', en: 3.44, charge: -0.68 },
+                    { symbol: 'H', x: -160, y: 95, radius: 36, color: '#0ea5e9', en: 2.20, charge: 0.34 },
+                    { symbol: 'H', x: 160, y: 95, radius: 36, color: '#0ea5e9', en: 2.20, charge: 0.34 }
+                ],
+                bonds: [[0, 1], [0, 2]]
+            },
+            CO2: {
+                name: "Carbon Dioxide (CO₂)",
+                geometry: "Linear (180°)",
+                status: "NON-POLAR",
+                maxEN: "3.44 (Oxygen)",
+                isPolar: false,
+                explanation: "Oxygen pulls electrons away from Carbon equally in opposite directions. Although individual bonds are polar, the linear geometry causes bond dipole vectors to cancel out completely.",
+                atoms: [
+                    { symbol: 'C', x: 0, y: 0, radius: 50, color: '#71717a', en: 2.55, charge: 0.0 },
+                    { symbol: 'O', x: -190, y: 0, radius: 54, color: '#f43f5e', en: 3.44, charge: -0.35 },
+                    { symbol: 'O', x: 190, y: 0, radius: 54, color: '#f43f5e', en: 3.44, charge: -0.35 }
+                ],
+                bonds: [[0, 1], [0, 2]]
+            },
+            HCl: {
+                name: "Hydrogen Chloride (HCl)",
+                geometry: "Linear Diatomic",
+                status: "POLAR",
+                maxEN: "3.16 (Chlorine)",
+                isPolar: true,
+                explanation: "Chlorine's high electronegativity (3.16) strongly attracts the shared electron pair away from Hydrogen (2.20), creating a permanent dipole moment along the single axis.",
+                atoms: [
+                    { symbol: 'H', x: -140, y: 0, radius: 38, color: '#0ea5e9', en: 2.20, charge: 0.17 },
+                    { symbol: 'Cl', x: 130, y: 0, radius: 60, color: '#10b981', en: 3.16, charge: -0.17 }
+                ],
+                bonds: [[0, 1]]
+            },
+            CH4: {
+                name: "Methane (CH₄)",
+                geometry: "Tetrahedral",
+                status: "NON-POLAR",
+                maxEN: "2.55 (Carbon)",
+                isPolar: false,
+                explanation: "Carbon and Hydrogen have minimal electronegativity difference. Furthermore, the symmetric tetrahedral geometry ensures all four bond dipole pulls balance out completely.",
+                atoms: [
+                    { symbol: 'C', x: 0, y: 0, radius: 52, color: '#71717a', en: 2.55, charge: 0.0 },
+                    { symbol: 'H', x: 0, y: -140, radius: 36, color: '#0ea5e9', en: 2.20, charge: 0.0 },
+                    { symbol: 'H', x: 0, y: 140, radius: 36, color: '#0ea5e9', en: 2.20, charge: 0.0 },
+                    { symbol: 'H', x: -140, y: 0, radius: 36, color: '#0ea5e9', en: 2.20, charge: 0.0 },
+                    { symbol: 'H', x: 140, y: 0, radius: 36, color: '#0ea5e9', en: 2.20, charge: 0.0 }
+                ],
+                bonds: [[0, 1], [0, 2], [0, 3], [0, 4]]
+            },
+            NH3: {
+                name: "Ammonia (NH₃)",
+                geometry: "Trigonal Pyramidal",
+                status: "POLAR",
+                maxEN: "3.04 (Nitrogen)",
+                isPolar: true,
+                explanation: "Nitrogen (3.04) pulls bonding electrons away from Hydrogens (2.20). The pyramidal shape prevents these vertical vectors from canceling out.",
+                atoms: [
+                    { symbol: 'N', x: 0, y: -55, radius: 54, color: '#6366f1', en: 3.04, charge: -0.45 },
+                    { symbol: 'H', x: -140, y: 95, radius: 36, color: '#0ea5e9', en: 2.20, charge: 0.15 },
+                    { symbol: 'H', x: 140, y: 95, radius: 36, color: '#0ea5e9', en: 2.20, charge: 0.15 },
+                    { symbol: 'H', x: 0, y: 150, radius: 36, color: '#0ea5e9', en: 2.20, charge: 0.15 }
+                ],
+                bonds: [[0, 1], [0, 2], [0, 3]]
+            },
+            HF: {
+                name: "Hydrogen Fluoride (HF)",
+                geometry: "Linear Diatomic",
+                status: "POLAR",
+                maxEN: "3.98 (Fluorine)",
+                isPolar: true,
+                explanation: "Fluorine is the most electronegative element on the periodic table (3.98). It pulls the bond electron pair intensely toward itself, creating a massive partial charge separation.",
+                atoms: [
+                    { symbol: 'H', x: -130, y: 0, radius: 36, color: '#0ea5e9', en: 2.20, charge: 0.41 },
+                    { symbol: 'F', x: 130, y: 0, radius: 56, color: '#a855f7', en: 3.98, charge: -0.41 }
+                ],
+                bonds: [[0, 1]]
+            }
+        };
+
+        let currentMolKey = 'H2O';
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+
+        molBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                molBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentMolKey = btn.getAttribute('data-mol');
+                updateSidebar();
+            });
+        });
+
+        toggleElectronsBtn.addEventListener('click', () => {
+            showElectrons = !showElectrons;
+            toggleElectronsBtn.classList.toggle('active', showElectrons);
+        });
+
+        toggleChargesBtn.addEventListener('click', () => {
+            showCharges = !showCharges;
+            toggleChargesBtn.classList.toggle('active', showCharges);
+        });
+
+        toggleVectorsBtn.addEventListener('click', () => {
+            showVectors = !showVectors;
+            toggleVectorsBtn.classList.toggle('active', showVectors);
+        });
+
+        function updateSidebar() {
+            let mol = molecules[currentMolKey];
+            statGeom.textContent = mol.geometry;
+            statEN.textContent = mol.maxEN;
+            statStatus.textContent = mol.status;
+            statStatus.className = mol.isPolar ? 'status-polar' : 'status-nonpolar';
+        }
+
+        // Draw Dipole Arrow Utility
+        function drawVector(ctx, x1, y1, x2, y2) {
+            let angle = Math.atan2(y2 - y1, x2 - x1);
+            let length = Math.hypot(x2 - x1, y2 - y1);
+            if (length < 15) return;
+
+            ctx.save();
+            ctx.translate(x1, y1);
+            ctx.rotate(angle);
+
+            ctx.strokeStyle = '#38bdf8';
+            ctx.fillStyle = '#38bdf8';
+            ctx.lineWidth = 2.5;
+
+            // Cross at tail (+)
+            ctx.beginPath();
+            ctx.moveTo(0, -8);
+            ctx.lineTo(0, 8);
+            ctx.stroke();
+
+            // Shaft
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(length - 12, 0);
+            ctx.stroke();
+
+            // Arrowhead
+            ctx.beginPath();
+            ctx.moveTo(length, 0);
+            ctx.lineTo(length - 12, -6);
+            ctx.lineTo(length - 12, 6);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function drawScene() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            let mol = molecules[currentMolKey];
+            let centerX = canvas.width / 2;
+            let centerY = canvas.height / 2 - 50;
+
+            ctx.save();
+            ctx.translate(centerX, centerY);
+
+            // 1. Draw Bonds & Electron Pairs (shifted towards higher electronegativity)
+            mol.bonds.forEach(bond => {
+                let atomA = mol.atoms[bond[0]];
+                let atomB = mol.atoms[bond[1]];
+
+                // Bond line
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.lineWidth = 8;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(atomA.x, atomA.y);
+                ctx.lineTo(atomB.x, atomB.y);
+                ctx.stroke();
+
+                // Electron pair dots shifted by electronegativity difference
+                if (showElectrons) {
+                    let dx = atomB.x - atomA.x;
+                    let dy = atomB.y - atomA.y;
+                    let dist = Math.hypot(dx, dy);
+
+                    let enDiff = atomB.en - atomA.en; // positive if B is more electronegative
+                    let shift = Math.max(-0.25, Math.min(0.25, enDiff * 0.12));
+                    let t = 0.5 + shift; // shifted position fraction
+
+                    let dotX = atomA.x + dx * t;
+                    let dotY = atomA.y + dy * t;
+
+                    // Offset two electrons slightly perpendicular to bond axis
+                    let perpX = (-dy / dist) * 10;
+                    let perpY = (dx / dist) * 10;
+
+                    ctx.fillStyle = '#38bdf8';
+                    ctx.beginPath();
+                    ctx.arc(dotX + perpX, dotY + perpY, 5, 0, Math.PI * 2);
+                    ctx.arc(dotX - perpX, dotY - perpY, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // Bond dipole vector pointing from less to more electronegative
+                if (showVectors && atomA.en !== atomB.en) {
+                    let more = atomA.en > atomB.en ? atomA : atomB;
+                    let less = atomA.en > atomB.en ? atomB : atomA;
+                    drawVector(ctx, less.x + (more.x - less.x) * 0.3, less.y + (more.y - less.y) * 0.3, less.x + (more.x - less.x) * 0.7, less.y + (more.y - less.y) * 0.7);
+                }
+            });
+
+            // 2. Draw Atoms (Modern Flat Design Style)
+            mol.atoms.forEach(atom => {
+                ctx.save();
+                ctx.translate(atom.x, atom.y);
+
+                // Flat modern fill with crisp modern border
+                ctx.fillStyle = atom.color;
+                ctx.beginPath();
+                ctx.arc(0, 0, atom.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                // Atom Symbol (Larger)
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 22px -apple-system, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(atom.symbol, 0, 0);
+
+                // Partial Charge Labels (δ+ / δ-) - Much Larger & Clear
+                if (showCharges && atom.charge !== 0) {
+                    ctx.font = 'bold 18px -apple-system, sans-serif';
+                    ctx.fillStyle = atom.charge < 0 ? '#38bdf8' : '#f43f5e';
+                    ctx.fillText(atom.charge < 0 ? 'δ⁻' : 'δ⁺', 0, atom.radius + 26);
+                }
+
+                ctx.restore();
+            });
+
+            ctx.restore();
+
+            // 3. Bottom Formal Explanation Box
+            let boxWidth = 660;
+            let boxHeight = 90;
+            let boxX = (canvas.width - boxWidth) / 2;
+            let boxY = canvas.height - 130;
+
+            ctx.fillStyle = 'rgba(12, 12, 18, 0.92)';
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 14);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#86868b';
+            ctx.font = '11px -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText("ELECTRONEGATIVITY & CHARGE DISTRIBUTION", canvas.width / 2, boxY + 22);
+
+            ctx.fillStyle = '#e4e4e7';
+            ctx.font = '14px -apple-system, sans-serif';
+            
+            wrapText(ctx, mol.explanation, canvas.width / 2, boxY + 50, boxWidth - 50, 20);
+        }
+
+        function wrapText(context, text, x, y, maxWidth, lineHeight) {
+            let words = text.split(' ');
+            let line = '';
+            let lines = [];
+
+            for(let n = 0; n < words.length; n++) {
+                let testLine = line + words[n] + ' ';
+                let metrics = context.measureText(testLine);
+                let testWidth = metrics.width;
+                if (testWidth > maxWidth && n > 0) {
+                    lines.push(line);
+                    line = words[n] + ' ';
+                } else {
+                    line = testLine;
+                }
+            }
+            lines.push(line);
+
+            for(let k = 0; k < lines.length; k++) {
+                context.fillText(lines[k], x, y + (k * lineHeight));
+            }
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        updateSidebar();
+
+        function animate() {
+            drawScene();
+            requestAnimationFrame(animate);
+        }
+        animate();
+    </script>
+</body>
+</html>

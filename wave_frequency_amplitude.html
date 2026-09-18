@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sinusoidal Wave Dynamics & Wavelength</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body {
+            background-color: #050507;
+            color: #ffffff;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* --- SLEEK LIQUID GLASS PANEL (LEFT SIDEBAR) --- */
+        .sidebar {
+            width: 380px;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            padding: 32px;
+            z-index: 10;
+            box-shadow: 20px 0 50px rgba(0, 0, 0, 0.9);
+        }
+
+        .sidebar h1 {
+            font-size: 1.15rem;
+            font-weight: 500;
+            letter-spacing: -0.3px;
+            margin-bottom: 6px;
+            color: #f5f5f7;
+        }
+
+        .sidebar p {
+            font-size: 0.8rem;
+            color: #86868b;
+            line-height: 1.5;
+            margin-bottom: 32px;
+        }
+
+        .section-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #6e6e73;
+            margin-bottom: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Control Groups */
+        .control-group {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .control-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: #e4e4e7;
+        }
+
+        .control-header span {
+            font-family: monospace;
+            color: #38bdf8;
+            font-size: 0.85rem;
+        }
+
+        /* Sleek Range Sliders */
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #38bdf8;
+            cursor: pointer;
+            transition: transform 0.1s, background-color 0.1s;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            background: #7dd3fc;
+        }
+
+        /* Minimal Stats Panel */
+        .stats-box {
+            margin-top: auto;
+            background: rgba(255, 255, 255, 0.01);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 0.78rem;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            color: #86868b;
+        }
+
+        .stat-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .stat-row span {
+            color: #ffffff;
+            font-family: monospace;
+            font-weight: 500;
+        }
+
+        .stat-highlight {
+            color: #38bdf8 !important;
+        }
+
+        /* --- MAIN CANVAS VIEWPORT --- */
+        .viewport {
+            flex: 1;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            background: radial-gradient(circle at center, #121218 0%, #050507 80%);
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- LEFT HAND PANEL -->
+    <div class="sidebar">
+        <h1>Wave Transmission Dynamics</h1>
+        <p>Explore how a continuous sinusoidal wave propagates through space. Adjust frequency to observe the inverse relationship with wavelength.</p>
+
+        <div class="section-title">Wave Parameters</div>
+
+        <div class="control-group">
+            <div class="control-header">
+                Frequency (f) <span id="valFreq">1.5 Hz</span>
+            </div>
+            <input type="range" id="sliderFreq" min="0.5" max="4.0" step="0.1" value="1.5">
+        </div>
+
+        <div class="control-group">
+            <div class="control-header">
+                Amplitude (A) <span id="valAmp">80 px</span>
+            </div>
+            <input type="range" id="sliderAmp" min="20" max="140" step="5" value="80">
+        </div>
+
+        <div class="stats-box">
+            <div class="stat-row">Propagation Speed (v): <span>300 px/s</span></div>
+            <div class="stat-row">Wavelength (λ = v/f): <span id="statWavelength" class="stat-highlight">200 px</span></div>
+            <div class="stat-row">Period (T = 1/f): <span id="statPeriod">0.67 s</span></div>
+        </div>
+    </div>
+
+    <!-- CANVAS VIEWPORT -->
+    <div class="viewport">
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        const sliderFreq = document.getElementById('sliderFreq');
+        const sliderAmp = document.getElementById('sliderAmp');
+        const valFreq = document.getElementById('valFreq');
+        const valAmp = document.getElementById('valAmp');
+        const statWavelength = document.getElementById('statWavelength');
+        const statPeriod = document.getElementById('statPeriod');
+
+        let freq = parseFloat(sliderFreq.value);
+        let amplitude = parseFloat(sliderAmp.value);
+        const waveSpeed = 300; // pixels per second constant
+
+        let lastTime = performance.now();
+        let timeOffset = 0;
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+
+        sliderFreq.addEventListener('input', (e) => {
+            freq = parseFloat(e.target.value);
+            valFreq.textContent = freq.toFixed(1) + " Hz";
+            updateStats();
+        });
+
+        sliderAmp.addEventListener('input', (e) => {
+            amplitude = parseFloat(e.target.value);
+            valAmp.textContent = amplitude + " px";
+        });
+
+        function updateStats() {
+            let wavelength = waveSpeed / freq;
+            let period = 1 / freq;
+            statWavelength.textContent = wavelength.toFixed(1) + " px";
+            statPeriod.textContent = period.toFixed(2) + " s";
+        }
+
+        function drawDimensionIndicator(startX, endX, centerY, amplitude) {
+            let yPos = centerY - amplitude - 35;
+            
+            ctx.save();
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+            ctx.fillStyle = '#38bdf8';
+            ctx.lineWidth = 1.5;
+
+            // Horizontal span line
+            ctx.beginPath();
+            ctx.moveTo(startX, yPos);
+            ctx.lineTo(endX, yPos);
+            ctx.stroke();
+
+            // End ticks
+            ctx.beginPath();
+            ctx.moveTo(startX, yPos - 6);
+            ctx.lineTo(startX, yPos + 6);
+            ctx.moveTo(endX, yPos - 6);
+            ctx.lineTo(endX, yPos + 6);
+            ctx.stroke();
+
+            // Label
+            ctx.font = 'bold 13px -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText("Wavelength (λ)", (startX + endX) / 2, yPos - 8);
+
+            ctx.restore();
+        }
+
+        function drawScene(currentTime) {
+            let dt = (currentTime - lastTime) / 1000;
+            lastTime = currentTime;
+            timeOffset += dt * freq * Math.PI * 2; // Advance phase
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            let centerX = canvas.width / 2;
+            let centerY = canvas.height / 2;
+
+            // 1. Draw subtle background grid/baseline
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(50, centerY);
+            ctx.lineTo(canvas.width - 50, centerY);
+            ctx.stroke();
+
+            // 2. Calculate Wavelength in pixels
+            // v = f * lambda => lambda = v / f
+            let wavelength = waveSpeed / freq;
+            let k = (2 * Math.PI) / wavelength; // wave number
+
+            // 3. Draw Sinusoidal Wave Line
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 3.5;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+
+            let startX = 60;
+            let endX = canvas.width - 60;
+
+            for (let x = startX; x <= endX; x += 2) {
+                // Traveling wave equation: y = A * sin(k * x - timeOffset)
+                let y = centerY + amplitude * Math.sin(k * (x - startX) - timeOffset);
+                if (x === startX) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.stroke();
+
+            // 4. Draw Wavelength Measurement Span (Peak to Peak)
+            // Find first visible peak after startX matching phase
+            let phaseShift = timeOffset % (Math.PI * 2);
+            let firstPeakX = startX + ((Math.PI / 2 + phaseShift) / k) % wavelength;
+            while (firstPeakX < startX + 50) firstPeakX += wavelength;
+            let secondPeakX = firstPeakX + wavelength;
+
+            if (secondPeakX < endX - 30 && amplitude > 30) {
+                drawDimensionIndicator(firstPeakX, secondPeakX, centerY, amplitude);
+
+                // Highlight peak points on the wave
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(firstPeakX, centerY - amplitude, 4, 0, Math.PI * 2);
+                ctx.arc(secondPeakX, centerY - amplitude, 4, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // 5. Bottom Formal Explanation Box
+            let boxWidth = 620;
+            let boxHeight = 85;
+            let boxX = (canvas.width - boxWidth) / 2;
+            let boxY = canvas.height - 120;
+
+            ctx.fillStyle = 'rgba(12, 12, 18, 0.92)';
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 12);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#6e6e73';
+            ctx.font = '10px -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText("FREQUENCY & WAVELENGTH INVERSE RELATIONSHIP", canvas.width / 2, boxY + 20);
+
+            ctx.fillStyle = '#d1d1d6';
+            ctx.font = '13px -apple-system, sans-serif';
+            ctx.fillText(
+                `As frequency increases, cycles crowd together, shortening the wavelength (λ = v/f).`,
+                canvas.width / 2, boxY + 50
+            );
+
+            requestAnimationFrame(drawScene);
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        updateStats();
+        requestAnimationFrame(drawScene);
+    </script>
+</body>
+</html>
