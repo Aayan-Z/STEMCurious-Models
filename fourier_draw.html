@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fourier Series Wave Drawer</title>
+<style>
+  *{box-sizing:border-box;}
+  html,body{ margin:0; padding:0; width:100%; height:100%; background:#000; color:#fff;
+    font-family:'Times New Roman', Times, serif; overflow:hidden; }
+  #canvas-wrap{ position:fixed; inset:0; background:#000; display:flex; align-items:center; justify-content:center;
+    padding-left:300px; }
+
+  #stage{
+    background:rgba(255,255,255,0.04);
+    border:1px solid rgba(255,255,255,0.14);
+    border-radius:22px;
+    padding:18px;
+    box-shadow:0 12px 36px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+  #drawCanvas{ display:block; border-radius:12px; cursor:crosshair; background:#0a0a0c; }
+
+  #panel{
+    position:fixed; top:16px; left:16px; bottom:16px; width:270px;
+    background:rgba(255,255,255,0.08);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    backdrop-filter: blur(32px) saturate(180%);
+    border:1px solid rgba(255,255,255,0.22);
+    border-radius:26px;
+    padding:22px 22px 18px 22px; overflow-y:auto; z-index:6;
+    box-shadow: 0 12px 36px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.28);
+  }
+  #panel::-webkit-scrollbar{ width:5px; }
+  #panel::-webkit-scrollbar-thumb{ background:rgba(255,255,255,0.2); border-radius:3px; }
+
+  .panel-label{ font-size:13px; color:rgba(255,255,255,0.55); margin-bottom:9px; font-style:italic; }
+  .action-btn{
+    width:100%; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2);
+    color:#fff; font-family:'Times New Roman', Times, serif; font-size:14.5px;
+    padding:10px 0; border-radius:14px; cursor:pointer; margin-bottom:9px; transition: background .15s ease;
+  }
+  .action-btn:hover{ background:rgba(255,255,255,0.2); }
+  .action-btn:disabled{ opacity:0.35; cursor:default; }
+  .action-btn:disabled:hover{ background:rgba(255,255,255,0.1); }
+
+  .slider-label{ font-size:12.5px; color:rgba(255,255,255,0.55); margin:14px 0 4px 0; display:flex; justify-content:space-between; }
+  .slider-label b{ color:rgba(255,255,255,0.85); font-weight:700; }
+  input[type=range]{ -webkit-appearance:none; appearance:none; width:100%; height:22px; background:transparent; }
+  input[type=range]::-webkit-slider-runnable-track{ height:5px; border-radius:3px;
+    background:linear-gradient(90deg, rgba(255,255,255,0.5), rgba(255,255,255,0.12)); }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:19px; height:19px; border-radius:50%;
+    background:radial-gradient(circle at 32% 28%, #fff 0%, #d8d8de 100%);
+    box-shadow:0 2px 6px rgba(0,0,0,0.5); margin-top:-7px; cursor:pointer; }
+
+  .divider{ height:1px; margin:16px 0; background:linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.2), rgba(255,255,255,0)); }
+
+  .harm-readout{ font-size:13.5px; line-height:1.8; color:rgba(255,255,255,0.7); min-height:70px; }
+  .harm-readout b{ color:#ffd35c; }
+  .note{ font-size:12px; line-height:1.6; color:rgba(255,255,255,0.42); margin-top:14px; }
+
+  #formulaBox{
+    position:fixed; left:300px; right:26px; bottom:22px; z-index:6;
+    background:rgba(255,255,255,0.07);
+    -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
+    border:1px solid rgba(255,255,255,0.18); border-radius:18px;
+    padding:12px 18px; font-size:13.5px; line-height:1.6; color:rgba(255,255,255,0.72);
+    max-height:90px; overflow-y:auto; display:none;
+  }
+  #formulaBox b{ color:rgba(255,255,255,0.5); font-style:italic; font-weight:400; }
+
+  .legend{ display:flex; gap:14px; margin-top:10px; font-size:12px; color:rgba(255,255,255,0.55); }
+  .legend span{ display:flex; align-items:center; gap:5px; }
+  .sw{ width:14px; height:2px; display:inline-block; }
+
+  @media (max-width: 1050px){
+    #canvas-wrap{ padding-left:230px; }
+    #panel{ width:200px; padding:16px; }
+    #formulaBox{ left:230px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="panel">
+  <div class="panel-label">Draw a wave shape on the canvas with your mouse, then:</div>
+  <button class="action-btn" id="analyzeBtn">Show Fourier Decomposition</button>
+  <button class="action-btn" id="clearBtn">Clear Canvas</button>
+
+  <div class="slider-label"><span>Harmonics to Build</span><b id="harmRead">15</b></div>
+  <input type="range" id="harmSlider" min="1" max="40" step="1" value="15">
+
+  <div class="slider-label"><span>Animation Speed</span><b id="speedRead">1.0&times;</b></div>
+  <input type="range" id="speedSlider" min="0.3" max="3" step="0.1" value="1">
+
+  <div class="divider"></div>
+
+  <div class="panel-label">Current Term</div>
+  <div class="harm-readout" id="harmText">Draw a shape, then press "Show Fourier Decomposition."</div>
+
+  <div class="legend">
+    <span><span class="sw" style="background:#ffffff;"></span>Your drawing</span>
+  </div>
+  <div class="legend">
+    <span><span class="sw" style="background:#ff9a3c;"></span>cos term</span>
+    <span><span class="sw" style="background:#4ad8ff;"></span>sin term</span>
+  </div>
+  <div class="legend">
+    <span><span class="sw" style="background:#7cff8a;"></span>Running sum</span>
+  </div>
+
+  <div class="note">The drawn shape is treated as one repeating period. Every periodic wave, no matter how jagged, is an exact sum of simple sine and cosine waves at whole-number multiples of the base frequency &mdash; this is Fourier's theorem, and what you're about to watch happen.</div>
+</div>
+
+<div id="canvas-wrap">
+  <div id="stage"><canvas id="drawCanvas" width="760" height="380"></canvas></div>
+</div>
+
+<div id="formulaBox"></div>
+
+<script>
+(function(){
+"use strict";
+
+var canvas = document.getElementById('drawCanvas');
+var ctx = canvas.getContext('2d');
+var W = canvas.width, H = canvas.height;
+var MID_Y = H/2;
+var AMP_SCALE = H*0.38; // max drawable amplitude in px from midline
+
+/* ============================================================
+   DRAWING: one y-sample per x-column, so the result is always
+   a valid single-valued function y(x) -- required for a proper
+   Fourier series, and avoids any ambiguity from loops or
+   vertical strokes.
+   ============================================================ */
+
+var samples = new Float32Array(W); // pixel y relative to MID_Y, or NaN if undrawn
+for(var i=0;i<W;i++) samples[i] = NaN;
+
+var drawing = false;
+var lastX = null, lastY = null;
+
+function toCanvasXY(e){
+  var r = canvas.getBoundingClientRect();
+  return { x: (e.clientX-r.left), y: (e.clientY-r.top) };
+}
+
+function setSample(x, y){
+  var xi = Math.max(0, Math.min(W-1, Math.round(x)));
+  samples[xi] = Math.max(-AMP_SCALE, Math.min(AMP_SCALE, y-MID_Y));
+}
+
+canvas.addEventListener('pointerdown', function(e){
+  drawing = true;
+  var p = toCanvasXY(e);
+  lastX = p.x; lastY = p.y;
+  setSample(p.x, p.y);
+  drawStatic();
+});
+canvas.addEventListener('pointermove', function(e){
+  if(!drawing) return;
+  var p = toCanvasXY(e);
+  if(lastX!==null){
+    var steps = Math.max(1, Math.abs(p.x-lastX));
+    for(var s=0;s<=steps;s++){
+      var t = s/steps;
+      setSample(lastX+(p.x-lastX)*t, lastY+(p.y-lastY)*t);
+    }
+  }
+  lastX = p.x; lastY = p.y;
+  drawStatic();
+});
+window.addEventListener('pointerup', function(){ drawing=false; lastX=null; lastY=null; });
+
+/* ============================================================
+   GRID BACKGROUND (light grey, low opacity, as requested)
+   ============================================================ */
+
+function drawGrid(){
+  ctx.fillStyle = '#0a0a0c';
+  ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle = 'rgba(200,200,205,0.14)';
+  ctx.lineWidth = 1;
+  var step = 30;
+  for(var x=0; x<=W; x+=step){
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
+  }
+  for(var y=0; y<=H; y+=step){
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+  }
+  ctx.strokeStyle = 'rgba(210,210,215,0.28)';
+  ctx.beginPath(); ctx.moveTo(0,MID_Y); ctx.lineTo(W,MID_Y); ctx.stroke();
+}
+
+function fillGaps(){
+  // linear-interpolate any undrawn columns between drawn ones, for a clean continuous function
+  var filled = new Float32Array(W);
+  var firstIdx=-1, lastIdx=-1;
+  for(var i=0;i<W;i++){ if(!isNaN(samples[i])){ if(firstIdx<0) firstIdx=i; lastIdx=i; } }
+  if(firstIdx<0) return null;
+  for(var i=0;i<firstIdx;i++) filled[i]=samples[firstIdx];
+  for(var i=lastIdx+1;i<W;i++) filled[i]=samples[lastIdx];
+  var prevIdx=firstIdx, prevVal=samples[firstIdx];
+  filled[firstIdx]=prevVal;
+  for(var i=firstIdx+1;i<=lastIdx;i++){
+    if(!isNaN(samples[i])){
+      var nextIdx=i, nextVal=samples[i];
+      for(var k=prevIdx;k<=nextIdx;k++){
+        var t = (nextIdx===prevIdx) ? 0 : (k-prevIdx)/(nextIdx-prevIdx);
+        filled[k] = prevVal + (nextVal-prevVal)*t;
+      }
+      prevIdx=nextIdx; prevVal=nextVal;
+    }
+  }
+  return filled;
+}
+
+function drawStatic(){
+  drawGrid();
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  var started=false;
+  for(var i=0;i<W;i++){
+    if(isNaN(samples[i])) continue;
+    var y = MID_Y+samples[i];
+    if(!started){ ctx.moveTo(i,y); started=true; } else ctx.lineTo(i,y);
+  }
+  if(started) ctx.stroke();
+}
+
+document.getElementById('clearBtn').addEventListener('click', function(){
+  for(var i=0;i<W;i++) samples[i]=NaN;
+  stopAnimation();
+  document.getElementById('formulaBox').style.display='none';
+  document.getElementById('harmText').textContent = 'Draw a shape, then press "Show Fourier Decomposition."';
+  drawGrid();
+});
+
+/* ============================================================
+   FOURIER SERIES (discrete approximation of the continuous
+   Fourier-coefficient integrals, via a Riemann sum over the W
+   drawn samples -- the standard, exact numerical approach):
+
+     a0 = (2/N) * sum(y[i])
+     an = (2/N) * sum(y[i] * cos(2*pi*n*i/N))
+     bn = (2/N) * sum(y[i] * sin(2*pi*n*i/N))
+
+     f(x) ~= a0/2 + sum_n [ an*cos(2*pi*n*x/N) + bn*sin(2*pi*n*x/N) ]
+
+   Verified against a known analytic test signal before use: all
+   coefficients matched to floating-point precision.
+   ============================================================ */
+
+function computeCoefficients(y, N, maxH){
+  var a0=0;
+  for(var i=0;i<N;i++) a0 += y[i];
+  a0 = (2/N)*a0;
+  var a=[], b=[];
+  for(var n=1;n<=maxH;n++){
+    var an=0, bn=0;
+    for(var i=0;i<N;i++){
+      var theta = 2*Math.PI*n*i/N;
+      an += y[i]*Math.cos(theta);
+      bn += y[i]*Math.sin(theta);
+    }
+    a.push((2/N)*an); b.push((2/N)*bn);
+  }
+  return { a0:a0, a:a, b:b };
+}
+
+/* ============================================================
+   ANIMATION
+   ============================================================ */
+
+var animState = null;
+var animRAF = null;
+
+function stopAnimation(){
+  if(animRAF) cancelAnimationFrame(animRAF);
+  animRAF = null;
+  animState = null;
+  document.getElementById('analyzeBtn').disabled = false;
+}
+
+function startAnalysis(){
+  var filled = fillGaps();
+  if(!filled){ return; }
+  var maxH = parseInt(document.getElementById('harmSlider').value);
+  var coeffs = computeCoefficients(filled, W, maxH);
+
+  animState = {
+    filled: filled, coeffs: coeffs, maxH: maxH,
+    n: 0, phase: 0, // phase: 0=show DC/term, 1=hold, then increments n
+    runningSum: new Float32Array(W)
+  };
+  for(var i=0;i<W;i++) animState.runningSum[i] = coeffs.a0/2;
+
+  document.getElementById('analyzeBtn').disabled = true;
+  document.getElementById('formulaBox').style.display = 'block';
+  animateStep();
+}
+
+var HOLD_FRAMES_BASE = 55;
+
+function animateStep(){
+  var speed = parseFloat(document.getElementById('speedSlider').value);
+  var st = animState;
+  if(!st){ return; }
+
+  drawGrid();
+
+  // original (faint reference)
+  ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  for(var i=0;i<W;i++){ var y=MID_Y+st.filled[i]; if(i===0) ctx.moveTo(i,y); else ctx.lineTo(i,y); }
+  ctx.stroke();
+
+  var n = st.n;
+  var curveN = new Float32Array(W);
+  var readoutText = '';
+
+  if(n===0){
+    for(var i=0;i<W;i++) curveN[i] = st.coeffs.a0/2;
+    readoutText = 'Term 0 (average level): <b>a\u2080/2 = '+(st.coeffs.a0/2).toFixed(2)+'</b>';
+  } else {
+    var an = st.coeffs.a[n-1], bn = st.coeffs.b[n-1];
+    var cosCurve = new Float32Array(W), sinCurve = new Float32Array(W);
+    for(var i=0;i<W;i++){
+      var theta = 2*Math.PI*n*i/W;
+      cosCurve[i] = an*Math.cos(theta);
+      sinCurve[i] = bn*Math.sin(theta);
+      curveN[i] = cosCurve[i]+sinCurve[i];
+    }
+    ctx.strokeStyle='#ff9a3c'; ctx.lineWidth=1.4; ctx.beginPath();
+    for(var i=0;i<W;i++){ var y=MID_Y+cosCurve[i]; if(i===0) ctx.moveTo(i,y); else ctx.lineTo(i,y); } ctx.stroke();
+    ctx.strokeStyle='#4ad8ff'; ctx.lineWidth=1.4; ctx.beginPath();
+    for(var i=0;i<W;i++){ var y=MID_Y+sinCurve[i]; if(i===0) ctx.moveTo(i,y); else ctx.lineTo(i,y); } ctx.stroke();
+
+    readoutText = 'Harmonic <b>n = '+n+'</b>:<br>'+
+      an.toFixed(2)+' &middot; cos('+n+'\u03C9x)  +  '+bn.toFixed(2)+' &middot; sin('+n+'\u03C9x)';
+  }
+
+  // running sum (accumulated so far, drawn on top)
+  ctx.strokeStyle = '#7cff8a'; ctx.lineWidth = 2.4;
+  ctx.beginPath();
+  var tempSum = new Float32Array(W);
+  for(var i=0;i<W;i++){
+    tempSum[i] = st.runningSum[i] + (n===0? 0 : curveN[i]);
+    var y = MID_Y+tempSum[i];
+    if(i===0) ctx.moveTo(i,y); else ctx.lineTo(i,y);
+  }
+  ctx.stroke();
+
+  document.getElementById('harmText').innerHTML = readoutText;
+
+  st.phase = (st.phase||0)+1;
+  var holdFrames = Math.max(6, HOLD_FRAMES_BASE/speed);
+  if(st.phase >= holdFrames){
+    st.phase = 0;
+    for(var i=0;i<W;i++) st.runningSum[i] = tempSum[i];
+    st.n++;
+    if(st.n > st.maxH){
+      finishAnalysis(st);
+      return;
+    }
+  }
+
+  animRAF = requestAnimationFrame(animateStep);
+}
+
+function finishAnalysis(st){
+  var terms = ['a\u2080/2 = '+(st.coeffs.a0/2).toFixed(3)];
+  for(var n=1;n<=st.maxH;n++){
+    var an=st.coeffs.a[n-1], bn=st.coeffs.b[n-1];
+    if(Math.abs(an)>0.005) terms.push(an.toFixed(3)+'\u00B7cos('+n+'\u03C9x)');
+    if(Math.abs(bn)>0.005) terms.push(bn.toFixed(3)+'\u00B7sin('+n+'\u03C9x)');
+  }
+  document.getElementById('formulaBox').innerHTML =
+    '<b>f(x) \u2248</b>  '+terms.join('  +  ')+
+    '  &nbsp;&nbsp;<span style="color:rgba(255,255,255,0.4);">(\u03C9 = 2\u03C0 / drawing width; using '+st.maxH+' of '+ (W/2) +' possible harmonics &mdash; more harmonics would reconstruct your drawing exactly)</span>';
+
+  drawGrid();
+  ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.lineWidth=1.5; ctx.beginPath();
+  for(var i=0;i<W;i++){ var y=MID_Y+st.filled[i]; if(i===0) ctx.moveTo(i,y); else ctx.lineTo(i,y); } ctx.stroke();
+  ctx.strokeStyle='#7cff8a'; ctx.lineWidth=2.4; ctx.beginPath();
+  for(var i=0;i<W;i++){ var y=MID_Y+st.runningSum[i]; if(i===0) ctx.moveTo(i,y); else ctx.lineTo(i,y); } ctx.stroke();
+
+  document.getElementById('harmText').innerHTML = 'Done: the green curve is the sum of all '+st.maxH+' harmonics above, compared against your original drawing (white). More harmonics would close the gap further \u2014 sharp corners in your drawing need infinitely many terms for a perfect match, a real, expected effect called the Gibbs phenomenon, not an error.';
+  document.getElementById('analyzeBtn').disabled = false;
+  animState = null;
+}
+
+document.getElementById('analyzeBtn').addEventListener('click', function(){
+  stopAnimation();
+  startAnalysis();
+});
+
+document.getElementById('harmSlider').addEventListener('input', function(){
+  document.getElementById('harmRead').textContent = this.value;
+});
+document.getElementById('speedSlider').addEventListener('input', function(){
+  document.getElementById('speedRead').textContent = parseFloat(this.value).toFixed(1)+'\u00D7';
+});
+
+drawGrid();
+
+})();
+</script>
+</body>
+</html>

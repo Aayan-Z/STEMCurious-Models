@@ -1,0 +1,1582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Orbital Hybridisation Studio</title>
+
+<style>
+:root {
+  color-scheme: dark;
+  --background: #101214;
+  --panel: rgba(26, 29, 32, 0.88);
+  --panel-soft: rgba(255, 255, 255, 0.045);
+  --border: rgba(255, 255, 255, 0.13);
+  --border-strong: rgba(255, 255, 255, 0.23);
+  --text: #f0f2f4;
+  --muted: #9299a1;
+  --accent: #dfe4e8;
+  --positive: #a9c5b1;
+  --negative: #c5a9a9;
+  --radius: 15px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--background);
+  color: var(--text);
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.app {
+  width: min(1500px, calc(100% - 30px));
+  margin: 15px auto;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  padding: 17px 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: rgba(24, 27, 30, 0.84);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-mark {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  color: var(--text);
+  font-size: 17px;
+}
+
+.brand-title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.015em;
+}
+
+.brand-subtitle {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #aab6ad;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: 295px minmax(0, 1fr);
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.controls {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.section + .section {
+  margin-top: 24px;
+}
+
+.section-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 13px;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.section-title span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.control {
+  margin-top: 14px;
+}
+
+.control:first-child {
+  margin-top: 0;
+}
+
+.control-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  color: #c7ccd1;
+  font-size: 12px;
+}
+
+.control-value {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+input[type="range"] {
+  width: 100%;
+  height: 4px;
+  margin: 0;
+  accent-color: #e0e4e8;
+  cursor: pointer;
+}
+
+select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  outline: none;
+  color: var(--text);
+  background: #202428;
+}
+
+select:focus {
+  border-color: var(--border-strong);
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 17px;
+}
+
+button {
+  min-width: 0;
+  padding: 10px 11px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.045);
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+button:hover {
+  border-color: var(--border-strong);
+  background: rgba(255, 255, 255, 0.09);
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+button.primary {
+  color: #17191b;
+  background: #e7eaed;
+  border-color: #e7eaed;
+}
+
+button.primary:hover {
+  background: #ffffff;
+}
+
+button.full {
+  grid-column: 1 / -1;
+}
+
+.info {
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--muted);
+  background: var(--panel-soft);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.info strong {
+  color: #d9dde1;
+  font-weight: 650;
+}
+
+.legend {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.viewport {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #151719;
+}
+
+.viewport-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(24, 27, 30, 0.82);
+}
+
+.viewport-title {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.viewport-subtitle {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.viewport-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.key {
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: #c7cdd2;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.scene-wrap {
+  position: relative;
+  height: 720px;
+  min-height: 480px;
+}
+
+#scene {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  cursor: grab;
+}
+
+#scene:active {
+  cursor: grabbing;
+}
+
+.scene-overlay {
+  position: absolute;
+  left: 17px;
+  bottom: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  pointer-events: none;
+}
+
+.overlay-chip {
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: #bac1c7;
+  background: rgba(14, 16, 18, 0.76);
+  font-size: 10px;
+  backdrop-filter: blur(12px);
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  border-top: 1px solid var(--border);
+  background: var(--border);
+}
+
+.metric {
+  min-width: 0;
+  padding: 15px;
+  background: rgba(25, 28, 31, 0.96);
+}
+
+.metric-label {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.metric-value {
+  margin-top: 8px;
+  color: var(--text);
+  font-size: 19px;
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-unit {
+  margin-left: 4px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 400;
+}
+
+@media (max-width: 1080px) {
+  .workspace {
+    grid-template-columns: 270px minmax(0, 1fr);
+  }
+
+  .scene-wrap {
+    height: 620px;
+  }
+}
+
+@media (max-width: 800px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .controls {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+  }
+
+  .section + .section {
+    margin-top: 0;
+  }
+
+  .scene-wrap {
+    height: 580px;
+  }
+}
+
+@media (max-width: 600px) {
+  .app {
+    width: calc(100% - 20px);
+    margin: 10px auto;
+  }
+
+  .status {
+    display: none;
+  }
+
+  .controls {
+    display: block;
+  }
+
+  .section + .section {
+    margin-top: 24px;
+  }
+
+  .scene-wrap {
+    height: 470px;
+  }
+
+  .viewport-tools {
+    display: none;
+  }
+
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">σ</div>
+      <div>
+        <div class="brand-title">Orbital Hybridisation Studio</div>
+        <div class="brand-subtitle">Three-dimensional orbital formation model</div>
+      </div>
+    </div>
+
+    <div class="status">
+      <span class="status-dot"></span>
+      Quantum orbital visualisation
+    </div>
+  </header>
+
+  <main class="workspace">
+
+    <aside class="controls">
+
+      <section class="section">
+        <div class="section-title">
+          Hybridisation
+          <span>Model</span>
+        </div>
+
+        <div class="control">
+          <div class="control-label">
+            <label for="hybridType">Orbital type</label>
+          </div>
+
+          <select id="hybridType">
+            <option value="sp">sp</option>
+            <option value="sp2" selected>sp²</option>
+            <option value="sp3">sp³</option>
+            <option value="sp3d">sp³d</option>
+            <option value="sp3d2">sp³d²</option>
+          </select>
+        </div>
+
+        <div class="control">
+          <div class="control-label">
+            <label for="formation">Formation progress</label>
+            <span class="control-value" id="formationValue">100%</span>
+          </div>
+
+          <input
+            id="formation"
+            type="range"
+            min="0"
+            max="100"
+            step="1"
+            value="100"
+          />
+        </div>
+
+        <div class="control">
+          <div class="control-label">
+            <label for="lobeScale">Lobe scale</label>
+            <span class="control-value" id="lobeScaleValue">1.00</span>
+          </div>
+
+          <input
+            id="lobeScale"
+            type="range"
+            min="0.65"
+            max="1.5"
+            step="0.01"
+            value="1"
+          />
+        </div>
+
+        <div class="control">
+          <div class="control-label">
+            <label for="opacity">Orbital opacity</label>
+            <span class="control-value" id="opacityValue">0.42</span>
+          </div>
+
+          <input
+            id="opacity"
+            type="range"
+            min="0.12"
+            max="0.75"
+            step="0.01"
+            value="0.42"
+          />
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-title">
+          Animation
+          <span>Motion</span>
+        </div>
+
+        <div class="control">
+          <div class="control-label">
+            <label for="speed">Formation speed</label>
+            <span class="control-value" id="speedValue">1.00×</span>
+          </div>
+
+          <input
+            id="speed"
+            type="range"
+            min="0.1"
+            max="2.5"
+            step="0.05"
+            value="1"
+          />
+        </div>
+
+        <div class="actions">
+          <button class="primary" id="playButton">Play</button>
+          <button id="resetButton">Reset</button>
+          <button class="full" id="formationButton">Animate formation</button>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-title">
+          View
+          <span>Camera</span>
+        </div>
+
+        <div class="actions">
+          <button id="cameraButton">Reset camera</button>
+          <button id="phaseButton">Show phases</button>
+        </div>
+
+        <div class="info" style="margin-top: 13px;">
+          Drag to rotate. Shift-drag or right-drag to pan.
+          Use the mouse wheel to zoom. The model uses translucent
+          probability-density-inspired orbital surfaces.
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-title">
+          Interpretation
+          <span>Guide</span>
+        </div>
+
+        <div class="info">
+          <strong>Important:</strong> hybrid orbitals are mathematical
+          combinations of atomic orbitals. The animation shows a continuous
+          transformation from separated s and p or d orbital components into
+          directional hybrid orbital shapes. It is a visual model, not a
+          literal time-dependent quantum process.
+        </div>
+
+        <div class="legend">
+          <div class="legend-row">
+            <span class="legend-swatch" style="background:#d6dbe0;"></span>
+            Positive phase
+          </div>
+
+          <div class="legend-row">
+            <span class="legend-swatch" style="background:#8f969e;"></span>
+            Negative phase
+          </div>
+
+          <div class="legend-row">
+            <span class="legend-swatch" style="background:#b5c6d2;"></span>
+            Hybrid orbital surface
+          </div>
+        </div>
+      </section>
+
+    </aside>
+
+    <section class="viewport">
+
+      <div class="viewport-head">
+        <div>
+          <div class="viewport-title">Hybrid orbital formation</div>
+          <div class="viewport-subtitle">
+            Atomic orbital components transforming into directional hybrids
+          </div>
+        </div>
+
+        <div class="viewport-tools">
+          <span class="key">Drag</span> Rotate
+          <span class="key">Shift</span> Pan
+          <span class="key">Wheel</span> Zoom
+        </div>
+      </div>
+
+      <div class="scene-wrap">
+        <canvas id="scene"></canvas>
+
+        <div class="scene-overlay">
+          <div class="overlay-chip" id="stageChip">Hybridised state</div>
+          <div class="overlay-chip" id="phaseChip">Phase colours enabled</div>
+        </div>
+      </div>
+
+      <div class="metrics">
+        <div class="metric">
+          <div class="metric-label">Hybrid type</div>
+          <div class="metric-value" id="typeMetric">sp²</div>
+        </div>
+
+        <div class="metric">
+          <div class="metric-label">Hybrid orbitals</div>
+          <div class="metric-value" id="countMetric">3</div>
+        </div>
+
+        <div class="metric">
+          <div class="metric-label">Ideal geometry</div>
+          <div class="metric-value" id="geometryMetric">120°</div>
+        </div>
+
+        <div class="metric">
+          <div class="metric-label">Formation</div>
+          <div class="metric-value" id="progressMetric">100<span class="metric-unit">%</span></div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+</div>
+
+<script>
+"use strict";
+
+/* -------------------------------------------------------
+   DOM references
+------------------------------------------------------- */
+
+const scene = document.getElementById("scene");
+const context = scene.getContext("2d");
+
+const hybridTypeInput = document.getElementById("hybridType");
+const formationInput = document.getElementById("formation");
+const lobeScaleInput = document.getElementById("lobeScale");
+const opacityInput = document.getElementById("opacity");
+const speedInput = document.getElementById("speed");
+
+const formationValue = document.getElementById("formationValue");
+const lobeScaleValue = document.getElementById("lobeScaleValue");
+const opacityValue = document.getElementById("opacityValue");
+const speedValue = document.getElementById("speedValue");
+
+const playButton = document.getElementById("playButton");
+const resetButton = document.getElementById("resetButton");
+const formationButton = document.getElementById("formationButton");
+const cameraButton = document.getElementById("cameraButton");
+const phaseButton = document.getElementById("phaseButton");
+
+const stageChip = document.getElementById("stageChip");
+const phaseChip = document.getElementById("phaseChip");
+
+const typeMetric = document.getElementById("typeMetric");
+const countMetric = document.getElementById("countMetric");
+const geometryMetric = document.getElementById("geometryMetric");
+const progressMetric = document.getElementById("progressMetric");
+
+/* -------------------------------------------------------
+   Model
+------------------------------------------------------- */
+
+const types = {
+  sp: {
+    label: "sp",
+    count: 2,
+    angle: 180,
+    geometry: "Linear",
+    components: ["s", "p"],
+    axes: [
+      { x: 1, y: 0, z: 0 },
+      { x: -1, y: 0, z: 0 }
+    ]
+  },
+
+  sp2: {
+    label: "sp²",
+    count: 3,
+    angle: 120,
+    geometry: "Trigonal planar",
+    components: ["s", "p", "p"],
+    axes: [
+      { x: 1, y: 0, z: 0 },
+      { x: -0.5, y: 0.8660254, z: 0 },
+      { x: -0.5, y: -0.8660254, z: 0 }
+    ]
+  },
+
+  sp3: {
+    label: "sp³",
+    count: 4,
+    angle: 109.47,
+    geometry: "Tetrahedral",
+    components: ["s", "p", "p", "p"],
+    axes: [
+      { x: 1, y: 1, z: 1 },
+      { x: 1, y: -1, z: -1 },
+      { x: -1, y: 1, z: -1 },
+      { x: -1, y: -1, z: 1 }
+    ]
+  },
+
+  sp3d: {
+    label: "sp³d",
+    count: 5,
+    angle: 90,
+    geometry: "Trigonal bipyramidal",
+    components: ["s", "p", "p", "p", "d"],
+    axes: [
+      { x: 0, y: 1, z: 0 },
+      { x: 0, y: -1, z: 0 },
+      { x: 1, y: 0, z: 0 },
+      { x: -0.5, y: 0, z: 0.8660254 },
+      { x: -0.5, y: 0, z: -0.8660254 }
+    ]
+  },
+
+  sp3d2: {
+    label: "sp³d²",
+    count: 6,
+    angle: 90,
+    geometry: "Octahedral",
+    components: ["s", "p", "p", "p", "d", "d"],
+    axes: [
+      { x: 1, y: 0, z: 0 },
+      { x: -1, y: 0, z: 0 },
+      { x: 0, y: 1, z: 0 },
+      { x: 0, y: -1, z: 0 },
+      { x: 0, y: 0, z: 1 },
+      { x: 0, y: 0, z: -1 }
+    ]
+  }
+};
+
+const state = {
+  type: "sp2",
+  formation: 1,
+  lobeScale: 1,
+  opacity: 0.42,
+  speed: 1,
+  playing: false,
+  showPhases: true,
+  time: 0
+};
+
+const camera = {
+  yaw: -0.58,
+  pitch: -0.28,
+  distance: 5.3,
+  panX: 0,
+  panY: 0
+};
+
+let pointer = {
+  active: false,
+  mode: "rotate",
+  x: 0,
+  y: 0
+};
+
+let lastFrame = performance.now();
+
+/* -------------------------------------------------------
+   Math helpers
+------------------------------------------------------- */
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function lerp(a, b, amount) {
+  return a + (b - a) * amount;
+}
+
+function length3(point) {
+  return Math.sqrt(
+    point.x * point.x +
+    point.y * point.y +
+    point.z * point.z
+  );
+}
+
+function normalize(point) {
+  const length = length3(point) || 1;
+
+  return {
+    x: point.x / length,
+    y: point.y / length,
+    z: point.z / length
+  };
+}
+
+function dot(a, b) {
+  return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+function cross(a, b) {
+  return {
+    x: a.y * b.z - a.z * b.y,
+    y: a.z * b.x - a.x * b.z,
+    z: a.x * b.y - a.y * b.x
+  };
+}
+
+function add(a, b) {
+  return {
+    x: a.x + b.x,
+    y: a.y + b.y,
+    z: a.z + b.z
+  };
+}
+
+function subtract(a, b) {
+  return {
+    x: a.x - b.x,
+    y: a.y - b.y,
+    z: a.z - b.z
+  };
+}
+
+function multiply(point, scalar) {
+  return {
+    x: point.x * scalar,
+    y: point.y * scalar,
+    z: point.z * scalar
+  };
+}
+
+function smoothstep(value) {
+  const t = clamp(value, 0, 1);
+  return t * t * (3 - 2 * t);
+}
+
+/* -------------------------------------------------------
+   Orbital basis
+------------------------------------------------------- */
+
+function getBasis(axis) {
+  const direction = normalize(axis);
+
+  const reference =
+    Math.abs(direction.y) < 0.85
+      ? { x: 0, y: 1, z: 0 }
+      : { x: 1, y: 0, z: 0 };
+
+  const side = normalize(cross(reference, direction));
+  const vertical = normalize(cross(direction, side));
+
+  return {
+    direction,
+    side,
+    vertical
+  };
+}
+
+function rotateLocal(local, basis) {
+  return add(
+    add(
+      multiply(basis.side, local.x),
+      multiply(basis.vertical, local.y)
+    ),
+    multiply(basis.direction, local.z)
+  );
+}
+
+/* -------------------------------------------------------
+   Orbital surface generation
+------------------------------------------------------- */
+
+/*
+  Each orbital is represented as a translucent, signed
+  probability-density-inspired surface.
+
+  The positive and negative lobes are separated by phase.
+  Hybridisation continuously interpolates between:
+  - separated atomic orbital components
+  - directional hybrid orbital combinations
+
+  This is an educational spatial representation rather
+  than a numerical solution of a many-electron wavefunction.
+*/
+
+function atomicOrbitalValue(local, component) {
+  const radius = Math.sqrt(
+    local.x * local.x +
+    local.y * local.y +
+    local.z * local.z
+  );
+
+  if (component === "s") {
+    return Math.exp(-1.6 * radius);
+  }
+
+  if (component === "p") {
+    return local.z * Math.exp(-1.35 * radius);
+  }
+
+  if (component === "d") {
+    return (
+      (local.x * local.x - local.y * local.y) *
+      Math.exp(-1.15 * radius)
+    );
+  }
+
+  return 0;
+}
+
+function hybridValue(local, axis, component) {
+  const basis = getBasis(axis);
+  const oriented = {
+    x: dot(local, basis.side),
+    y: dot(local, basis.vertical),
+    z: dot(local, basis.direction)
+  };
+
+  const radius = length3(local);
+
+  if (component === "s") {
+    return 0.58 * Math.exp(-1.55 * radius);
+  }
+
+  if (component === "p") {
+    return 1.18 * oriented.z * Math.exp(-1.25 * radius);
+  }
+
+  if (component === "d") {
+    return (
+      0.95 *
+      (oriented.z * oriented.z - 0.5 * oriented.x * oriented.x) *
+      Math.exp(-1.1 * radius)
+    );
+  }
+
+  return 0;
+}
+
+function generateOrbitalSurface(axis, component, progress, lobeScale) {
+  const basis = getBasis(axis);
+  const vertices = [];
+  const rings = 23;
+  const segments = 34;
+
+  const orbitalProgress = smoothstep(progress);
+  const separation = lerp(1.0, 0.0, orbitalProgress);
+
+  for (let ring = 0; ring <= rings; ring++) {
+    const v = ring / rings;
+    const polar = v * Math.PI;
+    const sinPolar = Math.sin(polar);
+    const cosPolar = Math.cos(polar);
+
+    for (let segment = 0; segment < segments; segment++) {
+      const azimuth = segment / segments * Math.PI * 2;
+
+      const localDirection = {
+        x: sinPolar * Math.cos(azimuth),
+        y: sinPolar * Math.sin(azimuth),
+        z: cosPolar
+      };
+
+      const local = multiply(localDirection, 1.0);
+
+      const atomicValue = atomicOrbitalValue(local, component);
+      const hybridComponent = hybridValue(local, axis, component);
+
+      const value = lerp(
+        atomicValue * separation,
+        hybridComponent,
+        orbitalProgress
+      );
+
+      const magnitude = Math.abs(value);
+      const radius = 0.18 + magnitude * 1.02 * lobeScale;
+
+      const position = rotateLocal(
+        multiply(localDirection, radius),
+        basis
+      );
+
+      vertices.push({
+        position,
+        sign: value >= 0 ? 1 : -1,
+        magnitude
+      });
+    }
+  }
+
+  const faces = [];
+
+  for (let ring = 0; ring < rings; ring++) {
+    for (let segment = 0; segment < segments; segment++) {
+      const nextSegment = (segment + 1) % segments;
+
+      const a = ring * segments + segment;
+      const b = ring * segments + nextSegment;
+      const c = (ring + 1) * segments + nextSegment;
+      const d = (ring + 1) * segments + segment;
+
+      faces.push([a, b, c]);
+      faces.push([a, c, d]);
+    }
+  }
+
+  return {
+    vertices,
+    faces
+  };
+}
+
+/* -------------------------------------------------------
+   3D camera and projection
+------------------------------------------------------- */
+
+function rotatePoint(point) {
+  const cosYaw = Math.cos(camera.yaw);
+  const sinYaw = Math.sin(camera.yaw);
+
+  const x1 = point.x * cosYaw - point.z * sinYaw;
+  const z1 = point.x * sinYaw + point.z * cosYaw;
+
+  const cosPitch = Math.cos(camera.pitch);
+  const sinPitch = Math.sin(camera.pitch);
+
+  const y2 = point.y * cosPitch - z1 * sinPitch;
+  const z2 = point.y * sinPitch + z1 * cosPitch;
+
+  return {
+    x: x1,
+    y: y2,
+    z: z2
+  };
+}
+
+function project(point, width, height, scale) {
+  const rotated = rotatePoint(point);
+  const perspective = scale / (scale + camera.distance + rotated.z);
+
+  return {
+    x: width * 0.5 + camera.panX + rotated.x * perspective * scale,
+    y: height * 0.5 + camera.panY - rotated.y * perspective * scale,
+    depth: rotated.z
+  };
+}
+
+/* -------------------------------------------------------
+   Drawing helpers
+------------------------------------------------------- */
+
+function resizeCanvas() {
+  const rect = scene.getBoundingClientRect();
+  const ratio = Math.min(window.devicePixelRatio || 1, 2);
+
+  scene.width = Math.max(1, Math.floor(rect.width * ratio));
+  scene.height = Math.max(1, Math.floor(rect.height * ratio));
+
+  context.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+  return {
+    width: rect.width,
+    height: rect.height
+  };
+}
+
+function drawLine3D(a, b, width, height, scale, color, lineWidth = 1) {
+  const p1 = project(a, width, height, scale);
+  const p2 = project(b, width, height, scale);
+
+  context.beginPath();
+  context.moveTo(p1.x, p1.y);
+  context.lineTo(p2.x, p2.y);
+  context.strokeStyle = color;
+  context.lineWidth = lineWidth;
+  context.stroke();
+}
+
+function drawSphere(point, radius, width, height, scale) {
+  const projected = project(point, width, height, scale);
+  const perspective = scale / (scale + camera.distance + projected.depth);
+  const size = Math.max(1, radius * perspective * scale);
+
+  const gradient = context.createRadialGradient(
+    projected.x - size * 0.35,
+    projected.y - size * 0.4,
+    size * 0.08,
+    projected.x,
+    projected.y,
+    size
+  );
+
+  gradient.addColorStop(0, "#ffffff");
+  gradient.addColorStop(0.38, "#c8cfd5");
+  gradient.addColorStop(1, "#555c64");
+
+  context.beginPath();
+  context.arc(projected.x, projected.y, size, 0, Math.PI * 2);
+  context.fillStyle = gradient;
+  context.fill();
+
+  context.strokeStyle = "rgba(255,255,255,0.35)";
+  context.lineWidth = 1;
+  context.stroke();
+}
+
+function drawReferenceAxes(width, height, scale) {
+  const origin = { x: 0, y: 0, z: 0 };
+  const axisLength = 1.85;
+
+  drawLine3D(
+    origin,
+    { x: axisLength, y: 0, z: 0 },
+    width,
+    height,
+    scale,
+    "rgba(205,211,217,0.22)",
+    1
+  );
+
+  drawLine3D(
+    origin,
+    { x: 0, y: axisLength, z: 0 },
+    width,
+    height,
+    scale,
+    "rgba(205,211,217,0.22)",
+    1
+  );
+
+  drawLine3D(
+    origin,
+    { x: 0, y: 0, z: axisLength },
+    width,
+    height,
+    scale,
+    "rgba(205,211,217,0.22)",
+    1
+  );
+}
+
+function drawOrbitalSurface(surface, width, height, scale, sign) {
+  const projectedFaces = [];
+
+  for (const face of surface.faces) {
+    const a = surface.vertices[face[0]];
+    const b = surface.vertices[face[1]];
+    const c = surface.vertices[face[2]];
+
+    const pa = project(a.position, width, height, scale);
+    const pb = project(b.position, width, height, scale);
+    const pc = project(c.position, width, height, scale);
+
+    const averageDepth = (pa.depth + pb.depth + pc.depth) / 3;
+    const averageMagnitude =
+      (a.magnitude + b.magnitude + c.magnitude) / 3;
+
+    projectedFaces.push({
+      a: pa,
+      b: pb,
+      c: pc,
+      depth: averageDepth,
+      magnitude: averageMagnitude
+    });
+  }
+
+  projectedFaces.sort((a, b) => a.depth - b.depth);
+
+  for (const face of projectedFaces) {
+    if (face.magnitude < 0.035) {
+      continue;
+    }
+
+    const alpha = clamp(
+      state.opacity * (0.42 + face.magnitude * 0.8),
+      0.025,
+      state.opacity
+    );
+
+    const positive = sign > 0;
+
+    context.beginPath();
+    context.moveTo(face.a.x, face.a.y);
+    context.lineTo(face.b.x, face.b.y);
+    context.lineTo(face.c.x, face.c.y);
+    context.closePath();
+
+    context.fillStyle = positive
+      ? `rgba(216,222,228,${alpha})`
+      : `rgba(128,138,148,${alpha})`;
+
+    context.fill();
+
+    context.strokeStyle = positive
+      ? `rgba(240,244,247,${alpha * 0.23})`
+      : `rgba(85,95,105,${alpha * 0.2})`;
+
+    context.lineWidth = 0.45;
+    context.stroke();
+  }
+}
+
+function drawHybridOrbital(axis, component, progress, width, height, scale) {
+  const surface = generateOrbitalSurface(
+    axis,
+    component,
+    progress,
+    state.lobeScale
+  );
+
+  drawOrbitalSurface(surface, width, height, scale, 1);
+}
+
+function drawAtomicComponents(type, progress, width, height, scale) {
+  const components = type.components;
+
+  components.forEach((component, index) => {
+    const axis = type.axes[index % type.axes.length];
+
+    const componentProgress = clamp(
+      progress * 1.35 - index * 0.075,
+      0,
+      1
+    );
+
+    drawHybridOrbital(
+      axis,
+      component,
+      componentProgress,
+      width,
+      height,
+      scale
+    );
+  });
+}
+
+function drawHybridDirections(type, width, height, scale) {
+  for (const axis of type.axes) {
+    const direction = normalize(axis);
+    const endpoint = multiply(direction, 1.45);
+
+    drawLine3D(
+      { x: 0, y: 0, z: 0 },
+      endpoint,
+      width,
+      height,
+      scale,
+      "rgba(225,230,234,0.17)",
+      1
+    );
+  }
+}
+
+function drawNucleus(width, height, scale) {
+  drawSphere(
+    { x: 0, y: 0, z: 0 },
+    0.09,
+    width,
+    height,
+    scale
+  );
+}
+
+/* -------------------------------------------------------
+   Main scene
+------------------------------------------------------- */
+
+function drawScene() {
+  const dimensions = resizeCanvas();
+  const width = dimensions.width;
+  const height = dimensions.height;
+
+  context.clearRect(0, 0, width, height);
+
+  const scale = Math.min(width, height) * 0.34;
+  const type = types[state.type];
+  const progress = state.formation;
+
+  drawReferenceAxes(width, height, scale);
+  drawHybridDirections(type, width, height, scale);
+
+  if (progress < 0.999) {
+    drawAtomicComponents(type, progress, width, height, scale);
+  } else {
+    for (const axis of type.axes) {
+      drawHybridOrbital(
+        axis,
+        "p",
+        progress,
+        width,
+        height,
+        scale
+      );
+    }
+  }
+
+  drawNucleus(width, height, scale);
+}
+
+/* -------------------------------------------------------
+   UI updates
+------------------------------------------------------- */
+
+function updateUI() {
+  const type = types[state.type];
+  const percentage = Math.round(state.formation * 100);
+
+  formationValue.textContent = `${percentage}%`;
+  lobeScaleValue.textContent = state.lobeScale.toFixed(2);
+  opacityValue.textContent = state.opacity.toFixed(2);
+  speedValue.textContent = `${state.speed.toFixed(2)}×`;
+
+  typeMetric.textContent = type.label;
+  countMetric.textContent = String(type.count);
+  geometryMetric.textContent =
+    type.angle === 109.47
+      ? "109.47°"
+      : `${type.angle}°`;
+
+  progressMetric.innerHTML =
+    `${percentage}<span class="metric-unit">%</span>`;
+
+  if (percentage === 0) {
+    stageChip.textContent = "Separated atomic orbitals";
+  } else if (percentage < 100) {
+    stageChip.textContent = "Hybridisation forming";
+  } else {
+    stageChip.textContent = "Hybridised state";
+  }
+
+  phaseChip.textContent =
+    state.showPhases
+      ? "Phase colours enabled"
+      : "Phase colours simplified";
+
+  playButton.textContent = state.playing ? "Pause" : "Play";
+}
+
+function resetModel() {
+  state.formation = 1;
+  state.time = 0;
+  state.playing = false;
+
+  formationInput.value = "100";
+
+  updateUI();
+}
+
+function animateFormation() {
+  state.formation = 0;
+  state.time = 0;
+  state.playing = true;
+  formationInput.value = "0";
+  updateUI();
+}
+
+/* -------------------------------------------------------
+   Controls
+------------------------------------------------------- */
+
+hybridTypeInput.addEventListener("change", () => {
+  state.type = hybridTypeInput.value;
+  resetModel();
+});
+
+formationInput.addEventListener("input", () => {
+  state.formation = Number(formationInput.value) / 100;
+  state.playing = false;
+  updateUI();
+});
+
+lobeScaleInput.addEventListener("input", () => {
+  state.lobeScale = Number(lobeScaleInput.value);
+  updateUI();
+});
+
+opacityInput.addEventListener("input", () => {
+  state.opacity = Number(opacityInput.value);
+  updateUI();
+});
+
+speedInput.addEventListener("input", () => {
+  state.speed = Number(speedInput.value);
+  updateUI();
+});
+
+playButton.addEventListener("click", () => {
+  state.playing = !state.playing;
+  updateUI();
+});
+
+resetButton.addEventListener("click", () => {
+  resetModel();
+});
+
+formationButton.addEventListener("click", () => {
+  animateFormation();
+});
+
+cameraButton.addEventListener("click", () => {
+  camera.yaw = -0.58;
+  camera.pitch = -0.28;
+  camera.distance = 5.3;
+  camera.panX = 0;
+  camera.panY = 0;
+});
+
+phaseButton.addEventListener("click", () => {
+  state.showPhases = !state.showPhases;
+});
+
+/* -------------------------------------------------------
+   Camera interaction
+------------------------------------------------------- */
+
+scene.addEventListener("pointerdown", event => {
+  pointer.active = true;
+  pointer.x = event.clientX;
+  pointer.y = event.clientY;
+
+  pointer.mode =
+    event.button === 2 || event.shiftKey
+      ? "pan"
+      : "rotate";
+
+  scene.setPointerCapture(event.pointerId);
+});
+
+scene.addEventListener("pointermove", event => {
+  if (!pointer.active) {
+    return;
+  }
+
+  const dx = event.clientX - pointer.x;
+  const dy = event.clientY - pointer.y;
+
+  pointer.x = event.clientX;
+  pointer.y = event.clientY;
+
+  if (pointer.mode === "rotate") {
+    camera.yaw += dx * 0.008;
+    camera.pitch += dy * 0.008;
+    camera.pitch = clamp(camera.pitch, -1.45, 1.45);
+  } else {
+    camera.panX += dx;
+    camera.panY += dy;
+  }
+});
+
+scene.addEventListener("pointerup", event => {
+  pointer.active = false;
+  scene.releasePointerCapture(event.pointerId);
+});
+
+scene.addEventListener("pointercancel", () => {
+  pointer.active = false;
+});
+
+scene.addEventListener("contextmenu", event => {
+  event.preventDefault();
+});
+
+scene.addEventListener(
+  "wheel",
+  event => {
+    event.preventDefault();
+
+    camera.distance += event.deltaY * 0.0025;
+    camera.distance = clamp(camera.distance, 2.5, 12);
+  },
+  { passive: false }
+);
+
+/* -------------------------------------------------------
+   Animation loop
+------------------------------------------------------- */
+
+function frame(now) {
+  const elapsed = Math.min(0.05, (now - lastFrame) / 1000);
+  lastFrame = now;
+
+  if (state.playing) {
+    state.time += elapsed * state.speed;
+
+    state.formation += elapsed * state.speed * 0.23;
+
+    if (state.formation >= 1) {
+      state.formation = 1;
+      state.playing = false;
+    }
+
+    formationInput.value = String(
+      Math.round(state.formation * 100)
+    );
+
+    updateUI();
+  }
+
+  drawScene();
+  requestAnimationFrame(frame);
+}
+
+/* -------------------------------------------------------
+   Initialize
+------------------------------------------------------- */
+
+updateUI();
+drawScene();
+requestAnimationFrame(frame);
+
+window.addEventListener("resize", drawScene);
+</script>
+</body>
+</html>

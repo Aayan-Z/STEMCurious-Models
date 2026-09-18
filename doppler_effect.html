@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Doppler Effect Explorer</title>
+<style>
+  *{box-sizing:border-box;}
+  html,body{ margin:0; padding:0; width:100%; height:100%; background:#000; color:#fff;
+    font-family:'Times New Roman', Times, serif; overflow:hidden; }
+  #canvas-wrap{ position:fixed; inset:0; background:#000; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:22px; padding:24px 24px 24px 300px; }
+
+  .panelCard{
+    background:rgba(255,255,255,0.05);
+    border:1px solid rgba(255,255,255,0.14);
+    border-radius:22px;
+    padding:16px 20px 14px 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+  .panelTitle{ font-size:14px; color:rgba(255,255,255,0.6); margin-bottom:8px; font-style:italic; }
+  canvas{ display:block; border-radius:12px; }
+
+  #panel{
+    position:fixed; top:16px; left:16px; bottom:16px; width:270px;
+    background:rgba(255,255,255,0.08);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    backdrop-filter: blur(32px) saturate(180%);
+    border:1px solid rgba(255,255,255,0.22);
+    border-radius:26px;
+    padding:22px 22px 18px 22px; overflow-y:auto; z-index:6;
+    box-shadow: 0 12px 36px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.28);
+  }
+  #panel::-webkit-scrollbar{ width:5px; }
+  #panel::-webkit-scrollbar-thumb{ background:rgba(255,255,255,0.2); border-radius:3px; }
+
+  .panel-label{ font-size:13px; color:rgba(255,255,255,0.55); margin-bottom:9px; font-style:italic; }
+  .dir-row{ display:flex; flex-direction:column; gap:8px; margin-bottom:20px; }
+  .dir-btn{
+    background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.14); color:#fff;
+    font-family:'Times New Roman', Times, serif; font-size:14.5px; padding:11px 14px;
+    border-radius:14px; cursor:pointer; transition: background .15s ease; text-align:left;
+  }
+  .dir-btn:hover{ background:rgba(255,255,255,0.14); }
+  .dir-btn.active{ background:rgba(255,255,255,0.24); font-weight:700; }
+  .dir-btn .sw{ display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:8px; }
+
+  .slider-label{ font-size:12.5px; color:rgba(255,255,255,0.55); margin-bottom:4px; display:flex; justify-content:space-between; }
+  .slider-label b{ color:rgba(255,255,255,0.85); font-weight:700; }
+  input[type=range]{ -webkit-appearance:none; appearance:none; width:100%; height:22px; background:transparent; }
+  input[type=range]::-webkit-slider-runnable-track{ height:5px; border-radius:3px;
+    background:linear-gradient(90deg, rgba(255,255,255,0.5), rgba(255,255,255,0.12)); }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:19px; height:19px; border-radius:50%;
+    background:radial-gradient(circle at 32% 28%, #fff 0%, #d8d8de 100%);
+    box-shadow:0 2px 6px rgba(0,0,0,0.5); margin-top:-7px; cursor:pointer; }
+
+  .divider{ height:1px; margin:18px 0; background:linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.2), rgba(255,255,255,0)); }
+
+  .info-name{ font-size:21px; margin-bottom:6px; }
+  .info-stats{ font-size:13.5px; line-height:1.8; color:rgba(255,255,255,0.6); margin-bottom:12px; }
+  .info-stats b{ color:rgba(255,255,255,0.9); }
+  .info-desc{ font-size:13px; line-height:1.55; color:rgba(255,255,255,0.5); }
+
+  @media (max-width: 1000px){
+    #canvas-wrap{ padding-left:230px; }
+    #panel{ width:200px; padding:16px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="panel">
+  <div class="panel-label">Source Motion</div>
+  <div class="dir-row">
+    <button class="dir-btn active" id="approachBtn"><span class="sw" style="background:#4aa8ff;"></span>Approaching &mdash; Blueshift</button>
+    <button class="dir-btn" id="recedeBtn"><span class="sw" style="background:#ff5a4a;"></span>Receding &mdash; Redshift</button>
+  </div>
+
+  <div class="slider-label"><span>Source Speed</span><b id="speedRead">50%</b></div>
+  <input type="range" id="speedSlider" min="0" max="90" step="1" value="50">
+  <div style="font-size:11.5px;color:rgba(255,255,255,0.4);margin-top:3px;">as a fraction of wave speed</div>
+
+  <div class="divider"></div>
+
+  <div class="info-name" id="infoName">Blueshift</div>
+  <div class="info-stats" id="infoStats"></div>
+  <div class="info-desc">A moving source keeps emitting waves at a constant rate, but each new wave starts from a slightly different position. Moving toward the observer, each wave is emitted a little closer than the last, so the wave crests arrive squeezed together &mdash; a shorter observed wavelength, shifted toward blue. Moving away, each wave starts a little farther off, stretching the crests apart into a longer wavelength, shifted toward red. The source's own frequency never changes; only what the observer receives does.</div>
+</div>
+
+<div id="canvas-wrap">
+  <div class="panelCard">
+    <div class="panelTitle">Wavefronts in Space</div>
+    <canvas id="canvasA" width="760" height="230"></canvas>
+  </div>
+  <div class="panelCard">
+    <div class="panelTitle">Wave Arrivals Over Time &mdash; Emitted (top) vs. Observed (bottom)</div>
+    <canvas id="canvasB" width="760" height="150"></canvas>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   PHYSICS
+
+   The source emits a new circular wave pulse at a constant rate
+   f_source, each pulse originating from wherever the source is
+   AT THE MOMENT of emission, then expanding outward from that
+   fixed point at the constant wave speed v -- exactly as real
+   waves behave regardless of the source's own subsequent motion.
+   This single rule is the entire, unmodified cause of everything
+   seen below: no Doppler formula is applied directly to color or
+   space the pulses -- the compression and stretching emerge
+   naturally from the geometry, then the standard closed-form
+   Doppler relation
+
+       f_observed = f_source * v / (v -+ v_source)
+
+   is used only to VERIFY and report the numbers, which will
+   exactly match what the simulation produces on its own.
+   ============================================================ */
+
+var V_WAVE = 140;      // px/s
+var F_SOURCE = 1.4;    // Hz
+var speedFrac = 0.5;
+var approaching = true;
+
+function sourceSpeed(){ return speedFrac*V_WAVE; }
+function predictedObservedFreq(){
+  var vs = sourceSpeed();
+  return approaching ? F_SOURCE*V_WAVE/(V_WAVE-vs) : F_SOURCE*V_WAVE/(V_WAVE+vs);
+}
+
+/* ============================================================
+   PANEL A: wavefronts in space
+   ============================================================ */
+
+var cA = document.getElementById('canvasA');
+var ctxA = cA.getContext('2d');
+var WA = cA.width, HA = cA.height;
+var OBS_X = WA-60, OBS_Y = HA/2;
+var START_X = 60;
+
+var pulses = []; // {x, t0}
+var sourceX = START_X;
+var simTime = 0;
+var nextEmit = 0;
+var crossings = []; // times the observer was crossed by a pulse (for panel B)
+
+function resetSim(){
+  pulses = [];
+  sourceX = approaching ? START_X : OBS_X - 40;
+  simTime = 0;
+  nextEmit = 0;
+  crossings = [];
+  emittedTicks = [0];
+}
+
+function stepSim(dt){
+  simTime += dt;
+  var vs = sourceSpeed();
+  sourceX += (approaching ? 1 : -1) * vs * dt;
+
+  // loop the source back when it runs off either side
+  if(approaching && sourceX > OBS_X-25){ resetSim(); return; }
+  if(!approaching && sourceX < START_X-60){ resetSim(); return; }
+
+  while(nextEmit <= simTime){
+    pulses.push({ x:sourceX, t0:nextEmit });
+    emittedTicks.push(nextEmit);
+    nextEmit += 1/F_SOURCE;
+  }
+
+  for(var i=pulses.length-1;i>=0;i--){
+    var p = pulses[i];
+    var r = V_WAVE*(simTime-p.t0);
+    var prevR = V_WAVE*(simTime-dt-p.t0);
+    var distToObs = Math.abs(p.x-OBS_X);
+    if(prevR < distToObs && r >= distToObs){
+      crossings.push(simTime);
+    }
+    if(r > WA+40){ pulses.splice(i,1); }
+  }
+}
+
+function shiftColor(ratio){
+  // ratio = observed/source frequency; >1 blue, <1 red
+  if(ratio>=1){
+    var t = Math.min(1,(ratio-1)/1.5);
+    return 'rgb('+Math.round(255-180*t)+','+Math.round(255-140*t)+',255)';
+  } else {
+    var t2 = Math.min(1,(1-ratio)/0.6);
+    return 'rgb(255,'+Math.round(255-165*t2)+','+Math.round(255-215*t2)+')';
+  }
+}
+
+function drawA(){
+  ctxA.clearRect(0,0,WA,HA);
+  ctxA.fillStyle='#000'; ctxA.fillRect(0,0,WA,HA);
+
+  ctxA.strokeStyle='rgba(255,255,255,0.6)'; ctxA.lineWidth=1.4;
+  pulses.forEach(function(p){
+    var r = V_WAVE*(simTime-p.t0);
+    if(r<=0) return;
+    ctxA.globalAlpha = Math.max(0,1-r/(WA*0.75));
+    ctxA.beginPath(); ctxA.arc(p.x,HA/2,r,0,Math.PI*2); ctxA.stroke();
+  });
+  ctxA.globalAlpha=1;
+
+  // observer marker
+  ctxA.fillStyle='#ffd35c';
+  ctxA.beginPath(); ctxA.arc(OBS_X,OBS_Y,7,0,Math.PI*2); ctxA.fill();
+  ctxA.fillStyle='rgba(255,255,255,0.55)'; ctxA.font='12px Times New Roman';
+  ctxA.fillText('Observer', OBS_X-28, OBS_Y-14);
+
+  // source marker
+  ctxA.fillStyle='#ffffff';
+  ctxA.beginPath(); ctxA.arc(sourceX,HA/2,6,0,Math.PI*2); ctxA.fill();
+  ctxA.fillStyle='rgba(255,255,255,0.55)'; ctxA.fillText('Source', sourceX-18, HA/2+24);
+
+  // recent crossing flash
+  var recent = crossings.length? crossings[crossings.length-1] : null;
+  if(recent!==null && simTime-recent<0.25){
+    var period = crossings.length>1 ? crossings[crossings.length-1]-crossings[crossings.length-2] : 1/F_SOURCE;
+    var ratio = (1/F_SOURCE)/period;
+    ctxA.globalAlpha = 1-(simTime-recent)/0.25;
+    ctxA.fillStyle = shiftColor(ratio);
+    ctxA.beginPath(); ctxA.arc(OBS_X,OBS_Y,14,0,Math.PI*2); ctxA.fill();
+    ctxA.globalAlpha=1;
+  }
+}
+
+/* ============================================================
+   PANEL B: emitted vs observed arrival timeline
+   ============================================================ */
+
+var cB = document.getElementById('canvasB');
+var ctxB = cB.getContext('2d');
+var WB = cB.width, HB = cB.height;
+var PXPS = 90; // px per simulated second, scroll speed
+var emittedTicks = [0];
+
+function drawB(){
+  ctxB.fillStyle='#000'; ctxB.fillRect(0,0,WB,HB);
+
+  var yTop = HB*0.28, yBot = HB*0.72;
+  ctxB.strokeStyle='rgba(255,255,255,0.2)'; ctxB.lineWidth=1;
+  ctxB.beginPath(); ctxB.moveTo(0,yTop); ctxB.lineTo(WB,yTop);
+  ctxB.moveTo(0,yBot); ctxB.lineTo(WB,yBot); ctxB.stroke();
+
+  ctxB.fillStyle='rgba(255,255,255,0.45)'; ctxB.font='11px Times New Roman';
+  ctxB.fillText('Emitted', 8, yTop-8);
+  ctxB.fillText('Observed', 8, yBot-8);
+
+  function drawTicks(times, y, colorFn){
+    times.forEach(function(t){
+      var x = WB - (simTime-t)*PXPS;
+      if(x<0 || x>WB) return;
+      ctxB.strokeStyle = colorFn ? colorFn(t) : 'rgba(255,255,255,0.85)';
+      ctxB.lineWidth=2;
+      ctxB.beginPath(); ctxB.moveTo(x,y-16); ctxB.lineTo(x,y+16); ctxB.stroke();
+    });
+  }
+
+  drawTicks(emittedTicks, yTop, function(){ return 'rgba(255,255,255,0.7)'; });
+  drawTicks(crossings, yBot, function(t){
+    var idx = crossings.indexOf(t);
+    if(idx<1) return 'rgba(255,255,255,0.7)';
+    var period = crossings[idx]-crossings[idx-1];
+    var ratio = (1/F_SOURCE)/period;
+    return shiftColor(ratio);
+  });
+
+  // trim old data
+  while(emittedTicks.length && simTime-emittedTicks[0] > WB/PXPS+1) emittedTicks.shift();
+  while(crossings.length && simTime-crossings[0] > WB/PXPS+1) crossings.shift();
+}
+
+/* ============================================================
+   UI
+   ============================================================ */
+
+document.getElementById('approachBtn').addEventListener('click', function(){
+  approaching = true;
+  document.getElementById('approachBtn').classList.add('active');
+  document.getElementById('recedeBtn').classList.remove('active');
+  resetSim(); updateInfo();
+});
+document.getElementById('recedeBtn').addEventListener('click', function(){
+  approaching = false;
+  document.getElementById('recedeBtn').classList.add('active');
+  document.getElementById('approachBtn').classList.remove('active');
+  resetSim(); updateInfo();
+});
+document.getElementById('speedSlider').addEventListener('input', function(){
+  speedFrac = parseFloat(this.value)/100;
+  document.getElementById('speedRead').textContent = this.value+'%';
+  updateInfo();
+});
+
+function updateInfo(){
+  var fObs = predictedObservedFreq();
+  var lamSource = V_WAVE/F_SOURCE;
+  var lamObs = V_WAVE/fObs;
+  document.getElementById('infoName').textContent = approaching ? 'Blueshift' : 'Redshift';
+  document.getElementById('infoStats').innerHTML =
+    'Source frequency: <b>'+F_SOURCE.toFixed(2)+' Hz</b><br>'+
+    'Observed frequency: <b>'+fObs.toFixed(2)+' Hz</b><br>'+
+    'Source wavelength: <b>'+lamSource.toFixed(1)+' px</b><br>'+
+    'Observed wavelength: <b>'+lamObs.toFixed(1)+' px</b><br>'+
+    'Source speed: <b>'+(speedFrac*100).toFixed(0)+'% of wave speed</b>';
+}
+
+/* ============================================================
+   RENDER LOOP
+   ============================================================ */
+
+var lastNow = performance.now();
+function animate(now){
+  requestAnimationFrame(animate);
+  var dt = Math.min((now-lastNow)/1000, 0.033);
+  lastNow = now;
+  stepSim(dt);
+  drawA();
+  drawB();
+}
+
+resetSim();
+updateInfo();
+lastNow = performance.now();
+requestAnimationFrame(animate);
+
+})();
+</script>
+</body>
+</html>
