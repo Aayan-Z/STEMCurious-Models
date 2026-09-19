@@ -33,7 +33,7 @@
 
         .container {
             width: 100%;
-            max-width: 900px;
+            max-width: none;
         }
 
         /* Header */
@@ -65,11 +65,55 @@
             max-width: 600px;
         }
 
+        /* Search */
+
+        .search {
+            margin-bottom: 28px;
+        }
+
+        .search input {
+            width: 100%;
+            padding: 16px 20px;
+
+            font-family: inherit;
+            font-size: 16px;
+            color: #f2f2f2;
+
+            background: #111114;
+            border: 1px solid #202024;
+            border-radius: 16px;
+            outline: none;
+
+            transition:
+                border-color 0.2s ease,
+                background 0.2s ease;
+        }
+
+        .search input::placeholder {
+            color: #666;
+        }
+
+        .search input:hover {
+            border-color: #3b3b42;
+        }
+
+        .search input:focus {
+            border-color: #55555e;
+            background: #151518;
+        }
+
+        .no-results {
+            display: none;
+            margin-top: 20px;
+            color: #77777e;
+            font-size: 15px;
+        }
+
         /* Projects */
 
         .projects {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 14px;
         }
 
@@ -172,6 +216,15 @@
             background: #777;
         }
 
+        /* Tablet */
+
+        @media (max-width: 900px) {
+
+            .projects {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
         /* Mobile */
 
         @media (max-width: 650px) {
@@ -214,6 +267,15 @@
             </p>
         </header>
 
+
+        <div class="search">
+            <input
+                type="search"
+                id="search"
+                placeholder="Search models by name or description..."
+                autocomplete="off"
+                aria-label="Search models">
+        </div>
 
         <section class="projects">
 
@@ -1061,6 +1123,8 @@
 
         </section>
 
+        <p class="no-results" id="noResults">No models match your search.</p>
+
 
         <footer>
 
@@ -1075,6 +1139,44 @@
 
     </main>
 
+    <script>
+        (function () {
+            var input = document.getElementById('search');
+            var noResults = document.getElementById('noResults');
+            var cards = Array.prototype.slice.call(document.querySelectorAll('.projects .project'));
+
+            // Searchable text for each card: its name + its bio
+            var index = cards.map(function (card) {
+                var title = card.querySelector('h2');
+                var bio = card.querySelector('p');
+                return ((title ? title.textContent : '') + ' ' + (bio ? bio.textContent : ''))
+                    .toLowerCase()
+                    .replace(/\s+/g, ' ');
+            });
+
+            function filter() {
+                var words = input.value.toLowerCase().split(/\s+/).filter(Boolean);
+                var shown = 0;
+
+                cards.forEach(function (card, i) {
+                    // Every typed word must appear in the name or bio; blank shows everything
+                    var match = words.every(function (w) {
+                        return index[i].indexOf(w) !== -1;
+                    });
+                    card.style.display = match ? '' : 'none';
+                    if (match) shown++;
+                });
+
+                noResults.style.display = shown === 0 ? 'block' : 'none';
+            }
+
+            input.addEventListener('input', filter);
+            input.addEventListener('search', filter);
+        })();
+    </script>
+
 </body>
+</html>
+```
 </html>
 ```
