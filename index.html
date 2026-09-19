@@ -1148,7 +1148,7 @@
         <footer>
 
             <div>Interactive Physics &amp; Mathematics</div>
-
+			<div>Total visitors: <span id="visitorCount">–</span></div>
             <div class="status">
                 <span class="dot"></span>
                 <span>4 experiments</span>
@@ -1193,7 +1193,29 @@
             input.addEventListener('search', filter);
         })();
     </script>
+	<!-- Script 1: records each visit -->
+    <script data-goatcounter="https://naynam.goatcounter.com/count"
+            async src="//gc.zgo.at/count.js"></script>
 
+    <!-- Script 2: shows the count in the footer -->
+    <script>
+        (function () {
+            var el = document.getElementById('visitorCount');
+
+            function loadCount() {
+                fetch('https://naynam.goatcounter.com/counter/' +
+                      encodeURIComponent(location.pathname) + '.json')
+                    .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+                    .then(function (d) { el.textContent = d.count; })
+                    .catch(function () { /* leave the dash if it fails */ });
+            }
+
+            // Short delay so this visit is recorded before the number is read
+            window.addEventListener('load', function () {
+                setTimeout(loadCount, 1000);
+            });
+        })();
+    </script>
 </body>
 </html>
 
