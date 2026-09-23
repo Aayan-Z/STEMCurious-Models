@@ -121,6 +121,53 @@
             font-size: 15px;
         }
 
+        /* Filters */
+
+        .filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+
+            margin-bottom: 28px;
+        }
+
+        .filter-btn {
+            padding: 10px 18px;
+
+            font-family: inherit;
+            font-size: 14px;
+            color: #8b8b91;
+
+            background: #111114;
+            border: 1px solid #202024;
+            border-radius: 999px;
+            cursor: pointer;
+
+            transition:
+                border-color 0.2s ease,
+                background 0.2s ease,
+                color 0.2s ease;
+        }
+
+        .filter-btn:hover {
+            border-color: #3b3b42;
+            color: #f2f2f2;
+        }
+
+        .filter-btn.active {
+            background: #f2f2f2;
+            border-color: #f2f2f2;
+            color: #0a0a0c;
+        }
+
+        .filter-btn .count {
+            color: #666;
+        }
+
+        .filter-btn.active .count {
+            color: #444;
+        }
+
         /* Projects */
 
         .projects {
@@ -197,16 +244,6 @@
         .project:hover .arrow {
             transform: translate(3px, -3px);
             color: #aaa;
-        }
-
-        /* Visitor count */
-
-        .visitors {
-            margin-top: 55px;
-
-            text-align: center;
-            color: #fff;
-            font-size: 16px;
         }
 
         /* Footer */
@@ -306,11 +343,28 @@
                 aria-label="Search models">
         </div>
 
+        <!--
+            Filter bar. To add a new subject:
+              1. Add a button here, e.g. <button class="filter-btn" data-tag="bio">Biology <span class="count"></span></button>
+              2. Give matching models data-tags="bio" (space-separated if a model has more than one tag)
+            The script below fills in each count and handles clicks automatically.
+        -->
+        <div class="filters" id="filters">
+            <button class="filter-btn active" data-tag="all">All <span class="count"></span></button>
+            <button class="filter-btn" data-tag="phy">Physics <span class="count"></span></button>
+            <button class="filter-btn" data-tag="chem">Chemistry <span class="count"></span></button>
+            <button class="filter-btn" data-tag="math">Math <span class="count"></span></button>
+            <button class="filter-btn" data-tag="astro">Astronomy <span class="count"></span></button>
+        </div>
+
         <section class="projects">
+            <!-- New card checklist: give the <a class="project"> tag both an href AND
+                 a data-tags="..." attribute (e.g. data-tags="phy chem"), using the same
+                 tag codes as the filter buttons above (phy, chem, math, astro, or a new one). -->
 
             <!-- 01 -->
 
-            <a class="project" href="shapes_explorer_3d.html">
+            <a class="project" href="shapes_explorer_3d.html" data-tags="math">
 
                 <div class="number">01</div>
 
@@ -330,7 +384,7 @@
 
             <!-- 02 -->
 
-            <a class="project" href="molecular_geometry_3d.html">
+            <a class="project" href="molecular_geometry_3d.html" data-tags="chem">
 
                 <div class="number">02</div>
 
@@ -350,7 +404,7 @@
 
             <!-- 03 -->
 
-            <a class="project" href="atomic_orbitals.html">
+            <a class="project" href="atomic_orbitals.html" data-tags="chem phy">
 
                 <div class="number">03</div>
 
@@ -370,7 +424,7 @@
 
             <!-- 04 -->
 
-            <a class="project" href="Hydrogen%20wave%20function.html">
+            <a class="project" href="Hydrogen%20wave%20function.html" data-tags="phy">
 
                 <div class="number">04</div>
 
@@ -388,7 +442,7 @@
             </a>
 
             <!--05 -->
-            <a class="project" href="moon_phases_3d.html">
+            <a class="project" href="moon_phases_3d.html" data-tags="astro">
                 <div class="number">05</div>
 
                 <div class="project-content">
@@ -403,7 +457,7 @@
             </a>
 
             <!--06-->
-            <a class="project" href="solar_system.html">
+            <a class="project" href="solar_system.html" data-tags="astro">
                 <div class="number">06</div>
 
                 <div class="project-content">
@@ -417,7 +471,7 @@
             </a>
 
             <!--07-->
-            <a class="project" href="chemical_bonding.html">
+            <a class="project" href="chemical_bonding.html" data-tags="chem">
 
                 <div class="number">07</div>
 
@@ -434,7 +488,7 @@
 
             </a>
             <!--08-->
-            <a class="project" href="electric_current.html">
+            <a class="project" href="electric_current.html" data-tags="phy">
 
                 <div class="number">08</div>
 
@@ -451,7 +505,7 @@
 
             </a>
             <!--09-->
-            <a class="project" href="electric_field.html">
+            <a class="project" href="electric_field.html" data-tags="phy">
 
                 <div class="number">09</div>
 
@@ -468,7 +522,7 @@
 
             </a>
             <!--10-->
-            <a class="project" href="fluid_pressure.html">
+            <a class="project" href="fluid_pressure.html" data-tags="chem phy">
 
                 <div class="number">10</div>
 
@@ -485,7 +539,7 @@
 
             </a>
             <!--11-->
-            <a class="project" href="gasses.html">
+            <a class="project" href="gasses.html" data-tags="chem phy">
 
                 <div class="number">11</div>
 
@@ -503,7 +557,7 @@
             </a>
     
             <!--12-->
-            <a class="project" href="le_chatelier.html">
+            <a class="project" href="le_chatelier.html" data-tags="chem">
 
                 <div class="number">12</div>
 
@@ -520,7 +574,7 @@
 
             </a>
             <!--13-->
-            <a class="project" href="rotational_motion.html">
+            <a class="project" href="rotational_motion.html" data-tags="phy">
 
                 <div class="number">13</div>
 
@@ -537,7 +591,7 @@
 
             </a>
             <!--14-->
-            <a class="project" href="atom_builder.html">
+            <a class="project" href="atom_builder.html" data-tags="chem">
 
                 <div class="number">14</div>
 
@@ -554,7 +608,7 @@
 
             </a>
             <!--15-->
-            <a class="project" href="thermal_conduction_3d.html">
+            <a class="project" href="thermal_conduction_3d.html" data-tags="phy">
 
                 <div class="number">15</div>
 
@@ -571,7 +625,7 @@
 
             </a>
             <!--16-->
-            <a class="project" href="standard_model_3d.html">
+            <a class="project" href="standard_model_3d.html" data-tags="phy">
 
                 <div class="number">13</div>
 
@@ -588,7 +642,7 @@
 
             </a>
             <!--17-->
-            <a class="project" href="em_spectrum_3d.html">
+            <a class="project" href="em_spectrum_3d.html" data-tags="phy">
 
                 <div class="number">17</div>
 
@@ -605,7 +659,7 @@
 
             </a>
              <!--18-->
-            <a class="project" href="rates_of_reaction.html">
+            <a class="project" href="rates_of_reaction.html" data-tags="chem">
 
                 <div class="number">18</div>
 
@@ -622,7 +676,7 @@
 
             </a>
  <!--19-->
-            <a class="project" href="pendulum.html">
+            <a class="project" href="pendulum.html" data-tags="phy">
 
                 <div class="number">19</div>
 
@@ -639,7 +693,7 @@
 
             </a>
  <!--20--->
-            <a class="project" href="wave_interference_3d.html">
+            <a class="project" href="wave_interference_3d.html" data-tags="phy">
 
                 <div class="number">20</div>
 
@@ -656,7 +710,7 @@
 
             </a>
  <!--21-->
-            <a class="project" href="photoelectric_effect_3d.html">
+            <a class="project" href="photoelectric_effect_3d.html" data-tags="phy">
 
                 <div class="number">21</div>
 
@@ -673,7 +727,7 @@
 
             </a>
  <!--22-->
-            <a class="project" href="hybridisation.html">
+            <a class="project" href="hybridisation.html" data-tags="chem">
 
                 <div class="number">22</div>
 
@@ -690,7 +744,7 @@
 
             </a>
  <!--23-->
-            <a class="project" href="wave_interference_2d.html">
+            <a class="project" href="wave_interference_2d.html" data-tags="phy">
 
                 <div class="number">23</div>
 
@@ -707,7 +761,7 @@
 
             </a>
  <!--24-->
-            <a class="project" href="ionization_energy_3d.html">
+            <a class="project" href="ionization_energy_3d.html" data-tags="chem">
 
                 <div class="number">24</div>
 
@@ -724,7 +778,7 @@
 
             </a>
  <!--25-->
-            <a class="project" href="states_of_matter.html">
+            <a class="project" href="states_of_matter.html" data-tags="chem phy">
 
                 <div class="number">25</div>
 
@@ -742,7 +796,7 @@
 
             </a>
  <!--26-->
-            <a class="project" href="brownian_motion_model.html">
+            <a class="project" href="brownian_motion_model.html" data-tags="phy chem">
 
                 <div class="number">26</div>
 
@@ -759,7 +813,7 @@
 
             </a>
  <!--27-->
-            <a class="project" href="petroleum_fractionating.html">
+            <a class="project" href="petroleum_fractionating.html" data-tags="chem">
 
                 <div class="number">27</div>
 
@@ -776,7 +830,7 @@
 
             </a>
  <!--28-->
-            <a class="project" href="rutherford_scattering_experiment.html">
+            <a class="project" href="rutherford_scattering_experiment.html" data-tags="phy chem">
 
                 <div class="number">28</div>
 
@@ -793,7 +847,7 @@
 
             </a>
  <!--29-->
-            <a class="project" href="diffusion_gas_model.html">
+            <a class="project" href="diffusion_gas_model.html" data-tags="chem phy">
 
                 <div class="number">29</div>
 
@@ -810,7 +864,7 @@
 
             </a>
  <!--30-->
-            <a class="project" href="unit_circle_model.html">
+            <a class="project" href="unit_circle_model.html" data-tags="math">
 
                 <div class="number">30</div>
 
@@ -827,7 +881,7 @@
 
             </a>
  <!--31-->
-            <a class="project" href="sun_comet_energy.html">
+            <a class="project" href="sun_comet_energy.html" data-tags="astro phy">
 
                 <div class="number">31</div>
 
@@ -844,7 +898,7 @@
 
             </a>
  <!--32-->
-            <a class="project" href="refraction.html">
+            <a class="project" href="refraction.html" data-tags="phy">
 
                 <div class="number">32</div>
 
@@ -861,7 +915,7 @@
 
             </a>
  <!--33-->
-            <a class="project" href="doppler_effect.html">
+            <a class="project" href="doppler_effect.html" data-tags="phy astro">
 
                 <div class="number">33</div>
 
@@ -878,7 +932,7 @@
 
             </a>
  <!--34-->
-            <a class="project" href="shm.html">
+            <a class="project" href="shm.html" data-tags="phy">
 
                 <div class="number">34</div>
 
@@ -895,7 +949,7 @@
 
             </a>
  <!--35-->
-            <a class="project" href="sky_spectrum.html">
+            <a class="project" href="sky_spectrum.html" data-tags="astro">
 
                 <div class="number">35</div>
 
@@ -912,7 +966,7 @@
 
             </a>
  <!--36-->
-            <a class="project" href="kepler_three_laws.html">
+            <a class="project" href="kepler_three_laws.html" data-tags="astro phy math">
 
                 <div class="number">36</div>
 
@@ -929,7 +983,7 @@
 
             </a>
  <!--37-->
-            <a class="project" href="blackbody_radiation_final.html">
+            <a class="project" href="blackbody_radiation_final.html" data-tags="phy astro">
 
                 <div class="number">37</div>
 
@@ -946,7 +1000,7 @@
 
             </a>
  <!--38-->
-            <a class="project" href="vector_addition_model.html">
+            <a class="project" href="vector_addition_model.html" data-tags="math phy">
 
                 <div class="number">38</div>
 
@@ -963,7 +1017,7 @@
 
             </a>
  <!--39-->
-            <a class="project" href="vector_components_model.html">
+            <a class="project" href="vector_components_model.html" data-tags="math phy">
 
                 <div class="number">39</div>
 
@@ -980,7 +1034,7 @@
 
             </a>
  <!--40-->
-            <a class="project" href="fourier_draw.html">
+            <a class="project" href="fourier_draw.html" data-tags="math">
 
                 <div class="number">40</div>
 
@@ -997,7 +1051,7 @@
 
             </a>
  <!--41-->
-            <a class="project" href="pendulum_basics.html">
+            <a class="project" href="pendulum_basics.html" data-tags="phy">
 
                 <div class="number">41</div>
 
@@ -1014,7 +1068,7 @@
 
             </a>
  <!--42-->
-            <a class="project" href="normal_distribution.html">
+            <a class="project" href="normal_distribution.html" data-tags="math">
 
                 <div class="number">42</div>
 
@@ -1031,7 +1085,7 @@
 
             </a>
  <!--43-->
-            <a class="project" href="monte_carlo.html">
+            <a class="project" href="monte_carlo.html" data-tags="math">
 
                 <div class="number">43</div>
 
@@ -1048,7 +1102,7 @@
 
             </a>
  <!--44-->
-            <a class="project" href="heat_transfer.html">
+            <a class="project" href="heat_transfer.html" data-tags="phy">
 
                 <div class="number">44</div>
 
@@ -1065,7 +1119,7 @@
 
             </a>
  <!--45-->
-            <a class="project" href="seesaw_balance.html">
+            <a class="project" href="seesaw_balance.html" data-tags="phy">
 
                 <div class="number">45</div>
 
@@ -1082,7 +1136,7 @@
 
             </a>
  <!--46-->
-            <a class="project" href="molecule_polarity.html">
+            <a class="project" href="molecule_polarity.html" data-tags="chem">
 
                 <div class="number">46</div>
 
@@ -1099,7 +1153,7 @@
 
             </a>
  <!--47-->
-            <a class="project" href="wave_frequency_amplitude.html">
+            <a class="project" href="wave_frequency_amplitude.html" data-tags="phy">
 
                 <div class="number">47</div>
 
@@ -1116,7 +1170,7 @@
 
             </a>
  <!--48-->
-            <a class="project" href="esterification_model.html">
+            <a class="project" href="esterification_model.html" data-tags="chem">
 
                 <div class="number">48</div>
 
@@ -1133,7 +1187,7 @@
 
             </a>
  <!--49-->
-            <a class="project" href="organic_isomer.html">
+            <a class="project" href="organic_isomer.html" data-tags="chem">
 
                 <div class="number">49</div>
 
@@ -1154,15 +1208,11 @@
 
         <p class="no-results" id="noResults">No models match your search.</p>
 
-        <div class="visitors">
-            Total visitors: <span id="visitorCount">–</span>
-        </div>
-
 
         <footer>
 
             <div>Interactive Physics &amp; Mathematics</div>
-
+			<div>Total visitors: <span id="visitorCount">–</span></div>
             <div class="status">
                 <span class="dot"></span>
                 <span>4 experiments</span>
@@ -1176,10 +1226,11 @@
         (function () {
             var input = document.getElementById('search');
             var noResults = document.getElementById('noResults');
+            var filterBtns = Array.prototype.slice.call(document.querySelectorAll('.filter-btn'));
             var cards = Array.prototype.slice.call(document.querySelectorAll('.projects .project'));
 
             // Searchable text for each card: its name + its bio
-            var index = cards.map(function (card) {
+            var textIndex = cards.map(function (card) {
                 var title = card.querySelector('h2');
                 var bio = card.querySelector('p');
                 return ((title ? title.textContent : '') + ' ' + (bio ? bio.textContent : ''))
@@ -1187,69 +1238,97 @@
                     .replace(/\s+/g, ' ');
             });
 
-            function filter() {
+            // Each card's tags, e.g. "phy chem" -> ["phy", "chem"]
+            var tagIndex = cards.map(function (card) {
+                return (card.getAttribute('data-tags') || '').trim().split(/\s+/).filter(Boolean);
+            });
+
+            // Fill in the "All" count and each tag button's count (counts never change with search/filtering)
+            filterBtns.forEach(function (btn) {
+                var tag = btn.getAttribute('data-tag');
+                var count = tag === 'all'
+                    ? cards.length
+                    : tagIndex.filter(function (tags) { return tags.indexOf(tag) !== -1; }).length;
+                btn.querySelector('.count').textContent = '(' + count + ')';
+            });
+
+            var activeTags = []; // selected subject filters; empty means "All"
+
+            function setActiveButtons() {
+                filterBtns.forEach(function (btn) {
+                    var tag = btn.getAttribute('data-tag');
+                    var isActive = tag === 'all' ? activeTags.length === 0 : activeTags.indexOf(tag) !== -1;
+                    btn.classList.toggle('active', isActive);
+                });
+            }
+
+            function apply() {
                 var words = input.value.toLowerCase().split(/\s+/).filter(Boolean);
                 var shown = 0;
 
                 cards.forEach(function (card, i) {
                     // Every typed word must appear in the name or bio; blank shows everything
-                    var match = words.every(function (w) {
-                        return index[i].indexOf(w) !== -1;
+                    var matchesSearch = words.every(function (w) {
+                        return textIndex[i].indexOf(w) !== -1;
                     });
+
+                    // A card matches the filters if no tag is selected, or it has at least one selected tag
+                    var matchesTags = activeTags.length === 0 || activeTags.some(function (t) {
+                        return tagIndex[i].indexOf(t) !== -1;
+                    });
+
+                    var match = matchesSearch && matchesTags;
                     card.style.display = match ? '' : 'none';
                     if (match) shown++;
                 });
 
                 noResults.style.display = shown === 0 ? 'block' : 'none';
+                setActiveButtons();
             }
 
-            input.addEventListener('input', filter);
-            input.addEventListener('search', filter);
+            filterBtns.forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var tag = btn.getAttribute('data-tag');
+
+                    if (tag === 'all') {
+                        activeTags = [];
+                    } else {
+                        var pos = activeTags.indexOf(tag);
+                        if (pos === -1) {
+                            activeTags.push(tag); // select
+                        } else {
+                            activeTags.splice(pos, 1); // click again to deselect
+                        }
+                    }
+
+                    apply();
+                });
+            });
+
+            input.addEventListener('input', apply);
+            input.addEventListener('search', apply);
         })();
     </script>
 	<!-- Script 1: records each visit -->
     <script data-goatcounter="https://naynam.goatcounter.com/count"
             async src="//gc.zgo.at/count.js"></script>
 
-    <!-- Script 2: shows the visitor count -->
+    <!-- Script 2: shows the count in the footer -->
     <script>
         (function () {
             var el = document.getElementById('visitorCount');
-            var base = 'https://naynam.goatcounter.com/counter/';
 
-            // Paths to try, in order, until one returns a count
-            function candidates() {
-                var list = [];
-                if (window.goatcounter && window.goatcounter.get_data) {
-                    list.push(window.goatcounter.get_data()['p']);
-                }
-                list.push(location.pathname, '/', 'TOTAL');
-                return list.filter(function (p, i) {
-                    return p && list.indexOf(p) === i;
-                });
-            }
-
-            function tryNext(paths, i) {
-                if (i >= paths.length) {
-                    console.warn('Visitor counter: no path worked. Check the GoatCounter setting that allows visitor counts on your website.');
-                    return;
-                }
-                var url = base + encodeURIComponent(paths[i]) + '.json';
-                fetch(url)
-                    .then(function (r) {
-                        if (!r.ok) { throw new Error('HTTP ' + r.status); }
-                        return r.json();
-                    })
+            function loadCount() {
+                fetch('https://naynam.goatcounter.com/counter/' +
+                      encodeURIComponent(location.pathname) + '.json')
+                    .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
                     .then(function (d) { el.textContent = d.count; })
-                    .catch(function (e) {
-                        console.warn('Visitor counter failed for', url, e);
-                        tryNext(paths, i + 1);
-                    });
+                    .catch(function () { /* leave the dash if it fails */ });
             }
 
             // Short delay so this visit is recorded before the number is read
             window.addEventListener('load', function () {
-                setTimeout(function () { tryNext(candidates(), 0); }, 1500);
+                setTimeout(loadCount, 1000);
             });
         })();
     </script>
